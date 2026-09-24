@@ -119,10 +119,16 @@ async def recent_transfer_logs(rpc: RpcClient, token: str, head: int, lookback_b
     return logs
 
 
-async def collect_holders(rpc: RpcClient, token: str, lookback_blocks: int) -> list[dict]:
-    """Blockscout-shaped holder items ({"address": {"hash", "is_contract"}, "value"})."""
+async def scan_transfers(rpc: RpcClient, token: str, lookback_blocks: int) -> list[dict]:
+    """The token's Transfer logs, oldest first (complete back to its mint for young tokens)."""
     head = await rpc.block_number()
-    logs = await recent_transfer_logs(rpc, token, head, lookback_blocks)
+    return await recent_transfer_logs(rpc, token, head, lookback_blocks)
+
+
+async def collect_holders(rpc: RpcClient, token: str, lookback_blocks: int, logs: list[dict] | None = None) -> list[dict]:
+    """Blockscout-shaped holder items ({"address": {"hash", "is_contract"}, "value"})."""
+    if logs is None:
+        logs = await scan_transfers(rpc, token, lookback_blocks)
     received: dict[str, int] = defaultdict(int)
     for entry in logs:
         if len(entry.get("topics") or []) < 3:
@@ -143,10 +149,11 @@ async def collect_holders(rpc: RpcClient, token: str, lookback_blocks: int) -> l
 
 
 async def check_holders(
-    rpc: RpcClient, token: str, total_supply: int, exclude: set[str], creator: str | None, lookback_blocks: int
+    rpc: RpcClient, token: str, total_supply: int, exclude: set[str], creator: str | None, lookback_blocks: int,
+    logs: list[dict] | None = None,
 ) -> tuple[dict, list[Finding]]:
     try:
-        holders = await collect_holders(rpc, token, lookback_blocks)
+        holders = await collect_holders(rpc, token, lookback_blocks, logs)
     except Exception as exc:
         log.warning("holder scan for %s failed: %s", token, exc)
         holders = None

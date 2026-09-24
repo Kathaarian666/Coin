@@ -7,7 +7,8 @@ from eth_utils import is_address, to_checksum_address
 
 from .checks import Finding
 from .checks.contract import check_contract
-from .checks.holders import check_holders
+from .checks.holders import check_holders, scan_transfers
+from .checks.launch import analyse_launch, launch_logs
 from .checks.honeypot import check_honeypot
 from .checks.liquidity import check_liquidity
 from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
@@ -59,6 +60,10 @@ def market_summary(pairs: list[dict], pool_address: str | None) -> dict:
         "buys_h1": h1.get("buys"),
         "sells_h1": h1.get("sells"),
         "change_h1": (pair.get("priceChange") or {}).get("h1"),
+        "change_m5": (pair.get("priceChange") or {}).get("m5"),
+        # all of the token's pools, so Fomo's share of volume is not overstated
+        "volume_h1_all": sum((p.get("volume") or {}).get("h1") or 0 for p in pairs),
+        "pair_created_at": pair.get("pairCreatedAt"),
         "url": pair.get("url"),
         "socials": [s.get("type") for s in (pair.get("info") or {}).get("socials") or []],
         "websites": len((pair.get("info") or {}).get("websites") or []),
@@ -163,9 +168,24 @@ class Analyzer:
         else:
             findings.append(Finding("medium", "no_pool", "WETH/ETH havuzu bulunamadı — likidite ve honeypot kontrol edilemedi"))
 
+        try:
+            transfer_logs = await scan_transfers(self.rpc, token, self.settings.holder_lookback_blocks)
+        except Exception as exc:
+            log.warning("transfer scan for %s failed: %s", token, exc)
+            transfer_logs = []
+        try:
+            launch = await launch_logs(self.rpc, token, self.settings.holder_lookback_blocks)
+            launch_data, launch_findings = await analyse_launch(self.rpc, token, launch, meta["total_supply"], exclude)
+        except Exception as exc:
+            log.warning("launch analysis for %s failed: %s", token, exc)
+            launch_data, launch_findings = {}, []
+        report["launch"] = launch_data
+        findings += launch_findings
+
         holder_data, holder_findings = await check_holders(
-            self.rpc, token, meta["total_supply"], exclude, contract_data.get("creator"),
-            self.settings.holder_lookback_blocks,
+            self.rpc, token, meta["total_supply"], exclude,
+            contract_data.get("creator") or launch_data.get("creator"),
+            self.settings.holder_lookback_blocks, logs=transfer_logs or None,
         )
         report["holders"] = holder_data
         findings += holder_findings

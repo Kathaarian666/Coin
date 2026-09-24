@@ -45,7 +45,18 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 | **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
 | **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
 
-**Skor:** 🟢 75–100 düşük risk · 🟡 50–74 orta · 🔴 1–49 yüksek · ⛔ 0 tehlikeli (honeypot vb.)
+**İki ayrı skor:**
+- 🛡️ **Güven skoru** (rug/tuzak riski): kontrat, likidite, holder dağılımı, satılabilirlik, lansman (dev/bundle/sniper).
+- 🚀 **Momentum skoru** (vur-kaç için şu an gerçek alım hızlanıyor mu): son 5/10 dk Fomo alıcıları ve ivme,
+  alım/satım oranı, alıcıların hâlâ tutma oranı, tek cüzdan ağırlığı, Fomo'nun toplam hacimdeki payı (organik akış),
+  coinin yaşı, son 1 saat/5 dk fiyat hareketi, Telegram/X/web sitesi, likidite derinliği.
+  Ağırlıklar ilk tahmindir; `/karne` sonuçlarıyla kalibre edilecek.
+
+**Sonuç kaydı ve karne:** Bildirim giden, filtreye takılan ve karşılaştırma için "gölge" (eşiğin yarısını geçen,
+analiz edilmemiş) coinlerin fiyat ve likiditesi 0, 5, 10 … 1440. dakikalarda DexScreener'dan kaydedilir.
+`/karne [saat]` her grup ve momentum aralığı için 1 saatte 2x, 24 saatte 2x/5x, yarıya düşme ve rug oranlarını gösterir.
+
+**Güven skoru:** 🟢 75–100 düşük risk · 🟡 50–74 orta · 🔴 1–49 yüksek · ⛔ 0 tehlikeli (honeypot vb.)
 
 ## Kurulum
 
@@ -75,6 +86,7 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | Komut | Açıklama |
 |---|---|
 | `/trend` | Şu an Fomo'da en çok alınan 10 coin (son 15 dk) |
+| `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge, momentum aralıkları) |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
 | `/minalici 15` | Bildirim için 10 dakikada gereken farklı Fomo alıcısı sayısı |

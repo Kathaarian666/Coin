@@ -15,7 +15,9 @@ from .config import Settings
 from .discovery import NewPool, PoolWatcher
 from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
-from .report import format_followup, format_report
+from .momentum import fomo_features, momentum_score
+from .outcomes import OutcomeLog, momentum_bucket, summarize
+from .report import format_followup, format_report, format_scorecard
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
@@ -34,6 +36,7 @@ HELP = (
     "/durdur — otomatik bildirimleri durdur\n"
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
+    "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
 )
 
 
@@ -59,6 +62,7 @@ class ScannerApp:
             self.storage,
         )
         self.tracker = FomoTracker()
+        self.outcomes = OutcomeLog(self.storage.db)
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
@@ -94,6 +98,8 @@ class ScannerApp:
     async def on_fomo_trades(self, trades: list[FomoTrade], warmup: bool = False):
         for token in {t.token for t in trades if t.side == "buy"}:
             stats = self.tracker.stats(token, self.fomo_window)
+            if not warmup and self._is_shadow(stats):
+                self.outcomes.record(token, "shadow", features=fomo_features(self.tracker, token))
             rising = stats["buyers"] >= self.min_buyers and stats["buy_usd"] >= self.min_buy_usd
             if rising and self.storage.mark_alerted(token):
                 if warmup:
@@ -110,6 +116,49 @@ class ScannerApp:
             # Give indexers a moment to see the token and its first holders.
             await self.queue.put(Job(pool.token, pool_dict, delay=self.settings.analysis_delay))
 
+    def _is_shadow(self, stats: dict) -> bool:
+        """A lower bar than alerts: the baseline group for measuring the filters."""
+        return stats["buyers"] >= max(3, self.min_buyers // 2) and stats["buy_usd"] >= self.min_buy_usd / 5
+
+    def attach_momentum(self, report: dict):
+        features = fomo_features(self.tracker, report["token"])
+        score, reasons, extra = momentum_score(features, report.get("market") or {}, report.get("launch"))
+        report["momentum"] = {"score": score, "reasons": reasons, "features": {**features, **extra}}
+
+    def shadow_momentum(self, features: dict, pairs: list[dict], pair_address: str | None) -> int:
+        score, _, _ = momentum_score(features, market_summary(pairs, pair_address))
+        return score
+
+    def record_outcome(self, report: dict, kind: str):
+        launch = report.get("launch") or {}
+        features = {
+            **(report.get("momentum") or {}).get("features", {}),
+            "missing": report.get("missing"),
+            "top10_pct": (report.get("holders") or {}).get("top10_pct"),
+            **{k: launch.get(k) for k in ("dev_pct", "dev_initial_pct", "sniper_pct", "bundle_pct", "age_min")},
+            "liquidity_usd": (report.get("market") or {}).get("liquidity_usd"),
+            "fdv": (report.get("market") or {}).get("fdv"),
+            "socials": (report.get("market") or {}).get("socials"),
+            "findings": [f["code"] for f in report.get("findings", [])],
+        }
+        self.outcomes.record(
+            report["token"], kind, trust=report["score"], momentum=(report.get("momentum") or {}).get("score"),
+            features=features, pair=(report.get("pool") or {}).get("pool"),
+        )
+
+    async def outcome_loop(self):
+        while True:
+            try:
+                if self.analyzer.dexscreener:
+                    written = await self.outcomes.tick(self.analyzer.dexscreener, self.shadow_momentum)
+                    if written:
+                        log.debug("outcome samples written: %d", written)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("outcome sampling failed")
+            await asyncio.sleep(60)
+
     # --- analysis ---
     def fomo_stats(self, token: str) -> dict | None:
         stats = self.tracker.stats(token, self.fomo_window)
@@ -122,8 +171,11 @@ class ScannerApp:
                 if job.delay:
                     await asyncio.sleep(job.delay)
                 report = await self.analyzer.analyze(job.token, job.pool, self.fomo_stats(job.token))
+                self.attach_momentum(report)
                 self.storage.save_report(job.token, report["score"], report)
-                if self.alerts_on and report["score"] >= self.min_score:
+                sent = self.alerts_on and report["score"] >= self.min_score
+                self.record_outcome(report, "alert" if sent else "filtered")
+                if sent:
                     header = "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz"
                     await self.broadcast(format_report(report, self.settings.blockscout_url, header))
                     if self.settings.followup_min > 0:
@@ -186,6 +238,7 @@ class ScannerApp:
         try:
             token = context.args[0]
             report = await self.analyzer.analyze(token, fomo=self.fomo_stats(token))
+            self.attach_momentum(report)
             text = format_report(report, self.settings.blockscout_url)
         except ValueError as exc:
             text = f"❌ {exc}"
@@ -210,6 +263,22 @@ class ScannerApp:
             )
         lines.append("\nDetay için: /check &lt;adres&gt;")
         await update.message.reply_html("\n".join(lines))
+
+    async def cmd_scorecard(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 24.0
+        results = self.outcomes.results(hours)
+        by_kind = {k: [r for r in results if r["kind"] == k] for k in ("alert", "filtered", "shadow")}
+        groups = [
+            ("🔔 Bildirim gidenler", summarize(by_kind["alert"])),
+            ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
+            ("👤 Gölge grup", summarize(by_kind["shadow"])),
+        ]
+        for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
+            groups.append((f"Momentum {bucket} (tüm gruplar)",
+                           summarize([r for r in results if momentum_bucket(r["momentum"]) == bucket])))
+        await update.message.reply_html(format_scorecard(hours, groups))
 
     async def cmd_min_score(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
@@ -276,6 +345,7 @@ class ScannerApp:
         if self.settings.enable_pool_watcher:
             watcher = PoolWatcher(self.rpc, self.settings, self.storage)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_pool)))
+        self.tasks.append(asyncio.create_task(self.outcome_loop()))
         for _ in range(self.settings.analysis_workers):
             self.tasks.append(asyncio.create_task(self.worker()))
 
@@ -300,6 +370,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler(["start", "help", "yardim"], self.cmd_start))
         self.app.add_handler(CommandHandler("check", self.cmd_check))
         self.app.add_handler(CommandHandler("trend", self.cmd_trend))
+        self.app.add_handler(CommandHandler("karne", self.cmd_scorecard))
         self.app.add_handler(CommandHandler("minskor", self.cmd_min_score))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))

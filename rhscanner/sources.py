@@ -65,3 +65,16 @@ class DexScreener:
             log.warning("dexscreener lookup for %s failed: %s", token, exc)
             return []
         return data if isinstance(data, list) else data.get("pairs") or []
+
+    async def tokens(self, addresses: list[str]) -> list[dict]:
+        """Pairs for up to 30 tokens in one call (used for outcome sampling)."""
+        if not addresses:
+            return []
+        try:
+            resp = await self.http.get(f"{self.BASE}/tokens/v1/{DEXSCREENER_CHAIN}/{','.join(addresses[:30])}")
+            resp.raise_for_status()
+            data = resp.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            log.warning("dexscreener batch lookup failed: %s", exc)
+            return []
+        return data if isinstance(data, list) else data.get("pairs") or []

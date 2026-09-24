@@ -3,6 +3,7 @@
 from html import escape
 
 from .config import DEXSCREENER_CHAIN
+from .momentum import momentum_label
 from .scoring import level
 
 ICONS = {"critical": "⛔", "high": "🔴", "medium": "🟠", "low": "🟡", "info": "ℹ️", "good": "✅"}
@@ -31,6 +32,12 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
         "",
         f"{icon} <b>Güven skoru: {report['score']}/100</b> — {label}",
     ]
+    momentum = report.get("momentum") or {}
+    if momentum.get("score") is not None:
+        m_icon, m_label = momentum_label(momentum["score"])
+        lines.append(f"{m_icon} <b>Momentum: {momentum['score']}/100</b> — {m_label}")
+        for reason in (momentum.get("reasons") or [])[:3]:
+            lines.append(f"   · {escape(reason, quote=False)}")
 
     if report.get("missing"):
         lines.append(f"⚠️ Kontrol edilemeyenler: {escape(', '.join(report['missing']), quote=False)} (skor en fazla 70)")
@@ -56,6 +63,20 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
         facts.append(f"FDV: {_usd(market['fdv'])} · Likidite: {_usd(market.get('liquidity_usd'))}")
     if market.get("buys_h1") is not None:
         facts.append(f"1s: {market['buys_h1']} alım / {market['sells_h1']} satış")
+    launch = report.get("launch") or {}
+    if launch:
+        parts = []
+        if launch.get("age_min") is not None:
+            age = launch["age_min"]
+            parts.append(f"Yaş: {age:.0f} dk" if age < 120 else f"Yaş: {age / 60:.1f} sa" if age < 2880 else f"Yaş: {age / 1440:.0f} gün")
+        if launch.get("dev_pct") is not None:
+            parts.append(f"Dev: %{launch['dev_pct']:.1f} (lansmanda %{launch.get('dev_initial_pct', 0):.1f})")
+        if launch.get("sniper_pct") is not None:
+            parts.append(f"Sniper: %{launch['sniper_pct']:.1f}")
+        if launch.get("bundle_pct"):
+            parts.append(f"Bundle: %{launch['bundle_pct']:.1f}")
+        if parts:
+            facts.append(" · ".join(parts))
     if pool:
         launchpad = (report.get("liquidity") or {}).get("launchpad")
         pair = f" · {pool['quote_symbol']} paritesi" if pool.get("quote_symbol") else ""
@@ -121,4 +142,21 @@ def format_followup(report: dict, recent: dict, sellers_hour: int, market: dict,
         lines.append("💤 Fomo'da yeni alıcı gelmiyor, ilgi söndü")
 
     lines += ["", f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>']
+    return "\n".join(lines)
+
+
+def format_scorecard(hours: float, groups: list[tuple[str, dict]]) -> str:
+    """/karne: how signals did, by kind and by momentum bucket."""
+    lines = [f"📊 <b>Sinyal karnesi — son {hours:g} saat</b>", "<i>(en az 1 saatlik sinyaller)</i>", ""]
+    for title, s in groups:
+        if not s.get("n"):
+            lines.append(f"<b>{escape(title, quote=False)}</b>: veri yok")
+            continue
+        lines.append(
+            f"<b>{escape(title, quote=False)}</b> ({s['n']} sinyal)\n"
+            f"   1 saatte 2x: %{s['x2_60']} · 1.5x: %{s['up50_60']} · 24s içinde 2x: %{s['x2_all']} · 5x: %{s['x5_all']}\n"
+            f"   1 saatte yarıya düşen: %{s['down50_60']} · rug: %{s['rugged']}\n"
+            f"   medyan 1s zirvesi: {s['median_max60']}x · medyan 1s sonu: {s['median_ret60']}x"
+        )
+    lines += ["", "<i>Gölge = eşiğin yarısını geçen, analiz edilmemiş coinler (karşılaştırma grubu).</i>"]
     return "\n".join(lines)
