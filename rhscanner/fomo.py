@@ -22,7 +22,7 @@ import httpx
 from eth_utils import to_checksum_address
 
 from .config import USDG
-from .rpc import RpcClient
+from .rpc import RetryableHttpError, RpcClient
 
 log = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ class FomoWatcher:
                 self.tracker.prune()
             except asyncio.CancelledError:
                 raise
-            except httpx.HTTPError as exc:
+            except (httpx.HTTPError, RetryableHttpError) as exc:
                 log.warning("Fomo polling failed (%s); will retry", exc)
             except Exception:
                 log.exception("Fomo polling failed; will retry")

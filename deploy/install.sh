@@ -48,6 +48,8 @@ if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
 fi
 chmod 600 "$APP_DIR/.env"
+# Older installs used 8 req/s, which trips the public RPC's burst limit.
+sed -i 's/^RPC_MAX_RPS=8$/RPC_MAX_RPS=6/' "$APP_DIR/.env"
 
 if ! grep -q '^TELEGRAM_BOT_TOKEN=.\+' "$APP_DIR/.env"; then
     say "Telegram bot token'ı gerekiyor (@BotFather'dan aldığınız, 123456:ABC... şeklinde)"

@@ -1,3 +1,5 @@
+import time
+
 import httpx
 import pytest
 import respx
@@ -44,9 +46,10 @@ async def test_fails_over_to_backup_endpoint_and_returns_to_primary(monkeypatch)
     )
     rpc = RpcClient(URL, max_rps=0, fallback_urls=["https://backup.test"])
     assert await rpc.block_number() == 32
-    assert primary.call_count == 1 and backup.call_count == 1
+    # a 429 is waited out twice on the primary before moving to the backup
+    assert primary.call_count == 1 + RpcClient.RATE_LIMIT_WAITS and backup.call_count == 1
     assert await rpc.block_number() == 32  # stays on the backup for now
-    assert primary.call_count == 1
+    assert primary.call_count == 1 + RpcClient.RATE_LIMIT_WAITS
 
     rpc._switched_at -= RpcClient.PRIMARY_RETRY_SECONDS + 1
     primary.mock(return_value=httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0x10"}))
@@ -63,4 +66,46 @@ async def test_http_400_with_jsonrpc_error_is_an_rpc_error():
     with pytest.raises(RpcError):
         await rpc.get_logs(0, 1, [])
     assert route.call_count == 1  # not retried: splitting the range is the caller's job
+    await rpc.close()
+
+
+@respx.mock
+async def test_log_query_refused_by_backup_goes_back_to_primary(monkeypatch):
+    monkeypatch.setattr("asyncio.sleep", _no_sleep)
+    respx.post("https://backup.test").mock(return_value=httpx.Response(
+        400, json={"jsonrpc": "2.0", "id": 1, "error": {"code": 35, "message": "not supported on free plan"}}
+    ))
+    primary = respx.post(URL).mock(return_value=httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": []}))
+    rpc = RpcClient(URL, max_rps=0, fallback_urls=["https://backup.test"])
+    # a short range is tried on the backup first, then served by the primary
+    assert await rpc.get_logs(0, 50, []) == []
+    assert primary.call_count == 1
+    await rpc.close()
+
+
+@respx.mock
+async def test_log_queries_are_routed_by_range(monkeypatch):
+    monkeypatch.setattr("asyncio.sleep", _no_sleep)
+    ok = {"jsonrpc": "2.0", "id": 1, "result": []}
+    backup = respx.post("https://backup.test").mock(return_value=httpx.Response(200, json=ok))
+    primary = respx.post(URL).mock(side_effect=[httpx.Response(429), httpx.Response(429), httpx.Response(200, json=ok)])
+    rpc = RpcClient(URL, max_rps=0, fallback_urls=["https://backup.test"])
+    await rpc.get_logs(100, 130, [])  # the Fomo poller's short range: backup
+    assert backup.call_count == 1 and primary.call_count == 0
+    await rpc.get_logs(0, 2_000_000, [])  # holder scan: primary, waiting out its rate limit
+    assert primary.call_count == 3 and backup.call_count == 1 and rpc.active == 0
+    await rpc.close()
+
+
+@respx.mock
+async def test_short_rate_limit_is_waited_out_on_primary(monkeypatch):
+    monkeypatch.setattr("asyncio.sleep", _no_sleep)
+    primary = respx.post(URL).mock(side_effect=[
+        httpx.Response(429, headers={"retry-after": "1"}),
+        httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0x10"}),
+    ])
+    backup = respx.post("https://backup.test")
+    rpc = RpcClient(URL, max_rps=0, fallback_urls=["https://backup.test"])
+    assert await rpc.block_number() == 16
+    assert primary.call_count == 2 and backup.call_count == 0 and rpc.active == 0
     await rpc.close()

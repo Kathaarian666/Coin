@@ -43,7 +43,7 @@ class Settings:
     poll_interval: float = 3.0
     max_block_range: int = 2000
     start_lookback_blocks: int = 0
-    rpc_max_rps: float = 8.0
+    rpc_max_rps: float = 6.0
     analysis_delay: float = 8.0
     analysis_workers: int = 2
     probe_eth: float = 0.005
@@ -77,7 +77,7 @@ class Settings:
             poll_interval=float(env("POLL_INTERVAL", "3")),
             max_block_range=int(env("MAX_BLOCK_RANGE", "2000")),
             start_lookback_blocks=int(env("START_LOOKBACK_BLOCKS", "0")),
-            rpc_max_rps=float(env("RPC_MAX_RPS", "8")),
+            rpc_max_rps=float(env("RPC_MAX_RPS", "6")),
             analysis_delay=float(env("ANALYSIS_DELAY", "8")),
             analysis_workers=int(env("ANALYSIS_WORKERS", "2")),
             probe_eth=float(env("PROBE_ETH", "0.005")),

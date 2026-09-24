@@ -25,7 +25,7 @@ class EvmRpc(RpcClient):
         self.chain = chain
         self.probe_address = probe_address
 
-    async def request(self, method, params, retries=0):
+    async def request(self, method, params, retries=0, **_routing):
         t = self.chain.t
         if method == "eth_call":
             tx = dict(params[0])

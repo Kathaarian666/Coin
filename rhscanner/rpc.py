@@ -32,19 +32,40 @@ class RateLimiter:
             self._next = max(now, self._next) + self.interval
 
 
+def _retry_after(resp: httpx.Response, default: float) -> float:
+    try:
+        return min(10.0, max(0.5, float(resp.headers.get("retry-after", default))))
+    except ValueError:
+        return default
+
+
 class RetryableHttpError(Exception):
     """A response worth retrying elsewhere: rate limited, blocked or server error."""
 
 
-class RpcClient:
-    """JSON-RPC client over one or more endpoints.
+class RateLimited(RetryableHttpError):
+    def __init__(self, wait: float):
+        super().__init__("HTTP 429")
+        self.wait = wait
 
-    Requests go to the first URL; when it rate-limits, blocks or fails, the
-    client moves on to the next one and comes back to the first after
-    PRIMARY_RETRY_SECONDS.
+
+class RpcClient:
+    """JSON-RPC client over a primary endpoint plus optional fallbacks.
+
+    General calls go to the active endpoint: a rate limit is waited out a
+    couple of times, then (or on 403/5xx/network errors) the client moves to
+    the next endpoint and returns to the primary after PRIMARY_RETRY_SECONDS.
+
+    eth_getLogs is routed by range. Robinhood's public RPC rate-limits log
+    queries hard (429s even at 1 req/s) while dRPC's keyless tier serves only
+    short ranges, so short ranges (the Fomo poller's) go to the first fallback
+    and long ones (holder and hook scans) to the primary, patiently.
     """
 
-    PRIMARY_RETRY_SECONDS = 300
+    PRIMARY_RETRY_SECONDS = 60
+    RATE_LIMIT_WAITS = 2
+    LOG_RATE_LIMIT_WAITS = 6
+    SMALL_LOG_RANGE = 90
 
     def __init__(self, url: str, max_rps: float = 8.0, client: httpx.AsyncClient | None = None,
                  fallback_urls: list[str] | tuple = ()):
@@ -71,40 +92,59 @@ class RpcClient:
         log.warning("RPC %s failed (%s); switching to %s", previous, reason, self.url)
         return True
 
-    async def request(self, method: str, params: list, retries: int = 4):
-        if self.active and time.monotonic() - self._switched_at > self.PRIMARY_RETRY_SECONDS:
+    async def _send(self, url: str, method: str, payload: dict, backoff: float):
+        await self.limiter.wait()
+        resp = await self.http.post(url, json=payload)
+        if resp.status_code == 429:
+            raise RateLimited(_retry_after(resp, default=backoff))
+        if resp.status_code == 403 or resp.status_code >= 500:
+            raise RetryableHttpError(f"HTTP {resp.status_code}")
+        if resp.status_code == 400:
+            # Some providers (dRPC) answer JSON-RPC errors such as range limits with 400.
+            try:
+                error = resp.json().get("error")
+            except ValueError:
+                error = None
+            if error:
+                raise RpcError(f"{method}: {error}")
+        resp.raise_for_status()
+        body = resp.json()
+        if "error" in body:
+            raise RpcError(f"{method}: {body['error']}")
+        return body["result"]
+
+    async def request(self, method: str, params: list, retries: int = 4,
+                      endpoint: int | None = None, rate_limit_waits: int | None = None):
+        """endpoint pins the call to one URL (no fail-over); otherwise the active one is used."""
+        if endpoint is None and self.active and time.monotonic() - self._switched_at > self.PRIMARY_RETRY_SECONDS:
             self.active = 0  # give the primary endpoint another chance
+        waits_left = self.RATE_LIMIT_WAITS if rate_limit_waits is None else rate_limit_waits
         payload = {"jsonrpc": "2.0", "id": next(self._ids), "method": method, "params": params}
         delay = 1.0
-        for attempt in range(retries + 1):
-            await self.limiter.wait()
+        failures = 0
+        while True:
+            url = self.urls[endpoint] if endpoint is not None else self.url
             try:
-                resp = await self.http.post(self.url, json=payload)
-                if resp.status_code in (403, 429) or resp.status_code >= 500:
-                    raise RetryableHttpError(f"HTTP {resp.status_code}")
-                if resp.status_code == 400:
-                    # Some providers (dRPC) answer JSON-RPC errors such as range limits with 400.
-                    try:
-                        error = resp.json().get("error")
-                    except ValueError:
-                        error = None
-                    if error:
-                        raise RpcError(f"{method}: {error}")
-                resp.raise_for_status()
-                body = resp.json()
+                return await self._send(url, method, payload, delay)
+            except RateLimited as exc:
+                if waits_left > 0:
+                    waits_left -= 1
+                    log.info("RPC %s rate limited, waiting %.1fs", url, exc.wait)
+                    await asyncio.sleep(exc.wait)
+                    delay = min(delay * 2, 8.0)
+                    continue
+                reason = str(exc)
             except (httpx.TransportError, httpx.HTTPStatusError, RetryableHttpError, ValueError) as exc:
                 reason = str(exc) or exc.__class__.__name__
-                if attempt == retries:
+            failures += 1
+            if failures > retries:
+                if endpoint is None:
                     self._fail_over(reason)  # so the next call starts on a healthier endpoint
-                    raise
-                if not self._fail_over(reason):
-                    log.warning("RPC %s failed (%s), retrying in %.0fs", method, reason, delay)
-                    await asyncio.sleep(delay)
-                    delay *= 2
-                continue
-            if "error" in body:
-                raise RpcError(f"{method}: {body['error']}")
-            return body["result"]
+                raise RetryableHttpError(f"{method} via {url}: {reason}")
+            if endpoint is not None or not self._fail_over(reason):
+                log.warning("RPC %s failed (%s), retrying in %.0fs", method, reason, delay)
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, 8.0)
 
     async def block_number(self) -> int:
         return int(await self.request("eth_blockNumber", []), 16)
@@ -113,7 +153,14 @@ class RpcClient:
         query = {"fromBlock": hex(from_block), "toBlock": hex(to_block), "topics": topics}
         if address:
             query["address"] = address
-        return await self.request("eth_getLogs", [query], retries=retries)
+        if len(self.urls) > 1 and to_block - from_block <= self.SMALL_LOG_RANGE:
+            try:
+                return await self.request("eth_getLogs", [query], retries=0, endpoint=1, rate_limit_waits=1)
+            except (RpcError, RetryableHttpError) as exc:
+                log.debug("short log query on %s failed (%s); using primary", self.urls[1], exc)
+        return await self.request(
+            "eth_getLogs", [query], retries=retries, endpoint=0, rate_limit_waits=self.LOG_RATE_LIMIT_WAITS
+        )
 
     async def block_timestamp(self, number: int) -> int:
         block = await self.request("eth_getBlockByNumber", [hex(number), False])
