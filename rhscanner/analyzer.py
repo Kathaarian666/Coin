@@ -52,9 +52,15 @@ def market_summary(pairs: list[dict], pool_address: str | None) -> dict:
     if not pair:
         return {}
     h1 = (pair.get("txns") or {}).get("h1") or {}
+    m5 = (pair.get("txns") or {}).get("m5") or {}
     return {
+        "pair": pair.get("pairAddress"),
         "price_usd": pair.get("priceUsd"),
         "liquidity_usd": (pair.get("liquidity") or {}).get("usd"),
+        "liquidity_base": (pair.get("liquidity") or {}).get("base"),
+        "liquidity_quote": (pair.get("liquidity") or {}).get("quote"),
+        "buys_m5": m5.get("buys"),
+        "sells_m5": m5.get("sells"),
         "fdv": pair.get("fdv"),
         "volume_h1": (pair.get("volume") or {}).get("h1"),
         "buys_h1": h1.get("buys"),

@@ -95,6 +95,12 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
         elif whale <= 0.25:
             add(4, "alım çok sayıda cüzdana yayılmış")
 
+    smart = fomo.get("smart_buyers_10m", 0)
+    if smart >= 2:
+        add(10, f"son 10 dk'da {smart} akıllı Fomo cüzdanı aldı")
+    elif smart == 1:
+        add(5, "son 10 dk'da 1 akıllı Fomo cüzdanı aldı")
+
     features: dict = {}
     volume_h1 = market.get("volume_h1_all") or market.get("volume_h1")
     if volume_h1:

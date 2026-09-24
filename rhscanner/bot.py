@@ -15,12 +15,14 @@ from .config import Settings
 from .discovery import NewPool, PoolWatcher
 from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
+from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
 from .outcomes import OutcomeLog, momentum_bucket, summarize
-from .report import format_followup, format_report, format_scorecard
+from .report import format_exit, format_followup, format_report, format_scorecard
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
+from .wallets import WalletBook
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +39,8 @@ HELP = (
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
     "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
+    "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
+    "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
 
 
@@ -63,6 +67,7 @@ class ScannerApp:
         )
         self.tracker = FomoTracker()
         self.outcomes = OutcomeLog(self.storage.db)
+        self.wallets = WalletBook(self.storage.db)
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
@@ -83,6 +88,10 @@ class ScannerApp:
         return float(self.storage.get_state("min_buy_usd", str(self.settings.fomo_min_buy_usd)))
 
     @property
+    def position_usd(self) -> float:
+        return float(self.storage.get_state("position_usd", str(self.settings.position_usd)))
+
+    @property
     def alerts_on(self) -> bool:
         return self.storage.get_state("alerts_on", "1") == "1"
 
@@ -96,6 +105,7 @@ class ScannerApp:
 
     # --- sources ---
     async def on_fomo_trades(self, trades: list[FomoTrade], warmup: bool = False):
+        self.wallets.add(trades)
         for token in {t.token for t in trades if t.side == "buy"}:
             stats = self.tracker.stats(token, self.fomo_window)
             if not warmup and self._is_shadow(stats):
@@ -122,6 +132,11 @@ class ScannerApp:
 
     def attach_momentum(self, report: dict):
         features = fomo_features(self.tracker, report["token"])
+        features["smart_buyers_10m"] = len(self.wallets.smart_buyers(self.tracker, report["token"]))
+        report["fees"] = {
+            "position": self.position_usd,
+            "breakeven": breakeven_multiple(self.position_usd, self.settings.fomo_fee_pct, self.settings.fomo_fee_min_usd),
+        }
         score, reasons, extra = momentum_score(features, report.get("market") or {}, report.get("launch"))
         report["momentum"] = {"score": score, "reasons": reasons, "features": {**features, **extra}}
 
@@ -178,8 +193,8 @@ class ScannerApp:
                 if sent:
                     header = "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz"
                     await self.broadcast(format_report(report, self.settings.blockscout_url, header))
-                    if self.settings.followup_min > 0:
-                        task = asyncio.create_task(self.follow_up(report))
+                    if self.settings.followup_min > 0 or self.settings.exit_checks_min:
+                        task = asyncio.create_task(self.watch(report))
                         self.followups.add(task)
                         task.add_done_callback(self.followups.discard)
             except Exception:
@@ -187,20 +202,79 @@ class ScannerApp:
             finally:
                 self.queue.task_done()
 
-    async def follow_up(self, report: dict):
-        """Re-check an alerted token later: did price/liquidity hold, can Fomo users sell?"""
-        minutes = self.settings.followup_min
-        await asyncio.sleep(minutes * 60)
+    def alert_snapshot(self, report: dict) -> Snapshot:
+        market = report.get("market") or {}
+        creator = ((report.get("launch") or {}).get("creator") or "").lower()
+        return Snapshot(
+            dev_pct=(report.get("launch") or {}).get("dev_pct"),
+            # the dev is watched on its own; don't report the same sale twice
+            top_wallets={w: p for w, p in ((report.get("holders") or {}).get("top_wallets") or {}).items() if w != creator},
+            liquidity_base=market.get("liquidity_base"),
+            liquidity_quote=market.get("liquidity_quote"),
+            price_usd=float(market["price_usd"]) if market.get("price_usd") else None,
+        )
+
+    async def current_snapshot(self, report: dict, then: Snapshot) -> tuple[Snapshot, dict]:
+        token, supply = report["token"], report.get("total_supply") or 0
+
+        async def share(wallet: str) -> float | None:
+            balance = await self.rpc.try_call_fn(token, "balanceOf(address)", ["uint256"], ["address"], [wallet])
+            return 100.0 * balance[0] / supply if balance and supply else None
+
+        creator = (report.get("launch") or {}).get("creator")
+        pairs = await self.analyzer.dexscreener.token_pairs(token) if self.analyzer.dexscreener else []
+        market = market_summary(pairs, (report.get("pool") or {}).get("pool"))
+        now = Snapshot(
+            dev_pct=await share(creator) if creator and then.dev_pct is not None else None,
+            top_wallets={w: pct for w in then.top_wallets if (pct := await share(w)) is not None},
+            liquidity_base=market.get("liquidity_base"),
+            liquidity_quote=market.get("liquidity_quote"),
+            price_usd=float(market["price_usd"]) if market.get("price_usd") else None,
+        )
+        return now, market
+
+    async def watch(self, report: dict):
+        """After an alert: send 🔴 ÇIK / 🟠 DİKKAT when who-is-selling says so, plus one follow-up.
+
+        A falling price alone never triggers an exit (see exits.py)."""
         token = report["token"]
-        try:
-            recent = self.tracker.stats(token, minutes * 60)
-            sellers_hour = self.tracker.stats(token, 3600)["sellers"]
-            pairs = await self.analyzer.dexscreener.token_pairs(token) if self.analyzer.dexscreener else []
-            market = market_summary(pairs, (report.get("pool") or {}).get("pool"))
-            if self.alerts_on:
-                await self.broadcast(format_followup(report, recent, sellers_hour, market, minutes))
-        except Exception:
-            log.exception("follow-up failed for %s", token)
+        then = self.alert_snapshot(report)
+        checks = sorted({*self.settings.exit_checks_min, *([self.settings.followup_min] if self.settings.followup_min > 0 else [])})
+        sent_level, elapsed = None, 0.0
+        for minute in checks:
+            await asyncio.sleep((minute - elapsed) * 60)
+            elapsed = minute
+            try:
+                now, market = await self.current_snapshot(report, then)
+                reasons = evaluate_exit(
+                    then, now, self.tracker.stats(token, 300),
+                    {"buys": market.get("buys_m5"), "sells": market.get("sells_m5")},
+                )
+                level = exit_level(reasons)
+                escalated = level and (sent_level is None or (sent_level == WARNING and level == STRONG))
+                if escalated and self.alerts_on:
+                    await self.broadcast(format_exit(report, reasons, level, market, minute))
+                    self.outcomes.record(token, "exit" if level == STRONG else "caution",
+                                         features={"reasons": [r for _, r in reasons], "minute": minute})
+                    sent_level = level
+                    if level == STRONG:
+                        return  # told to get out: stop watching
+                elif minute == self.settings.followup_min and self.alerts_on:
+                    recent = self.tracker.stats(token, minute * 60)
+                    sellers_hour = self.tracker.stats(token, 3600)["sellers"]
+                    await self.broadcast(format_followup(report, recent, sellers_hour, market, minute, reasons))
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("exit check failed for %s", token)
+
+    async def wallet_loop(self):
+        while True:
+            try:
+                self.wallets.refresh()
+            except Exception:
+                log.exception("smart wallet refresh failed")
+            await asyncio.sleep(600)
 
     async def broadcast(self, text: str):
         for chat_id in self.settings.telegram_chat_ids:
@@ -280,6 +354,38 @@ class ScannerApp:
                            summarize([r for r in results if momentum_bucket(r["momentum"]) == bucket])))
         await update.message.reply_html(format_scorecard(hours, groups))
 
+    async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        try:
+            amount = float(context.args[0].replace(",", ".")) if context.args else None
+        except ValueError:
+            amount = None
+        if not amount or amount <= 0:
+            be = breakeven_multiple(self.position_usd, self.settings.fomo_fee_pct, self.settings.fomo_fee_min_usd)
+            await update.message.reply_text(f"Kullanım: /pozisyon 5 (şu an: ${self.position_usd:g}, başa baş {be}x)")
+            return
+        self.storage.set_state("position_usd", str(amount))
+        lines = [f"✅ Pozisyon: ${amount:g}", "", "Komisyonla başa baş (alım + satım):"]
+        for size in sorted({3.0, 5.0, 10.0, 20.0, 50.0, amount}):
+            be = breakeven_multiple(size, self.settings.fomo_fee_pct, self.settings.fomo_fee_min_usd)
+            mark = " ◀" if size == amount else ""
+            lines.append(f"  ${size:g} → {be}x" if be else f"  ${size:g} → komisyonu karşılamıyor")
+            lines[-1] += mark
+        await update.message.reply_text("\n".join(lines))
+
+    async def cmd_smart(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        top = self.wallets.top(10)
+        if not top:
+            await update.message.reply_text("Henüz yeterli veri yok: akıllı cüzdanlar birkaç saatlik işlemden sonra belirir.")
+            return
+        lines = [f"🧠 <b>Akıllı Fomo cüzdanları</b> (son 7 gün, {len(self.wallets.smart)} cüzdan)", ""]
+        for i, s in enumerate(top, 1):
+            lines.append(f"{i}. <code>{s.wallet}</code>\n    {s.closed} işlem · kazanma %{s.win_rate * 100:.0f} · kâr ${s.pnl_usd:,.0f}")
+        await update.message.reply_html("\n".join(lines))
+
     async def cmd_min_score(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -346,6 +452,7 @@ class ScannerApp:
             watcher = PoolWatcher(self.rpc, self.settings, self.storage)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_pool)))
         self.tasks.append(asyncio.create_task(self.outcome_loop()))
+        self.tasks.append(asyncio.create_task(self.wallet_loop()))
         for _ in range(self.settings.analysis_workers):
             self.tasks.append(asyncio.create_task(self.worker()))
 
@@ -371,6 +478,8 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("check", self.cmd_check))
         self.app.add_handler(CommandHandler("trend", self.cmd_trend))
         self.app.add_handler(CommandHandler("karne", self.cmd_scorecard))
+        self.app.add_handler(CommandHandler("pozisyon", self.cmd_position))
+        self.app.add_handler(CommandHandler("akilli", self.cmd_smart))
         self.app.add_handler(CommandHandler("minskor", self.cmd_min_score))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))

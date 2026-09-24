@@ -42,8 +42,10 @@ async def test_small_volume_does_not_alert(tmp_path):
     await app.rpc.close()
 
 
-async def test_follow_up_is_sent_after_the_delay(tmp_path, monkeypatch):
-    app = ScannerApp(Settings(db_path=str(tmp_path / "f.db"), followup_min=15, use_dexscreener=False))
+async def _watch_app(tmp_path, monkeypatch, now_snapshot, market):
+    from rhscanner.exits import Snapshot  # noqa: F401
+    app = ScannerApp(Settings(db_path=str(tmp_path / "f.db"), followup_min=15, exit_checks_min=[5, 15],
+                              use_dexscreener=False))
     sent = []
 
     async def fake_broadcast(text):
@@ -52,9 +54,34 @@ async def test_follow_up_is_sent_after_the_delay(tmp_path, monkeypatch):
     async def no_sleep(_):
         return None
 
+    async def fake_current(report, then):
+        return now_snapshot, market
+
     app.broadcast = fake_broadcast
+    app.current_snapshot = fake_current
     monkeypatch.setattr("asyncio.sleep", no_sleep)
-    report = {"token": "0x" + "1" * 40, "name": "T", "symbol": "T", "score": 80, "findings": [], "market": {}}
-    await app.follow_up(report)
-    assert len(sent) == 1 and "Takip · T" in sent[0] and "Hâlâ hiç Fomo satışı yok" in sent[0]
+    return app, sent
+
+
+REPORT = {"token": "0x" + "1" * 40, "name": "T", "symbol": "T", "score": 80, "findings": [],
+          "launch": {"dev_pct": 20.0, "creator": "0xdev"}, "holders": {"top_wallets": {"0xw": 8.0}},
+          "market": {"price_usd": "1.0", "liquidity_base": 1000, "liquidity_quote": 10}}
+
+
+async def test_watch_sends_only_the_follow_up_when_nothing_is_wrong(tmp_path, monkeypatch):
+    from rhscanner.exits import Snapshot
+    healthy = Snapshot(dev_pct=20.0, top_wallets={"0xw": 8.0}, liquidity_base=900, liquidity_quote=12, price_usd=0.5)
+    app, sent = await _watch_app(tmp_path, monkeypatch, healthy, {"price_usd": "0.5", "buys_m5": 10, "sells_m5": 12})
+    await app.watch(REPORT)
+    assert len(sent) == 1 and "Takip · T" in sent[0] and "sağlıklı geri çekilme" in sent[0]
+    await app.rpc.close()
+
+
+async def test_watch_sends_exit_when_dev_dumps_and_stops(tmp_path, monkeypatch):
+    from rhscanner.exits import Snapshot
+    dumped = Snapshot(dev_pct=1.0, top_wallets={"0xw": 8.0}, liquidity_base=1100, liquidity_quote=8, price_usd=0.6)
+    app, sent = await _watch_app(tmp_path, monkeypatch, dumped, {"price_usd": "0.6"})
+    await app.watch(REPORT)
+    assert len(sent) == 1 and "ÇIK sinyali" in sent[0] and "Geliştirici satıyor" in sent[0]
+    assert app.outcomes.db.execute("SELECT kind FROM signals").fetchall() == [("exit",)]
     await app.rpc.close()

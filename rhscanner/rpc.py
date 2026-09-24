@@ -164,6 +164,8 @@ class RpcClient:
 
     async def block_timestamp(self, number: int) -> int:
         block = await self.request("eth_getBlockByNumber", [hex(number), False])
+        if not block:  # a lagging node that has not seen the block yet: it is (almost) now
+            return int(time.time())
         return int(block["timestamp"], 16)
 
     async def get_code(self, address: str) -> str:

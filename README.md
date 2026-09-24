@@ -52,6 +52,19 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
   coinin yaşı, son 1 saat/5 dk fiyat hareketi, Telegram/X/web sitesi, likidite derinliği.
   Ağırlıklar ilk tahmindir; `/karne` sonuçlarıyla kalibre edilecek.
 
+**Çıkış sinyalleri:** Bildirim giden her coin 5, 15 ve 30. dakikalarda kontrol edilir. Fiyat düşüşü tek başına
+çıkış sebebi sayılmaz (çoğu coin sert geri çekilip tekrar yükselir); bakılan şey kimin sattığıdır:
+- 🔴 **ÇIK**: geliştirici payının yarısından fazlasını sattı, ilk 5 holder'dan biri (≥%3) yarısından fazlasını sattı,
+  ya da havuzun iki tarafı birden %40+ azaldı (likidite çekiliyor; normal alım-satım iki tarafı ters yönde oynatır).
+- 🟠 **DİKKAT**: Fomo'da son 5 dk alım bitip satış başladı, ya da tüm piyasada satış dalgası var.
+Bunlar yoksa 15. dakika takibinde düşüş "sağlıklı geri çekilme olabilir" diye belirtilir.
+
+**Akıllı Fomo cüzdanları:** Tüm Fomo işlemlerinden cüzdan bazında son 7 günün kapanmış işlemleri, kazanma oranı ve
+kâr hesaplanır (≥5 işlem, ≥%55 kazanma, ≥$100 kâr). Son 10 dk'da bu cüzdanlardan alım varsa momentum artar. `/akilli`.
+
+**Komisyon:** Fomo'nun %0.5 / en az ~$0.95 ücretiyle, `/pozisyon` ile ayarlanan tutar için başa baş çarpanı her
+bildirimde yazar ($3 → 1.93x, $5 → 1.47x, $10 → 1.21x).
+
 **Sonuç kaydı ve karne:** Bildirim giden, filtreye takılan ve karşılaştırma için "gölge" (eşiğin yarısını geçen,
 analiz edilmemiş) coinlerin fiyat ve likiditesi 0, 5, 10 … 1440. dakikalarda DexScreener'dan kaydedilir.
 `/karne [saat]` her grup ve momentum aralığı için 1 saatte 2x, 24 saatte 2x/5x, yarıya düşme ve rug oranlarını gösterir.
@@ -86,6 +99,8 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | Komut | Açıklama |
 |---|---|
 | `/trend` | Şu an Fomo'da en çok alınan 10 coin (son 15 dk) |
+| `/pozisyon 5` | İşlem tutarınız; bildirimlerde komisyonla başa baş çarpanı buna göre yazılır |
+| `/akilli` | Kazanma oranı yüksek Fomo cüzdanları (son 7 gün) |
 | `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge, momentum aralıkları) |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |

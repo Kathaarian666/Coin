@@ -38,6 +38,9 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
         lines.append(f"{m_icon} <b>Momentum: {momentum['score']}/100</b> — {m_label}")
         for reason in (momentum.get("reasons") or [])[:3]:
             lines.append(f"   · {escape(reason, quote=False)}")
+    fees = report.get("fees") or {}
+    if fees.get("breakeven"):
+        lines.append(f"💸 ${fees['position']:g} pozisyonda komisyonla başa baş: <b>{fees['breakeven']:.2f}x</b>")
 
     if report.get("missing"):
         lines.append(f"⚠️ Kontrol edilemeyenler: {escape(', '.join(report['missing']), quote=False)} (skor en fazla 70)")
@@ -105,7 +108,8 @@ def _pct_change(old, new) -> float | None:
     return None if old <= 0 else 100.0 * (new - old) / old
 
 
-def format_followup(report: dict, recent: dict, sellers_hour: int, market: dict, minutes: float) -> str:
+def format_followup(report: dict, recent: dict, sellers_hour: int, market: dict, minutes: float,
+                    exit_reasons: list | None = None) -> str:
     """Short update on a token some minutes after its alert."""
     token = report["token"]
     then = report.get("market") or {}
@@ -123,8 +127,6 @@ def format_followup(report: dict, recent: dict, sellers_hour: int, market: dict,
     liquidity = _pct_change(then.get("liquidity_usd"), market.get("liquidity_usd"))
     if liquidity is not None:
         lines.append(f"💧 Likidite: {_usd(then.get('liquidity_usd'))} → {_usd(market.get('liquidity_usd'))} ({liquidity:+.0f}%)")
-        if liquidity <= -50:
-            lines.append("🚨 <b>Likidite yarıdan fazla düştü — rugpull olabilir!</b>")
 
     lines.append(
         f"📱 Fomo (son {minutes:g} dk): {recent['buyers']} alıcı / {recent['sellers']} satıcı · "
@@ -141,6 +143,32 @@ def format_followup(report: dict, recent: dict, sellers_hour: int, market: dict,
     elif recent["buyers"] == 0:
         lines.append("💤 Fomo'da yeni alıcı gelmiyor, ilgi söndü")
 
+    if exit_reasons:
+        lines += [f"⚠️ {escape(reason, quote=False)}" for _, reason in exit_reasons]
+    elif price is not None and price <= -30:
+        lines.append(
+            "🟢 Düşüş var ama çıkış sinyali yok: dev ve büyük cüzdanlar satmadı, likidite yerinde, "
+            "Fomo'da satış dalgası yok — sağlıklı geri çekilme olabilir"
+        )
+
+    lines += ["", f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>']
+    return "\n".join(lines)
+
+
+def format_exit(report: dict, reasons: list, level: str, market: dict, minutes: float) -> str:
+    """🔴 ÇIK / 🟠 DİKKAT message for an alerted token."""
+    token = report["token"]
+    title = "🔴 <b>ÇIK sinyali</b>" if level == "strong" else "🟠 <b>DİKKAT</b>"
+    lines = [
+        f"{title} · <b>{escape(str(report.get('name')), quote=False)}</b> "
+        f"(${escape(str(report.get('symbol')), quote=False)}) — bildirimden {minutes:g} dk sonra",
+        f"<code>{token}</code>",
+        "",
+    ]
+    lines += [f"• {escape(reason, quote=False)}" for _, reason in reasons]
+    price = _pct_change((report.get("market") or {}).get("price_usd"), market.get("price_usd"))
+    if price is not None:
+        lines.append(f"{'📈' if price >= 0 else '📉'} Fiyat bildirimden beri: {price:+.1f}%")
     lines += ["", f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>']
     return "\n".join(lines)
 

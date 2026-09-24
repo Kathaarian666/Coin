@@ -52,9 +52,26 @@ def test_followup_confirms_sells_and_price():
     assert "rugpull" not in text
 
 
-def test_followup_warns_on_no_sells_and_liquidity_pull():
+def test_followup_warns_on_no_sells_and_calls_a_clean_dip_healthy():
     from rhscanner.report import format_followup
     recent = {"buyers": 0, "sellers": 0, "buy_usd": 0, "sell_usd": 0}
-    text = format_followup(_alert_report(), recent, sellers_hour=0, market={"price_usd": "0.2", "liquidity_usd": 20_000},
+    text = format_followup(_alert_report(), recent, sellers_hour=0, market={"price_usd": "0.5", "liquidity_usd": 150_000},
                            minutes=15)
-    assert "Hâlâ hiç Fomo satışı yok" in text and "rugpull olabilir" in text and "-80.0%" in text
+    assert "Hâlâ hiç Fomo satışı yok" in text and "-50.0%" in text
+    assert "sağlıklı geri çekilme olabilir" in text and "rugpull" not in text
+    # with exit reasons the dip is not called healthy
+    text = format_followup(_alert_report(), recent, 0, {"price_usd": "0.5"}, 15, [("warning", "Piyasada satış dalgası")])
+    assert "Piyasada satış dalgası" in text and "sağlıklı" not in text
+
+
+def test_exit_message():
+    from rhscanner.report import format_exit
+    text = format_exit(_alert_report(), [("strong", "Geliştirici satıyor: arzın %20.0'i → %2.0")], "strong",
+                       {"price_usd": "0.8"}, 5)
+    assert "ÇIK sinyali" in text and "Geliştirici satıyor" in text and "-20.0%" in text
+
+
+def test_fee_line_in_alert():
+    report = {"token": "0x" + "1" * 40, "name": "A", "symbol": "A", "score": 80, "findings": [],
+              "fees": {"position": 5.0, "breakeven": 1.47}}
+    assert "$5 pozisyonda komisyonla başa baş: <b>1.47x</b>" in format_report(report, "https://x")

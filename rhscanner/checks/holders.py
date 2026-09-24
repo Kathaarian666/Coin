@@ -56,6 +56,8 @@ def analyse_holders(
         "creator_pct": round(creator_pct, 2),
         "burned_pct": round(pct(burned), 2),
         "contracts_pct": round(pct(contracts), 2),
+        # watched for dumping after an alert (see exits.py)
+        "top_wallets": {a: round(pct(v), 3) for a, v in wallets[:5]},
     }
 
     if top10 > 50:

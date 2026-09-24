@@ -46,6 +46,7 @@ class FomoTrade:
     trader: str  # lowercased
     usd: float | None = None
     timestamp: float = 0.0
+    amount: int = 0  # token amount (raw units)
 
 
 def _words(data: str) -> list[str]:
@@ -91,7 +92,9 @@ def parse_fomo_logs(logs: list[dict]) -> list[FomoTrade]:
                 side, trader = "sell", leg["from"]
             else:
                 continue
-            trades.append(FomoTrade(tx_hash, leg["block"], to_checksum_address(leg["token"]), side, trader, usd))
+            trades.append(FomoTrade(
+                tx_hash, leg["block"], to_checksum_address(leg["token"]), side, trader, usd, amount=leg["amount"]
+            ))
     return trades
 
 

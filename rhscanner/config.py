@@ -60,6 +60,12 @@ class Settings:
     fomo_min_buy_usd: float = 500.0
     # Minutes after an alert to send a follow-up (price, liquidity, Fomo sells); 0 disables.
     followup_min: float = 15.0
+    # Minutes after an alert at which exit signals are checked.
+    exit_checks_min: list[float] = field(default_factory=lambda: [5.0, 15.0, 30.0])
+    # Position size used for the fee-aware break-even line, and Fomo's spot fee.
+    position_usd: float = 5.0
+    fomo_fee_pct: float = 0.5
+    fomo_fee_min_usd: float = 0.95
     fomo_lookback_blocks: int = 6000
     # Raw new-pool watcher: every new DEX pool, Fomo or not (very noisy).
     enable_pool_watcher: bool = False
@@ -94,6 +100,10 @@ class Settings:
             fomo_min_buyers=int(env("FOMO_MIN_BUYERS", "10")),
             fomo_min_buy_usd=float(env("FOMO_MIN_BUY_USD", "500")),
             followup_min=float(env("FOLLOWUP_MIN", "15")),
+            exit_checks_min=[float(x) for x in _list(env("EXIT_CHECKS_MIN", "5,15,30"))],
+            position_usd=float(env("POSITION_USD", "5")),
+            fomo_fee_pct=float(env("FOMO_FEE_PCT", "0.5")),
+            fomo_fee_min_usd=float(env("FOMO_FEE_MIN_USD", "0.95")),
             fomo_lookback_blocks=int(env("FOMO_LOOKBACK_BLOCKS", "6000")),
             enable_pool_watcher=_flag(env("ENABLE_POOL_WATCHER", "0")),
         )
