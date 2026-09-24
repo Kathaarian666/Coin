@@ -40,6 +40,18 @@ class EvmRpc(RpcClient):
             return t.get_code(params[0])
         if method == "eth_getStorageAt":
             return "0x" + t.get_storage_at(params[0], params[1])[2:].rjust(64, "0")
+        if method == "eth_getLogs":
+            q = params[0]
+            fid = t.create_log_filter(
+                from_block=int(q["fromBlock"], 16), to_block=int(q["toBlock"], 16),
+                address=q.get("address"), topics=q.get("topics"),
+            )
+            logs = t.get_logs(fid)
+            t.delete_filter(fid)
+            return [{
+                "address": entry["address"], "topics": list(entry["topics"]), "data": entry["data"],
+                "blockNumber": hex(entry["block_number"]), "transactionHash": entry["transaction_hash"],
+            } for entry in logs]
         if method == "eth_blockNumber":
             return hex(t.get_block_by_number("latest")["number"])
         raise NotImplementedError(method)

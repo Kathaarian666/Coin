@@ -20,11 +20,11 @@ def _usd(value) -> str:
     return f"${value:,.0f}"
 
 
-def format_report(report: dict, blockscout_url: str, new: bool = False) -> str:
+def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
     icon, label = level(report["score"])
     token = report["token"]
     pool = report.get("pool") or {}
-    header = "🆕 <b>Yeni token</b>\n" if new else ""
+    header = f"<b>{escape(header, quote=False)}</b>\n" if header else ""
     lines = [
         f"{header}<b>{escape(str(report.get('name')))}</b> (${escape(str(report.get('symbol')))})",
         f"<code>{token}</code>",
@@ -33,6 +33,12 @@ def format_report(report: dict, blockscout_url: str, new: bool = False) -> str:
     ]
 
     facts = []
+    fomo = report.get("fomo") or {}
+    if fomo.get("buyers"):
+        facts.append(
+            f"📱 Fomo (son {fomo['window_min']:g} dk): {fomo['buyers']} alıcı / {fomo['sellers']} satıcı · "
+            f"alım {_usd(fomo['buy_usd'])} / satış {_usd(fomo['sell_usd'])}"
+        )
     hp = report.get("honeypot") or {}
     if hp.get("simulated") and "buy_tax" in hp:
         facts.append(f"Vergi: alım %{hp['buy_tax']:.1f} / satış %{hp['sell_tax']:.1f}")
@@ -48,15 +54,17 @@ def format_report(report: dict, blockscout_url: str, new: bool = False) -> str:
     if market.get("buys_h1") is not None:
         facts.append(f"1s: {market['buys_h1']} alım / {market['sells_h1']} satış")
     if pool:
-        facts.append(f"Havuz: Uniswap {pool.get('dex', '?').upper()}")
+        launchpad = (report.get("liquidity") or {}).get("launchpad")
+        pair = f" · {pool['quote_symbol']} paritesi" if pool.get("quote_symbol") else ""
+        facts.append(f"Havuz: Uniswap {pool.get('dex', '?').upper()}{pair}" + (f" · {launchpad}" if launchpad else ""))
     if facts:
-        lines += [""] + [f"• {escape(f)}" for f in facts]
+        lines += [""] + [f"• {escape(f, quote=False)}" for f in facts]
 
     findings = sorted(report.get("findings", []), key=lambda f: ORDER.index(f["severity"]))
     shown = [f for f in findings if f["severity"] != "info"][:12]
     if shown:
         lines.append("")
-        lines += [f"{ICONS[f['severity']]} {escape(f['message'])}" for f in shown]
+        lines += [f"{ICONS[f['severity']]} {escape(f['message'], quote=False)}" for f in shown]
 
     links = [f'<a href="{blockscout_url}/token/{token}">Explorer</a>']
     links.append(f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>')

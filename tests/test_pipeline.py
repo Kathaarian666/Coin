@@ -10,7 +10,8 @@ from rhscanner.storage import Storage
 
 def settings(weth, **kw):
     base = dict(weth=weth, quote_tokens={weth.lower(), "0x" + "0" * 40}, probe_eth=0.01,
-                factory_allowlist=[], start_lookback_blocks=0, max_block_range=100, poll_interval=0)
+                factory_allowlist=[], start_lookback_blocks=0, max_block_range=100, poll_interval=0,
+                v4_pool_manager="0x" + "8" * 40, holder_lookback_blocks=10_000)
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -37,7 +38,7 @@ async def test_clean_renounced_token_scores_well(market_factory, tmp_path):
     assert report["score"] >= 75
 
 
-def test_pool_from_dexscreener_picks_deepest_weth_pair():
+def test_pool_from_dexscreener_picks_deepest_pair_any_quote():
     weth, token = "0x" + "a" * 40, "0x" + "b" * 40
     pairs = [
         {"pairAddress": "0x1", "baseToken": {"address": token}, "quoteToken": {"address": weth},
@@ -46,9 +47,12 @@ def test_pool_from_dexscreener_picks_deepest_weth_pair():
          "liquidity": {"usd": 5000}},
         {"pairAddress": "0x3", "baseToken": {"address": token}, "quoteToken": {"address": "0x" + "c" * 40},
          "liquidity": {"usd": 99999}},
+        {"pairAddress": "0x4", "baseToken": {"address": "0x" + "d" * 40}, "quoteToken": {"address": weth},
+         "liquidity": {"usd": 10**9}},
     ]
-    pool = pool_from_dexscreener(token, pairs, {weth})
-    assert pool["pool"] == "0x2" and pool["dex"] == "v2" and pool["quote"] == weth
+    pool = pool_from_dexscreener(token, pairs)
+    assert pool["pool"] == "0x3" and pool["dex"] == "v2" and pool["quote"] == "0x" + "c" * 40
+    assert pool_from_dexscreener(token, pairs[:2])["pool"] == "0x2"
 
 
 class LogRpc:

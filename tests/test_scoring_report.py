@@ -23,6 +23,6 @@ def test_report_escapes_token_name():
         "pool": {"dex": "v2"}, "honeypot": {"simulated": True, "buy_tax": 1.0, "sell_tax": 2.0},
         "findings": [Finding("high", "x", "Kara liste <var>").to_dict()],
     }
-    text = format_report(report, "https://explorer", new=True)
+    text = format_report(report, "https://explorer", header="🔥 Test")
     assert "&lt;script&gt;" in text and "A&amp;B" in text and "<script>" not in text
     assert "Güven skoru: 70/100" in text and "alım %1.0 / satış %2.0" in text

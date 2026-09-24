@@ -105,6 +105,9 @@ async def check_contract(rpc: RpcClient, blockscout: Blockscout | None, token: s
         findings.append(Finding("info", "no_owner_fn", "owner() fonksiyonu yok"))
     elif renounced:
         findings.append(Finding("good", "renounced", "Sahiplik devredilmiş (renounced)"))
+    elif len(await rpc.get_code(owner)) > 2:
+        data["owner_is_contract"] = True
+        findings.append(Finding("low", "owned_by_contract", f"Sahibi bir kontrat (launchpad/multisig olabilir): {owner}"))
     else:
         findings.append(Finding("medium", "owned", f"Kontratın hâlâ bir sahibi var: {owner}"))
 
@@ -120,12 +123,13 @@ async def check_contract(rpc: RpcClient, blockscout: Blockscout | None, token: s
 
     if blockscout:
         info = await blockscout.smart_contract(token)
-        verified = bool(info and info.get("is_verified"))
-        data["verified"] = verified
-        if verified:
-            findings.append(Finding("good", "verified", "Kaynak kodu doğrulanmış (verified)"))
-        else:
-            findings.append(Finding("medium", "unverified", "Kaynak kodu doğrulanmamış — kod okunamıyor"))
+        if info is not None:  # None = explorer unreachable, which says nothing about the token
+            verified = bool(info.get("is_verified"))
+            data["verified"] = verified
+            if verified:
+                findings.append(Finding("good", "verified", "Kaynak kodu doğrulanmış (verified)"))
+            else:
+                findings.append(Finding("medium", "unverified", "Kaynak kodu doğrulanmamış — kod okunamıyor"))
         addr = await blockscout.address_info(token)
         if addr:
             data["creator"] = (addr.get("creator_address_hash") or "").lower() or None

@@ -5,6 +5,28 @@ from ..sources import Blockscout
 from . import DEAD_ADDRESSES, Finding
 
 ZERO = "0x0000000000000000000000000000000000000000"
+TOPIC_V4_INITIALIZE = "0xdd466e674ea557f56295e2d0218a125ea4b4f0f6f3307b95f85e6110838d6438"
+
+# Uniswap V4 hooks used by known launchpads (lowercased). Most Fomo tokens trade
+# in pools created by these; an unknown hook can run arbitrary code on every swap.
+KNOWN_HOOKS = {
+    "0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544": "Pons (Doppler) launchpad",
+}
+
+
+async def lookup_v4_hooks(rpc: RpcClient, pool_manager: str, pool_id: str, lookback_blocks: int) -> str | None:
+    """Find a V4 pool's hook address from its Initialize event."""
+    head = await rpc.block_number()
+    try:
+        logs = await rpc.get_logs(
+            max(0, head - lookback_blocks), head, [TOPIC_V4_INITIALIZE, pool_id], address=pool_manager, retries=1
+        )
+    except Exception:
+        return None
+    if not logs:
+        return None
+    data = logs[0]["data"]
+    return "0x" + data[2 + 64 * 2: 2 + 64 * 3][-40:]  # third word: hooks
 
 
 def _liquidity_findings(eth: float) -> list[Finding]:
@@ -16,7 +38,8 @@ def _liquidity_findings(eth: float) -> list[Finding]:
 
 
 async def check_liquidity(
-    rpc: RpcClient, blockscout: Blockscout | None, pool: dict, weth: str
+    rpc: RpcClient, blockscout: Blockscout | None, pool: dict, weth: str,
+    pool_manager: str | None = None, lookback_blocks: int = 30_000_000,
 ) -> tuple[dict, list[Finding]]:
     """pool: {"dex", "pool", "token", "quote", "hooks"}."""
     dex, address = pool["dex"], pool["pool"]
@@ -25,11 +48,22 @@ async def check_liquidity(
     findings: list[Finding] = []
 
     if dex == "v4":
-        hooks = (pool.get("hooks") or ZERO).lower()
-        data["hooks"] = hooks
-        if hooks != ZERO:
-            findings.append(Finding("high", "v4_hooks", "Uniswap V4 hook'u var — alım/satımı engelleyebilir"))
-        findings.append(Finding("medium", "v4_lp_unknown", "V4 havuzu: LP kilidi doğrulanamadı"))
+        hooks = pool.get("hooks")
+        if hooks is None and pool_manager:
+            hooks = await lookup_v4_hooks(rpc, pool_manager, address, lookback_blocks)
+        if hooks is None:
+            findings.append(Finding("low", "v4_hooks_unknown", "V4 havuzunun hook'u tespit edilemedi"))
+        else:
+            hooks = hooks.lower()
+            data["hooks"] = hooks
+            if hooks in KNOWN_HOOKS:
+                data["launchpad"] = KNOWN_HOOKS[hooks]
+                findings.append(Finding("info", "v4_known_hook", f"Launchpad: {KNOWN_HOOKS[hooks]}"))
+            elif hooks != ZERO:
+                findings.append(Finding(
+                    "medium", "v4_hooks", "Bilinmeyen Uniswap V4 hook'u — her swap'ta özel kod çalışıyor"
+                ))
+        findings.append(Finding("low", "v4_lp_unknown", "V4 havuzu: LP kilidi doğrulanamadı"))
         return data, findings
 
     if quote_is_eth:

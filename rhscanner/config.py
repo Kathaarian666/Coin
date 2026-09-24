@@ -11,6 +11,13 @@ DEFAULT_RPC_URL = "https://rpc.mainnet.chain.robinhood.com"
 DEFAULT_BLOCKSCOUT_URL = "https://robinhoodchain.blockscout.com"
 DEFAULT_WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
 DEXSCREENER_CHAIN = "robinhood"
+# Global Dollar: the stablecoin Fomo balances are held and traded in.
+USDG = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
+DEFAULT_V4_POOL_MANAGER = "0x8366a39CC670B4001A1121B8F6A443A643e40951"
+
+
+def _flag(value: str) -> bool:
+    return value.strip().lower() not in ("0", "false", "no", "")
 
 
 def _list(value: str) -> list[str]:
@@ -38,6 +45,16 @@ class Settings:
     probe_eth: float = 0.005
     min_score_alert: int = 50
     use_dexscreener: bool = True
+    v4_pool_manager: str = DEFAULT_V4_POOL_MANAGER
+    # How far back (in blocks, ~10/s) to look for a token's transfers when ranking holders.
+    holder_lookback_blocks: int = 30_000_000
+    # Fomo order-flow watcher: alert when a token gets enough distinct Fomo buyers.
+    enable_fomo_watcher: bool = True
+    fomo_window_min: float = 10.0
+    fomo_min_buyers: int = 10
+    fomo_lookback_blocks: int = 6000
+    # Raw new-pool watcher: every new DEX pool, Fomo or not (very noisy).
+    enable_pool_watcher: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -60,10 +77,17 @@ class Settings:
             analysis_workers=int(env("ANALYSIS_WORKERS", "2")),
             probe_eth=float(env("PROBE_ETH", "0.005")),
             min_score_alert=int(env("MIN_SCORE_ALERT", "50")),
-            use_dexscreener=env("USE_DEXSCREENER", "1") not in ("0", "false", "False"),
+            use_dexscreener=_flag(env("USE_DEXSCREENER", "1")),
+            v4_pool_manager=env("V4_POOL_MANAGER", DEFAULT_V4_POOL_MANAGER),
+            holder_lookback_blocks=int(env("HOLDER_LOOKBACK_BLOCKS", "30000000")),
+            enable_fomo_watcher=_flag(env("ENABLE_FOMO_WATCHER", "1")),
+            fomo_window_min=float(env("FOMO_WINDOW_MIN", "10")),
+            fomo_min_buyers=int(env("FOMO_MIN_BUYERS", "10")),
+            fomo_lookback_blocks=int(env("FOMO_LOOKBACK_BLOCKS", "6000")),
+            enable_pool_watcher=_flag(env("ENABLE_POOL_WATCHER", "0")),
         )
 
     @property
     def quote_tokens(self) -> set[str]:
         # The zero address stands for native ETH in Uniswap V4 pools.
-        return {self.weth.lower(), "0x" + "0" * 40, *self.extra_quote_tokens}
+        return {self.weth.lower(), "0x" + "0" * 40, USDG.lower(), *self.extra_quote_tokens}

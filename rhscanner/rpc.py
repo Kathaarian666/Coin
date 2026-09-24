@@ -67,10 +67,15 @@ class RpcClient:
     async def block_number(self) -> int:
         return int(await self.request("eth_blockNumber", []), 16)
 
-    async def get_logs(self, from_block: int, to_block: int, topics: list) -> list[dict]:
-        return await self.request(
-            "eth_getLogs", [{"fromBlock": hex(from_block), "toBlock": hex(to_block), "topics": topics}]
-        )
+    async def get_logs(self, from_block: int, to_block: int, topics: list, address=None, retries: int = 4) -> list[dict]:
+        query = {"fromBlock": hex(from_block), "toBlock": hex(to_block), "topics": topics}
+        if address:
+            query["address"] = address
+        return await self.request("eth_getLogs", [query], retries=retries)
+
+    async def block_timestamp(self, number: int) -> int:
+        block = await self.request("eth_getBlockByNumber", [hex(number), False])
+        return int(block["timestamp"], 16)
 
     async def get_code(self, address: str) -> str:
         return await self.request("eth_getCode", [address, "latest"])

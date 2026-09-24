@@ -10,6 +10,7 @@ from .checks.contract import check_contract
 from .checks.holders import check_holders
 from .checks.honeypot import check_honeypot
 from .checks.liquidity import check_liquidity
+from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
 from .rpc import RpcClient
 from .scoring import score
 from .sources import Blockscout, DexScreener
@@ -17,23 +18,28 @@ from .sources import Blockscout, DexScreener
 log = logging.getLogger(__name__)
 
 
-def pool_from_dexscreener(token: str, pairs: list[dict], quote_tokens: set[str]) -> dict | None:
-    """Pick the deepest pair of `token` against WETH/ETH (or a configured quote)."""
+def pool_from_dexscreener(token: str, pairs: list[dict]) -> dict | None:
+    """Pick the deepest pool of `token`, whatever it is paired with.
+
+    On Robinhood Chain the main pool is often against a stock token (e.g. DJT)
+    rather than ETH or USDG, so the counter asset cannot be assumed.
+    """
     candidates = []
     for p in pairs:
         base = (p.get("baseToken") or {}).get("address", "").lower()
         quote = (p.get("quoteToken") or {}).get("address", "").lower()
-        if base == token.lower() and quote in quote_tokens:
-            pass
-        elif quote == token.lower() and base in quote_tokens:
+        if quote == token.lower():
             base, quote = quote, base
-        else:
+        if base != token.lower():
             continue
         labels = [label.lower() for label in p.get("labels") or []]
         address = p.get("pairAddress", "")
         dex = "v4" if "v4" in labels or len(address) == 66 else "v3" if "v3" in labels else "v2"
         liquidity = (p.get("liquidity") or {}).get("usd") or 0
-        candidates.append((liquidity, {"dex": dex, "pool": address, "token": token, "quote": quote, "hooks": None}))
+        candidates.append((liquidity, {
+            "dex": dex, "pool": address, "token": token, "quote": quote, "hooks": None,
+            "quote_symbol": (p.get("quoteToken") or {}).get("symbol") if base == token.lower() else None,
+        }))
     if not candidates:
         return None
     return max(candidates, key=lambda c: c[0])[1]
@@ -59,13 +65,35 @@ def market_summary(pairs: list[dict], pool_address: str | None) -> dict:
     }
 
 
-def market_findings(market: dict) -> list[Finding]:
+def market_findings(market: dict, have_eth_liquidity: bool) -> list[Finding]:
     findings = []
+    liquidity = market.get("liquidity_usd")
+    if liquidity is not None and not have_eth_liquidity:
+        if liquidity < 1000:
+            findings.append(Finding("high", "liq_usd_low", f"Likidite çok düşük: ${liquidity:,.0f}"))
+        elif liquidity < 5000:
+            findings.append(Finding("medium", "liq_usd_mid", f"Likidite düşük: ${liquidity:,.0f}"))
     buys, sells = market.get("buys_h1") or 0, market.get("sells_h1") or 0
     if sells > 2 * max(buys, 1) and sells >= 10:
         findings.append(Finding("low", "sell_pressure", f"Son 1 saatte satış baskısı: {buys} alım / {sells} satış"))
     if market and not market.get("socials") and not market.get("websites"):
         findings.append(Finding("low", "no_socials", "Sosyal medya / web sitesi bilgisi yok"))
+    return findings
+
+
+def fomo_findings(fomo: dict) -> list[Finding]:
+    findings = []
+    if fomo.get("sellers", 0) >= 2:
+        findings.append(Finding(
+            "good", "fomo_sellable", f"Fomo'da {fomo['sellers']} farklı kullanıcı satış yapabildi (satılabiliyor)"
+        ))
+    elif fomo.get("buyers", 0) >= 5 and not fomo.get("sells"):
+        findings.append(Finding("low", "fomo_no_sells", "Fomo'da çok alım var ama henüz hiç satış yok"))
+    buy_usd, sell_usd = fomo.get("buy_usd") or 0, fomo.get("sell_usd") or 0
+    if sell_usd >= 1000 and sell_usd > 3 * buy_usd:
+        findings.append(Finding(
+            "medium", "fomo_dumping", f"Fomo'da satış baskısı: ${sell_usd:,.0f} satış / ${buy_usd:,.0f} alım"
+        ))
     return findings
 
 
@@ -94,9 +122,9 @@ class Analyzer:
         known = self.storage.known_pool(token)
         if known:
             return known, pairs
-        return pool_from_dexscreener(token, pairs, self.settings.quote_tokens), pairs
+        return pool_from_dexscreener(token, pairs), pairs
 
-    async def analyze(self, token: str, pool: dict | None = None) -> dict:
+    async def analyze(self, token: str, pool: dict | None = None, fomo: dict | None = None) -> dict:
         if not is_address(token):
             raise ValueError("Geçersiz adres")
         token = to_checksum_address(token)
@@ -114,16 +142,21 @@ class Analyzer:
             "pool": pool,
             "checked_at": time.time(),
             "contract": contract_data,
+            "fomo": fomo,
         }
         if any(f.code == "no_code" for f in findings):
             return self._finish(report, findings)
 
-        exclude = {token}
+        # The V4 PoolManager holds every V4 pool's liquidity; Fomo's contracts only pass tokens through.
+        exclude = {token, self.settings.v4_pool_manager, FOMO_ENTRY, FOMO_EXECUTOR}
         if pool:
             exclude.add(pool["pool"])
             if pool.get("factory") and pool["dex"] == "v4":
-                exclude.add(pool["factory"])  # the PoolManager holds all V4 liquidity
-            liq_data, liq_findings = await check_liquidity(self.rpc, self.blockscout, pool, self.settings.weth)
+                exclude.add(pool["factory"])
+            liq_data, liq_findings = await check_liquidity(
+                self.rpc, self.blockscout, pool, self.settings.weth,
+                self.settings.v4_pool_manager, self.settings.holder_lookback_blocks,
+            )
             hp_data, hp_findings = await check_honeypot(self.rpc, pool, self.settings.weth, self.settings.probe_eth)
             report.update(liquidity=liq_data, honeypot=hp_data)
             findings += liq_findings + hp_findings
@@ -131,14 +164,24 @@ class Analyzer:
             findings.append(Finding("medium", "no_pool", "WETH/ETH havuzu bulunamadı — likidite ve honeypot kontrol edilemedi"))
 
         holder_data, holder_findings = await check_holders(
-            self.blockscout, token, meta["total_supply"], exclude, contract_data.get("creator")
+            self.rpc, token, meta["total_supply"], exclude, contract_data.get("creator"),
+            self.settings.holder_lookback_blocks,
         )
         report["holders"] = holder_data
         findings += holder_findings
 
         market = market_summary(pairs, pool["pool"] if pool else None)
         report["market"] = market
-        findings += market_findings(market)
+        findings += market_findings(market, "liquidity_eth" in (report.get("liquidity") or {}))
+
+        if fomo:
+            findings += fomo_findings(fomo)
+            if any(f.code == "fomo_sellable" for f in findings):
+                # Real users selling successfully is stronger evidence than our simulation.
+                findings = [
+                    Finding("info", f.code, f.message) if f.code in ("not_simulated", "sim_error") else f
+                    for f in findings
+                ]
         return self._finish(report, findings)
 
     @staticmethod

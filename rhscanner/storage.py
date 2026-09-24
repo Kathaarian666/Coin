@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS tokens (
     score INTEGER,
     report TEXT
 );
+CREATE TABLE IF NOT EXISTS alerts (address TEXT PRIMARY KEY, ts REAL NOT NULL);
 """
 
 
@@ -46,16 +47,25 @@ class Storage:
         self.db.commit()
         return cur.rowcount == 1
 
+    def mark_alerted(self, address: str) -> bool:
+        """Returns True the first time a token is picked for an alert, False afterwards."""
+        cur = self.db.execute(
+            "INSERT OR IGNORE INTO alerts (address, ts) VALUES (?, ?)", (address.lower(), time.time())
+        )
+        self.db.commit()
+        return cur.rowcount == 1
+
     def save_report(self, address: str, score: int, report: dict):
         self.db.execute(
-            "UPDATE tokens SET score = ?, report = ? WHERE address = ?",
-            (score, json.dumps(report), address.lower()),
+            "INSERT INTO tokens (address, pool, first_seen, score, report) VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(address) DO UPDATE SET score = excluded.score, report = excluded.report",
+            (address.lower(), json.dumps(report.get("pool") or {}), time.time(), score, json.dumps(report)),
         )
         self.db.commit()
 
     def known_pool(self, address: str) -> dict | None:
         row = self.db.execute("SELECT pool FROM tokens WHERE address = ?", (address.lower(),)).fetchone()
-        return json.loads(row[0]) if row else None
+        return (json.loads(row[0]) or None) if row else None
 
     def count_tokens(self) -> int:
         return self.db.execute("SELECT COUNT(*) FROM tokens").fetchone()[0]

@@ -1,30 +1,46 @@
-# Robinhood Chain Token Tarayıcı (Telegram Botu)
+# Fomo · Robinhood Chain Token Tarayıcı (Telegram Botu)
 
-Robinhood Chain'de yeni açılan token havuzlarını 7/24 tarar, her token için güvenlik
-kontrolleri yapar ve sonucu **0–100 arası bir güven skoruyla** Telegram'a gönderir.
-Fomo'da görünen Robinhood Chain token'ları da bu havuzlardan gelir.
+**Fomo** uygulamasında Robinhood Chain'de alınıp satılan coinleri canlı izler. Bir coini kısa
+sürede yeterince farklı Fomo kullanıcısı almaya başlayınca güvenlik kontrollerini yapar ve
+sonucu **0–100 arası bir güven skoruyla** Telegram'a gönderir.
 
 > ⚠️ Yatırım tavsiyesi değildir. Bot kötü token'ları elemeye yardımcı olur, ama hiçbir
 > otomatik kontrol her dolandırıcılığı yakalayamaz. "Yükselir mi?" sorusunu cevaplamaz.
+
+## Fomo'daki coinleri nasıl görüyor?
+
+Fomo, EVM zincirlerinde işlemleri ERC-4337 akıllı cüzdanlarla yapıyor. Robinhood Chain'deki
+her Fomo alım/satımı aynı iki kontrattan geçiyor ve her adımda bir olay (event) bırakıyor:
+
+| Kontrat | Görevi |
+|---|---|
+| `0xccc88a9d1b4ed6b0eaba998850414b24f1c315be` | Giriş: kullanıcının ödediği (USDG/ETH ya da satılan coin) |
+| `0xb92fe925dc43a0ecde6c8b1a2709c170ec4fff4f` | Yürütücü: swap'ı yapıp coini/USDG'yi kullanıcıya teslim eder |
+
+Bu olaylardan her coin için **kaç farklı Fomo kullanıcısının aldığı/sattığı ve dolar hacmi**
+çıkarılır. Fomo hesabı, API anahtarı ya da ücretli servis gerekmez; hepsi herkese açık zincir
+verisidir. (Bu kontratlar bir Fomo kullanıcısının alımları izlenerek bulundu; Fomo tarafından
+resmî olarak duyurulmuş değildir. Fomo altyapısını değiştirirse `rhscanner/fomo.py` güncellenmeli.)
+
+**Bildirim kuralı:** `FOMO_WINDOW_MIN` (10) dakikada en az `FOMO_MIN_BUYERS` (10) farklı
+alıcı → analiz → skor `MIN_SCORE_ALERT` (50) ve üstüyse Telegram bildirimi. Her coin bir kez
+bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim atılmaz (`/trend` ile görülür).
 
 ## Ne kontrol ediyor?
 
 | Kontrol | Nasıl |
 |---|---|
-| **Honeypot** (alınır ama satılamaz) | Alım + satış, `eth_call` ile gerçek havuza karşı **simüle edilir** (para harcanmaz) |
-| **Alım / satış vergisi** | Aynı simülasyonda gerçek vergi oranı ölçülür |
-| **Sahiplik** | `owner()` devredilmiş (renounced) mi? |
-| **Tehlikeli fonksiyonlar** | Kontrat kodunda mint, kara liste, vergi değiştirme, pause, limit fonksiyonları aranır |
-| **Yükseltilebilir kontrat** | EIP-1967 proxy tespiti (kod sonradan değiştirilebilir mi?) |
-| **Kaynak kodu doğrulanmış mı** | Blockscout |
-| **Likidite** | Havuzdaki ETH miktarı |
-| **LP yakılmış / kilitli mi** | LP token'larının ne kadarı yakılmış (rugpull riski) |
-| **Cüzdan dağılımı** | İlk 10 cüzdan, en büyük cüzdan, geliştiricinin payı, yakılan arz |
-| **Piyasa** | DexScreener: FDV, likidite ($), son 1 saat alım/satım, sosyal linkler |
-| **V4 hook'ları** | Uniswap V4 havuzunda alım/satımı engelleyebilecek hook var mı? |
-
-Yeni havuzlar Uniswap V2 / V3 / V4 olay imzalarıyla yakalanır. Böylece Uniswap'e
-likidite ekleyen launchpad'ler de (mezun olan token'lar) kapsanır.
+| **Fomo akışı** | Farklı alıcı/satıcı sayısı, alım/satım hacmi ($), satış baskısı |
+| **Satılabilirlik** | Fomo'da farklı kullanıcılar başarıyla satabildiyse honeypot değildir |
+| **Honeypot simülasyonu** | Uniswap V2 havuzlarında alım + satış `eth_call` ile simüle edilir (para harcanmaz) |
+| **Alım / satım vergisi** | Aynı simülasyonda ölçülür |
+| **Sahiplik** | `owner()` devredilmiş mi, sahibi bir kontrat mı? |
+| **Tehlikeli fonksiyonlar** | Kodda mint, kara liste, vergi değiştirme, pause, limit fonksiyonları |
+| **Yükseltilebilir kontrat** | EIP-1967 proxy tespiti |
+| **Likidite** | DexScreener ($) ve havuzdaki ETH; en derin havuz seçilir (ETH, USDG ya da hisse token'ı paritesi) |
+| **Uniswap V4 hook'u** | Havuzun hook'u bilinen bir launchpad'e mi (ör. Pons) ait, yoksa bilinmeyen mi? |
+| **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
+| **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
 
 **Skor:** 🟢 75–100 düşük risk · 🟡 50–74 orta · 🔴 1–49 yüksek · ⛔ 0 tehlikeli (honeypot vb.)
 
@@ -67,21 +83,28 @@ journalctl -u rhscanner -f      # logları izlemek için
 
 | Komut | Açıklama |
 |---|---|
+| `/trend` | Şu an Fomo'da en çok alınan 10 coin (son 15 dk) |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
-| `/minskor 60` | Skoru 60'ın altındaki yeni token'lar için bildirim gönderme |
+| `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
+| `/minalici 15` | Bildirim için 10 dakikada gereken farklı Fomo alıcısı sayısı |
 | `/durdur` / `/devam` | Otomatik bildirimleri kapat / aç |
 | `/durum` | Son taranan blok, görülen token sayısı, kuyruk |
 
-Botu açmadan tek bir token'ı terminalden de kontrol edebilirsiniz:
+Botu açmadan terminalden de kullanabilirsiniz:
 ```bash
+.venv/bin/python -m rhscanner trend        # son ~10 dk Fomo'da en çok alınanlar
+.venv/bin/python -m rhscanner trend 3      # ... ve ilk 3'ünün tam analizi
 .venv/bin/python -m rhscanner check 0xTOKEN_ADRESI
 ```
 
 ## Bilinen sınırlamalar
 
-- **Honeypot simülasyonu şimdilik sadece Uniswap V2 tipi WETH havuzlarında** yapılıyor.
-  V3/V4 havuzlarında "simüle edilemedi" uyarısı çıkar.
+- **Honeypot simülasyonu sadece Uniswap V2 tipi WETH havuzlarında** yapılıyor. Fomo coinlerinin
+  çoğu V4'te; onlarda satılabilirlik, Fomo kullanıcılarının gerçek satışlarından anlaşılıyor.
+- Public Blockscout API'si sunuculardan gelen istekleri Cloudflare ile engelliyor. Bu yüzden
+  "kaynak kodu doğrulanmış mı" bilgisi çoğu zaman alınamaz; holder verisi RPC'den hesaplanır.
 - Bazı anti-bot korumaları simülasyonu yanıltabilir ("alım başarısız" uyarısı).
+- Çok işlem gören coinlerde holder taraması 10–30 saniye sürebilir (public RPC sınırları).
 - `owner()` sıfır görünse bile gizli yönetici rolleri olabilir. Kodu doğrulanmamış kontratlarda dikkatli olun.
 - V3/V4 LP kilitleri henüz doğrulanamıyor.
 - Public RPC hız sınırlıdır. Token yoğunluğu çok artarsa ücretsiz bir RPC sağlayıcısına
@@ -106,7 +129,8 @@ node scripts/compile_contracts.mjs
 
 ```
 rhscanner/
-  discovery.py      yeni havuzları yakalar (V2/V3/V4 olayları)
+  fomo.py           Fomo alım/satım akışını zincirden okur, coin bazında sayar
+  discovery.py      yeni havuzları yakalar (V2/V3/V4 olayları, opsiyonel)
   analyzer.py       tüm kontrolleri çalıştırıp raporu oluşturur
   checks/           contract, honeypot, liquidity, holders kontrolleri
   scoring.py        0–100 güven skoru
@@ -119,7 +143,9 @@ tests/              testler
 ## Yol haritası
 
 - [x] Robinhood Chain tarayıcı + güvenlik kontrolleri + Telegram botu
+- [x] Fomo akışını zincirden okuma, Fomo'da yükselen coinler için bildirim
 - [ ] Sunucuya kurulum ve canlı ayar (eşikler, gerçek verilerle kalibrasyon)
+- [ ] Pons / FomoPad launchpad'lerinden coin doğduğu anda yakalama
 - [ ] V3/V4 honeypot simülasyonu
 - [ ] Geliştirici geçmişi (aynı cüzdanın önceki token'ları rug oldu mu?)
 - [ ] Sniper / bundle tespiti, momentum takibi (token'ı 5–15 dk sonra yeniden kontrol)

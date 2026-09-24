@@ -1,6 +1,7 @@
 """Free HTTP data sources: Blockscout (explorer) and DexScreener (market data)."""
 
 import logging
+import time
 
 import httpx
 
@@ -10,14 +11,24 @@ log = logging.getLogger(__name__)
 
 
 class Blockscout:
+    # The public instance challenges datacenter IPs (Cloudflare 403); back off instead of retrying every call.
+    BACKOFF_SECONDS = 3600
+
     def __init__(self, base_url: str, client: httpx.AsyncClient):
         self.base = base_url.rstrip("/")
         self.http = client
+        self.blocked_until = 0.0
 
     async def _get(self, path: str, params: dict | None = None) -> dict | None:
+        if time.time() < self.blocked_until:
+            return None
         try:
             resp = await self.http.get(f"{self.base}/api/v2{path}", params=params)
             if resp.status_code == 404:
+                return None
+            if resp.status_code == 403:
+                log.info("blockscout refused access (403); skipping it for an hour")
+                self.blocked_until = time.time() + self.BACKOFF_SECONDS
                 return None
             resp.raise_for_status()
             return resp.json()
