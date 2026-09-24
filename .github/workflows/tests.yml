@@ -9,6 +9,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+      # The server installs only requirements.txt: make sure that alone is enough to start.
+      - run: pip install -r requirements.txt
+      - run: python -c "import rhscanner.bot, rhscanner.__main__; from rhscanner.checks.contract import RISKY_SELECTORS"
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q

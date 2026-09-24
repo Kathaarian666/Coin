@@ -51,33 +51,21 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 2. Verdiği **token**'ı kimseyle paylaşmayın, sadece `.env` dosyasına yazacaksınız.
 
 ### 2. Sunucu (ücretsiz)
-Bot 7/24 açık bir bilgisayarda çalışmalı. Önerilen: **Oracle Cloud Always Free**.
-1. [oracle.com/cloud/free](https://www.oracle.com/cloud/free/) üzerinden hesap açın (kart doğrulaması ister, ücret çekmez).
-2. *Compute → Instances → Create* ile **Ubuntu** seçip bir "Always Free eligible" makine oluşturun.
-3. SSH ile bağlanın.
+Bot 7/24 açık bir sunucuda çalışmalı. Önerilen: **Oracle Cloud Always Free**, Ubuntu 24.04
+(VM.Standard.A1.Flex kapasite hatası verirse VM.Standard.E2.1.Micro yeterli).
+Sunucuya bağlanmak için bilgisayara bir şey kurmak gerekmez: Oracle konsolundaki
+**Cloud Shell** (tarayıcı içi terminal) kullanılabilir.
 
-Alternatif: evde şarjda duran eski bir Android telefon + **Termux** uygulaması (`pkg install python git`).
-
-### 3. Botu kurun
+### 3. Tek komutla kurulum
+Sunucuya bağlandıktan sonra:
 ```bash
-git clone https://github.com/kathaarian666/coin.git Coin
-cd Coin
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env
-nano .env        # TELEGRAM_BOT_TOKEN satırını doldurun
-.venv/bin/python -m rhscanner
+curl -fsSL https://raw.githubusercontent.com/Kathaarian666/Coin/refs/heads/claude/fomo-coin-scanner-app-mhz9rk/deploy/install.sh | bash
 ```
-Botunuza Telegram'da `/start` yazın. Size **sohbet ID'nizi** söyleyecek. Bu ID'yi `.env`
-içindeki `TELEGRAM_CHAT_IDS=` satırına yazın ve botu yeniden başlatın. Bot sadece bu ID'lere cevap verir.
+Betik paketleri kurar, kodu indirir, Telegram token'ını sorar, botu 7/24 çalışan bir servis
+olarak başlatır, sonra botta `/start` yazınca gelen **sohbet ID'sini** sorar. Güncellemek için
+aynı komut (veya `bash ~/Coin/deploy/install.sh`) tekrar çalıştırılır.
 
-### 4. Sürekli çalışması için (sunucuda)
-```bash
-sudo cp deploy/rhscanner.service /etc/systemd/system/
-sudo systemctl enable --now rhscanner
-journalctl -u rhscanner -f      # logları izlemek için
-```
-(Kullanıcı adınız veya klasörünüz farklıysa servis dosyasındaki yolları düzenleyin.)
+Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl restart rhscanner`
 
 ## Telegram komutları
 

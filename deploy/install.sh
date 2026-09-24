@@ -68,7 +68,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=$USER
+User=$(id -un)
 WorkingDirectory=$APP_DIR
 ExecStart=$APP_DIR/.venv/bin/python -m rhscanner
 Restart=always
