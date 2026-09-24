@@ -31,9 +31,10 @@ async def test_honeypot_scores_zero(market_factory, tmp_path):
 
 
 async def test_clean_renounced_token_scores_well(market_factory, tmp_path):
-    chain, addrs = market_factory(renounce=True)
+    chain, addrs = market_factory(renounce=True, holders=40)
     report = await analyze(chain, addrs, tmp_path)
     assert report["liquidity"]["liquidity_eth"] > 9
+    assert report["holders"]["top10_pct"] < 30 and report["missing"] == []
     assert report["honeypot"]["sell_tax"] == 0
     assert report["score"] >= 75
 
@@ -110,3 +111,10 @@ def test_storage_marks_tokens_once(tmp_path):
     assert storage.mark_seen("0xABC", pool, 5) is True
     assert storage.mark_seen("0xabc", pool, 6) is False
     assert storage.known_pool("0xAbC") == pool
+
+
+async def test_dev_holding_most_of_the_supply_is_flagged(market_factory, tmp_path):
+    chain, addrs = market_factory(renounce=True)
+    report = await analyze(chain, addrs, tmp_path)
+    assert {"top10_high", "whale"} <= {f["code"] for f in report["findings"]}
+    assert report["score"] < 75

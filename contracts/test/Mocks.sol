@@ -61,6 +61,8 @@ contract MockPair {
 
 // ERC-20 with configurable taxes and a sell block, mimicking scam tokens.
 contract TaxToken {
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
     mapping(address => uint256) public balanceOf;
     mapping(address => bool) public blacklisted;
     uint256 public totalSupply;
@@ -74,6 +76,7 @@ contract TaxToken {
         owner = msg.sender;
         totalSupply = supply;
         balanceOf[msg.sender] = supply;
+        emit Transfer(address(0), msg.sender, supply);
     }
 
     function configure(address pair_, uint256 buyTax, uint256 sellTax, bool blockSells) external {
@@ -111,6 +114,8 @@ contract TaxToken {
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount - tax;
         balanceOf[owner] += tax;
+        emit Transfer(msg.sender, to, amount - tax);
+        if (tax > 0) emit Transfer(msg.sender, owner, tax);
         return true;
     }
 }

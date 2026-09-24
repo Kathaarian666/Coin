@@ -57,7 +57,7 @@ class EvmRpc(RpcClient):
         raise NotImplementedError(method)
 
 
-def build_market(buy_tax=0, sell_tax=0, block_sells=False, renounce=False):
+def build_market(buy_tax=0, sell_tax=0, block_sells=False, renounce=False, holders=0):
     """Deploy WETH, a tax token and a funded V2 pair; returns (chain, addresses dict)."""
     c = LocalChain()
     weth = c.deploy("MockWETH")
@@ -71,6 +71,9 @@ def build_market(buy_tax=0, sell_tax=0, block_sells=False, renounce=False):
     c.send(pair, "sync()", [], [])
     probe = c.deploy("HoneypotProbe")
     c.t.send_transaction({"from": c.owner, "to": probe, "value": 10**18, "gas": 100_000})
+    for i in range(holders):  # spread 90% of the supply evenly over `holders` wallets
+        wallet = "0x" + f"{i + 1:040x}"
+        c.send(token, "transfer(address,uint256)", ["address", "uint256"], [wallet, 9 * 10**26 // holders])
     if renounce:
         c.send(token, "renounceOwnership()", [], [])
     return c, {"weth": weth, "token": token, "pair": pair, "probe": probe}

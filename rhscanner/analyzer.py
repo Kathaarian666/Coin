@@ -12,7 +12,7 @@ from .checks.honeypot import check_honeypot
 from .checks.liquidity import check_liquidity
 from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
 from .rpc import RpcClient
-from .scoring import score
+from .scoring import missing_checks, score
 from .sources import Blockscout, DexScreener
 
 log = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ def fomo_findings(fomo: dict) -> list[Finding]:
     elif fomo.get("buyers", 0) >= 5 and not fomo.get("sells"):
         findings.append(Finding("low", "fomo_no_sells", "Fomo'da çok alım var ama henüz hiç satış yok"))
     buy_usd, sell_usd = fomo.get("buy_usd") or 0, fomo.get("sell_usd") or 0
-    if sell_usd >= 1000 and sell_usd > 3 * buy_usd:
+    if sell_usd >= 1000 and sell_usd > 2 * buy_usd:
         findings.append(Finding(
             "medium", "fomo_dumping", f"Fomo'da satış baskısı: ${sell_usd:,.0f} satış / ${buy_usd:,.0f} alım"
         ))
@@ -187,6 +187,7 @@ class Analyzer:
     @staticmethod
     def _finish(report: dict, findings: list[Finding]) -> dict:
         report["score"] = score(findings)
+        report["missing"] = missing_checks(findings)
         report["findings"] = [f.to_dict() for f in findings]
         return report
 

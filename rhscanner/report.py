@@ -32,6 +32,9 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
         f"{icon} <b>Güven skoru: {report['score']}/100</b> — {label}",
     ]
 
+    if report.get("missing"):
+        lines.append(f"⚠️ Kontrol edilemeyenler: {escape(', '.join(report['missing']), quote=False)} (skor en fazla 70)")
+
     facts = []
     fomo = report.get("fomo") or {}
     if fomo.get("buyers"):

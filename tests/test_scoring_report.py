@@ -26,3 +26,13 @@ def test_report_escapes_token_name():
     text = format_report(report, "https://explorer", header="🔥 Test")
     assert "&lt;script&gt;" in text and "A&amp;B" in text and "<script>" not in text
     assert "Güven skoru: 70/100" in text and "alım %1.0 / satış %2.0" in text
+
+
+def test_missing_key_checks_cap_the_score_and_are_listed():
+    findings = [Finding("low", "holders_unknown", "x"), Finding("low", "v4_hooks_unknown", "y")]
+    assert score(findings) == 70
+    report = {"token": "0x" + "1" * 40, "name": "A", "symbol": "A", "score": 70, "findings": [],
+              "missing": ["cüzdan dağılımı", "V4 hook'u"]}
+    assert "Kontrol edilemeyenler: cüzdan dağılımı, V4 hook'u" in format_report(report, "https://x")
+    # Fomo sells stand in for the simulation, which is then downgraded to info.
+    assert score([Finding("info", "not_simulated", "z")]) == 100
