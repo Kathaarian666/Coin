@@ -69,3 +69,10 @@ def test_fomo_findings():
     assert fomo_findings({"buyers": 2, "sellers": 0, "sells": 0}) == []
     dump = fomo_findings({"buyers": 10, "sellers": 10, "sells": 11, "buy_usd": 222, "sell_usd": 121_131})
     assert [f.code for f in dump] == ["fomo_sellable", "fomo_dumping"]
+
+
+def test_weth_legs_are_cash_not_tokens():
+    from rhscanner.config import DEFAULT_WETH
+    logs = [leg(FOMO_ENTRY, USER_A, FOMO_EXECUTOR, DEFAULT_WETH, 10**15, "0x9"),
+            leg(FOMO_EXECUTOR, FOMO_EXECUTOR, FOMO_EXECUTOR, USDG, 3 * 10**6, "0x9")]
+    assert parse_fomo_logs(logs) == []

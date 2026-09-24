@@ -56,6 +56,8 @@ class Settings:
     enable_fomo_watcher: bool = True
     fomo_window_min: float = 10.0
     fomo_min_buyers: int = 10
+    # ...and at least this much bought through Fomo in the window (median Fomo buy is ~$20).
+    fomo_min_buy_usd: float = 500.0
     fomo_lookback_blocks: int = 6000
     # Raw new-pool watcher: every new DEX pool, Fomo or not (very noisy).
     enable_pool_watcher: bool = False
@@ -88,6 +90,7 @@ class Settings:
             enable_fomo_watcher=_flag(env("ENABLE_FOMO_WATCHER", "1")),
             fomo_window_min=float(env("FOMO_WINDOW_MIN", "10")),
             fomo_min_buyers=int(env("FOMO_MIN_BUYERS", "10")),
+            fomo_min_buy_usd=float(env("FOMO_MIN_BUY_USD", "500")),
             fomo_lookback_blocks=int(env("FOMO_LOOKBACK_BLOCKS", "6000")),
             enable_pool_watcher=_flag(env("ENABLE_POOL_WATCHER", "0")),
         )

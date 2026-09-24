@@ -29,6 +29,7 @@ HELP = (
     "/check &lt;adres&gt; — bir token'ı hemen analiz et\n"
     "/minskor &lt;0-100&gt; — bu skorun altındakiler için bildirim gönderme\n"
     "/minalici &lt;sayı&gt; — bildirim için gereken farklı Fomo alıcısı sayısı\n"
+    "/minhacim &lt;$&gt; — bildirim için gereken en az Fomo alım hacmi\n"
     "/durdur — otomatik bildirimleri durdur\n"
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
@@ -72,6 +73,10 @@ class ScannerApp:
         return int(self.storage.get_state("min_buyers", str(self.settings.fomo_min_buyers)))
 
     @property
+    def min_buy_usd(self) -> float:
+        return float(self.storage.get_state("min_buy_usd", str(self.settings.fomo_min_buy_usd)))
+
+    @property
     def alerts_on(self) -> bool:
         return self.storage.get_state("alerts_on", "1") == "1"
 
@@ -87,7 +92,8 @@ class ScannerApp:
     async def on_fomo_trades(self, trades: list[FomoTrade], warmup: bool = False):
         for token in {t.token for t in trades if t.side == "buy"}:
             stats = self.tracker.stats(token, self.fomo_window)
-            if stats["buyers"] >= self.min_buyers and self.storage.mark_alerted(token):
+            rising = stats["buyers"] >= self.min_buyers and stats["buy_usd"] >= self.min_buy_usd
+            if rising and self.storage.mark_alerted(token):
                 if warmup:
                     # Already trending when the bot started: visible in /trend, no alert flood.
                     log.info("%s was already trending at startup; not alerting", token)
@@ -205,6 +211,18 @@ class ScannerApp:
             "Fomo kullanıcısı tarafından alınınca analiz edilecek."
         )
 
+    async def cmd_min_usd(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        if not context.args or not context.args[0].isdigit():
+            await update.message.reply_text(f"Kullanım: /minhacim 500 (şu an: ${self.min_buy_usd:,.0f})")
+            return
+        self.storage.set_state("min_buy_usd", context.args[0])
+        await update.message.reply_text(
+            f"✅ Bir coin {self.settings.fomo_window_min:g} dakikada Fomo'dan en az ${int(context.args[0]):,} "
+            "alım görünce analiz edilecek."
+        )
+
     async def cmd_pause(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if self._authorized(update):
             self.storage.set_state("alerts_on", "0")
@@ -224,7 +242,7 @@ class ScannerApp:
             f"Fomo'da izlenen coin (son 1 saat): {len(self.tracker.trades)}\n"
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
             f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
-            f"Min. alıcı: {self.min_buyers}/{self.settings.fomo_window_min:g} dk"
+            f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
 
     # --- lifecycle ---
@@ -261,6 +279,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("trend", self.cmd_trend))
         self.app.add_handler(CommandHandler("minskor", self.cmd_min_score))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
+        self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))
         self.app.add_handler(CommandHandler("devam", self.cmd_resume))
         self.app.add_handler(CommandHandler("durum", self.cmd_status))

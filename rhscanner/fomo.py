@@ -21,7 +21,7 @@ from dataclasses import dataclass
 import httpx
 from eth_utils import to_checksum_address
 
-from .config import USDG
+from .config import DEFAULT_WETH, USDG
 from .rpc import RetryableHttpError, RpcClient
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,8 @@ FOMO_TRANSFER_TOPIC = "0xafbab204e8271965231d37baed9b1abca8725b7409c70314455f68b
 
 _USDG = USDG.lower()
 _ETH = "0x" + "0" * 40
-_CASH = {_USDG, _ETH}
+# What Fomo pays and gets paid in; WETH shows up when a route goes through it.
+_CASH = {_USDG, _ETH, DEFAULT_WETH.lower()}
 
 
 @dataclass
