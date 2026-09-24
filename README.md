@@ -22,6 +22,9 @@ Bu olaylardan her coin için **kaç farklı Fomo kullanıcısının aldığı/sa
 verisidir. (Bu kontratlar bir Fomo kullanıcısının alımları izlenerek bulundu; Fomo tarafından
 resmî olarak duyurulmuş değildir. Fomo altyapısını değiştirirse `rhscanner/fomo.py` güncellenmeli.)
 
+**Takip mesajı:** Her bildirimden `FOLLOWUP_MIN` (15) dakika sonra fiyat ve likidite değişimi, Fomo'da satış
+yapılabildiği ve satış baskısı tekrar kontrol edilip kısa bir güncelleme gönderilir (likidite yarıdan fazla düşerse rug uyarısı).
+
 **Bildirim kuralı:** `FOMO_WINDOW_MIN` (10) dakikada en az `FOMO_MIN_BUYERS` (10) farklı
 alıcı → analiz → skor `MIN_SCORE_ALERT` (50) ve üstüyse Telegram bildirimi. Her coin bir kez
 bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim atılmaz (`/trend` ile görülür).
@@ -38,7 +41,7 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 | **Tehlikeli fonksiyonlar** | Kodda mint, kara liste, vergi değiştirme, pause, limit fonksiyonları |
 | **Yükseltilebilir kontrat** | EIP-1967 proxy tespiti |
 | **Likidite** | DexScreener ($) ve havuzdaki ETH; en derin havuz seçilir (ETH, USDG ya da hisse token'ı paritesi) |
-| **Uniswap V4 hook'u** | Havuzun hook'u bilinen bir launchpad'e mi (ör. Pons) ait, yoksa bilinmeyen mi? |
+| **Uniswap V4 hook'u** | Hook'un son 3 günde kaç havuzda kullanıldığı (6 saatte bir yenilenir): yaygın launchpad hook'u mu, nadir mi, yükseltilebilir mi? |
 | **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
 | **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
 

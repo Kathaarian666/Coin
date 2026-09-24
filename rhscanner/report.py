@@ -74,3 +74,51 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
     lines += ["", " · ".join(links)]
     lines.append("<i>Yatırım tavsiyesi değildir. Otomatik kontroller her riski yakalayamaz.</i>")
     return "\n".join(lines)
+
+
+def _pct_change(old, new) -> float | None:
+    try:
+        old, new = float(old), float(new)
+    except (TypeError, ValueError):
+        return None
+    return None if old <= 0 else 100.0 * (new - old) / old
+
+
+def format_followup(report: dict, recent: dict, sellers_hour: int, market: dict, minutes: float) -> str:
+    """Short update on a token some minutes after its alert."""
+    token = report["token"]
+    then = report.get("market") or {}
+    lines = [
+        f"🔁 <b>Takip · {escape(str(report.get('name')), quote=False)}</b> "
+        f"(${escape(str(report.get('symbol')), quote=False)}) — {minutes:g} dk sonra",
+        f"<code>{token}</code>",
+        "",
+    ]
+
+    price = _pct_change(then.get("price_usd"), market.get("price_usd"))
+    if price is not None:
+        icon = "📈" if price >= 0 else "📉"
+        lines.append(f"{icon} Fiyat bildirimden beri: {price:+.1f}%")
+    liquidity = _pct_change(then.get("liquidity_usd"), market.get("liquidity_usd"))
+    if liquidity is not None:
+        lines.append(f"💧 Likidite: {_usd(then.get('liquidity_usd'))} → {_usd(market.get('liquidity_usd'))} ({liquidity:+.0f}%)")
+        if liquidity <= -50:
+            lines.append("🚨 <b>Likidite yarıdan fazla düştü — rugpull olabilir!</b>")
+
+    lines.append(
+        f"📱 Fomo (son {minutes:g} dk): {recent['buyers']} alıcı / {recent['sellers']} satıcı · "
+        f"alım {_usd(recent['buy_usd'])} / satış {_usd(recent['sell_usd'])}"
+    )
+    if sellers_hour >= 2:
+        lines.append(f"✅ Satış doğrulandı: son 1 saatte {sellers_hour} farklı Fomo kullanıcısı sattı")
+    elif sellers_hour == 1:
+        lines.append("🟡 Son 1 saatte sadece 1 Fomo kullanıcısı satabildi")
+    else:
+        lines.append("⚠️ <b>Hâlâ hiç Fomo satışı yok</b> — satılamıyor olabilir, dikkat!")
+    if recent["sell_usd"] >= 1000 and recent["sell_usd"] > 2 * recent["buy_usd"]:
+        lines.append("🔴 Satış baskısı: satışlar alımların 2 katından fazla")
+    elif recent["buyers"] == 0:
+        lines.append("💤 Fomo'da yeni alıcı gelmiyor, ilgi söndü")
+
+    lines += ["", f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>']
+    return "\n".join(lines)

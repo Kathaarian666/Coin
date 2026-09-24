@@ -36,3 +36,25 @@ def test_missing_key_checks_cap_the_score_and_are_listed():
     assert "Kontrol edilemeyenler: cüzdan dağılımı, V4 hook'u" in format_report(report, "https://x")
     # Fomo sells stand in for the simulation, which is then downgraded to info.
     assert score([Finding("info", "not_simulated", "z")]) == 100
+
+
+def _alert_report():
+    return {"token": "0x" + "1" * 40, "name": "Dark", "symbol": "DARK", "score": 70, "findings": [],
+            "pool": {"pool": "0xpool"}, "market": {"price_usd": "1.0", "liquidity_usd": 200_000}}
+
+
+def test_followup_confirms_sells_and_price():
+    from rhscanner.report import format_followup
+    recent = {"buyers": 6, "sellers": 3, "buy_usd": 900, "sell_usd": 300}
+    text = format_followup(_alert_report(), recent, sellers_hour=4, market={"price_usd": "1.25", "liquidity_usd": 210_000},
+                           minutes=15)
+    assert "Takip · Dark" in text and "+25.0%" in text and "4 farklı Fomo kullanıcısı sattı" in text
+    assert "rugpull" not in text
+
+
+def test_followup_warns_on_no_sells_and_liquidity_pull():
+    from rhscanner.report import format_followup
+    recent = {"buyers": 0, "sellers": 0, "buy_usd": 0, "sell_usd": 0}
+    text = format_followup(_alert_report(), recent, sellers_hour=0, market={"price_usd": "0.2", "liquidity_usd": 20_000},
+                           minutes=15)
+    assert "Hâlâ hiç Fomo satışı yok" in text and "rugpull olabilir" in text and "-80.0%" in text

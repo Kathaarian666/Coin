@@ -10,11 +10,12 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-from .analyzer import Analyzer
+from .analyzer import Analyzer, market_summary
 from .config import Settings
 from .discovery import NewPool, PoolWatcher
 from .fomo import FomoTrade, FomoTracker, FomoWatcher
-from .report import format_report
+from .hooks import REGISTRY
+from .report import format_followup, format_report
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
@@ -61,6 +62,7 @@ class ScannerApp:
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
+        self.followups: set[asyncio.Task] = set()
         self.app: Application | None = None
 
     # --- settings kept in the database so they survive restarts ---
@@ -124,10 +126,29 @@ class ScannerApp:
                 if self.alerts_on and report["score"] >= self.min_score:
                     header = "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz"
                     await self.broadcast(format_report(report, self.settings.blockscout_url, header))
+                    if self.settings.followup_min > 0:
+                        task = asyncio.create_task(self.follow_up(report))
+                        self.followups.add(task)
+                        task.add_done_callback(self.followups.discard)
             except Exception:
                 log.exception("analysis failed for %s", job.token)
             finally:
                 self.queue.task_done()
+
+    async def follow_up(self, report: dict):
+        """Re-check an alerted token later: did price/liquidity hold, can Fomo users sell?"""
+        minutes = self.settings.followup_min
+        await asyncio.sleep(minutes * 60)
+        token = report["token"]
+        try:
+            recent = self.tracker.stats(token, minutes * 60)
+            sellers_hour = self.tracker.stats(token, 3600)["sellers"]
+            pairs = await self.analyzer.dexscreener.token_pairs(token) if self.analyzer.dexscreener else []
+            market = market_summary(pairs, (report.get("pool") or {}).get("pool"))
+            if self.alerts_on:
+                await self.broadcast(format_followup(report, recent, sellers_hour, market, minutes))
+        except Exception:
+            log.exception("follow-up failed for %s", token)
 
     async def broadcast(self, text: str):
         for chat_id in self.settings.telegram_chat_ids:
@@ -250,6 +271,8 @@ class ScannerApp:
         if self.settings.enable_fomo_watcher:
             watcher = FomoWatcher(self.rpc, self.settings, self.storage, self.tracker)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_fomo_trades)))
+        if self.settings.enable_fomo_watcher:
+            self.tasks.append(asyncio.create_task(REGISTRY.run(self.rpc, self.settings.v4_pool_manager)))
         if self.settings.enable_pool_watcher:
             watcher = PoolWatcher(self.rpc, self.settings, self.storage)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_pool)))
@@ -257,9 +280,9 @@ class ScannerApp:
             self.tasks.append(asyncio.create_task(self.worker()))
 
     async def _post_shutdown(self, app: Application):
-        for task in self.tasks:
+        for task in [*self.tasks, *self.followups]:
             task.cancel()
-        await asyncio.gather(*self.tasks, return_exceptions=True)
+        await asyncio.gather(*self.tasks, *self.followups, return_exceptions=True)
         await self.rpc.close()
         await self.http.aclose()
         self.storage.close()

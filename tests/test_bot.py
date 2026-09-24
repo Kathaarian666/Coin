@@ -40,3 +40,21 @@ async def test_small_volume_does_not_alert(tmp_path):
     await app.on_fomo_trades(trades)
     assert app.queue.qsize() == 0  # 2 buyers but only $10 bought
     await app.rpc.close()
+
+
+async def test_follow_up_is_sent_after_the_delay(tmp_path, monkeypatch):
+    app = ScannerApp(Settings(db_path=str(tmp_path / "f.db"), followup_min=15, use_dexscreener=False))
+    sent = []
+
+    async def fake_broadcast(text):
+        sent.append(text)
+
+    async def no_sleep(_):
+        return None
+
+    app.broadcast = fake_broadcast
+    monkeypatch.setattr("asyncio.sleep", no_sleep)
+    report = {"token": "0x" + "1" * 40, "name": "T", "symbol": "T", "score": 80, "findings": [], "market": {}}
+    await app.follow_up(report)
+    assert len(sent) == 1 and "Takip · T" in sent[0] and "Hâlâ hiç Fomo satışı yok" in sent[0]
+    await app.rpc.close()
