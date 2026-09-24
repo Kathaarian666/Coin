@@ -48,7 +48,7 @@ class ScannerApp:
         self.settings = settings
         self.storage = Storage(settings.db_path)
         self.http = httpx.AsyncClient(timeout=20)
-        self.rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps)
+        self.rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps, fallback_urls=settings.rpc_fallback_urls)
         self.analyzer = Analyzer(
             self.rpc,
             settings,
@@ -220,6 +220,7 @@ class ScannerApp:
             return
         await update.message.reply_text(
             f"Fomo son blok: {self.storage.get_state('fomo_last_block', '-')}\n"
+            f"RPC: {self.rpc.url.split('//')[-1]}\n"
             f"Fomo'da izlenen coin (son 1 saat): {len(self.tracker.trades)}\n"
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
             f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "

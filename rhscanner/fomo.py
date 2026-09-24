@@ -139,6 +139,20 @@ class FomoTracker:
         return [(to_checksum_address(t), s) for t, s in rows[:limit]]
 
 
+async def fetch_fomo_logs(rpc: RpcClient, from_block: int, to_block: int) -> list[dict]:
+    """eth_getLogs for both Fomo contracts, halving the range when the node refuses it
+    (the public RPC caps result size; dRPC's free tier only serves ~100 blocks)."""
+    try:
+        return await rpc.get_logs(
+            from_block, to_block, [FOMO_TRANSFER_TOPIC], address=[FOMO_ENTRY, FOMO_EXECUTOR], retries=1
+        )
+    except Exception:
+        if to_block - from_block < 50:
+            raise
+        mid = (from_block + to_block) // 2
+        return await fetch_fomo_logs(rpc, from_block, mid) + await fetch_fomo_logs(rpc, mid + 1, to_block)
+
+
 class FomoWatcher:
     """Polls the Fomo contracts' events and feeds trades to a callback."""
 
@@ -149,16 +163,7 @@ class FomoWatcher:
         self.tracker = tracker
 
     async def _fetch(self, from_block: int, to_block: int) -> list[dict]:
-        """eth_getLogs, halving the range when the node refuses a large result."""
-        try:
-            return await self.rpc.get_logs(
-                from_block, to_block, [FOMO_TRANSFER_TOPIC], address=[FOMO_ENTRY, FOMO_EXECUTOR], retries=1
-            )
-        except Exception:
-            if to_block - from_block < 50:
-                raise
-            mid = (from_block + to_block) // 2
-            return await self._fetch(from_block, mid) + await self._fetch(mid + 1, to_block)
+        return await fetch_fomo_logs(self.rpc, from_block, to_block)
 
     async def run(self, on_trades):
         saved = self.storage.get_state("fomo_last_block")

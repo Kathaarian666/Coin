@@ -66,3 +66,15 @@ async def test_collect_holders_from_transfer_logs():
     assert by_addr[curve]["address"]["is_contract"] is True
     data, _ = analyse_holders(items, 1000, set(), None)
     assert data["contracts_pct"] == 60.0 and data["top10_pct"] == 35.0
+
+
+async def test_holder_scan_gives_up_on_a_node_that_refuses_ranges():
+    class RefusingRpc(TransferRpc):
+        calls = 0
+
+        async def get_logs(self, *args, **kwargs):
+            RefusingRpc.calls += 1
+            raise RuntimeError("ranges over 10000 blocks are not supported on free plan")
+
+    items = await collect_holders(RefusingRpc([], {}), "0xtoken", lookback_blocks=30_000_000)
+    assert items == [] and RefusingRpc.calls <= 40

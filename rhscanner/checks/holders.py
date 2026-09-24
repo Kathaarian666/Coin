@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 MAX_TRANSFER_LOGS = 60_000
+MAX_FAILED_QUERIES = 40
 TOP_CANDIDATES = 25
 WINDOW_BLOCKS = 2_000_000  # ~2.3 days of Robinhood Chain blocks
 
@@ -79,13 +80,19 @@ def analyse_holders(
     return data, findings
 
 
-async def _transfer_logs(rpc: RpcClient, token: str, from_block: int, to_block: int, budget: list[int]) -> list[dict]:
-    """All Transfer logs in range, splitting it whenever the node caps or times out the query."""
-    if budget[0] <= 0:
+async def _transfer_logs(rpc: RpcClient, token: str, from_block: int, to_block: int, budget: dict) -> list[dict]:
+    """All Transfer logs in range, splitting it whenever the node caps or times out the query.
+
+    budget["logs"] bounds how many logs are collected and budget["failures"] how
+    many refused queries are tolerated (a node that only serves tiny ranges
+    would otherwise be asked thousands of times).
+    """
+    if budget["logs"] <= 0 or budget["failures"] <= 0:
         return []
     try:
         logs = await rpc.get_logs(from_block, to_block, [TRANSFER_TOPIC], address=token, retries=0)
     except Exception as exc:  # usually "logs matched by query exceeds limit"
+        budget["failures"] -= 1
         if to_block - from_block < 1000:
             log.debug("transfer logs for %s failed: %s", token, exc)
             return []
@@ -93,16 +100,16 @@ async def _transfer_logs(rpc: RpcClient, token: str, from_block: int, to_block: 
         # Newest half first, so the budget is spent on current holders.
         newer = await _transfer_logs(rpc, token, mid + 1, to_block, budget)
         return await _transfer_logs(rpc, token, from_block, mid, budget) + newer
-    budget[0] -= len(logs)
+    budget["logs"] -= len(logs)
     return logs
 
 
 async def recent_transfer_logs(rpc: RpcClient, token: str, head: int, lookback_blocks: int) -> list[dict]:
     """Walk back from head in windows; stop at the first empty window before the token's activity."""
-    budget = [MAX_TRANSFER_LOGS]
+    budget = {"logs": MAX_TRANSFER_LOGS, "failures": MAX_FAILED_QUERIES}
     logs: list[dict] = []
     hi, floor = head, max(0, head - lookback_blocks)
-    while hi > floor and budget[0] > 0:
+    while hi > floor and budget["logs"] > 0 and budget["failures"] > 0:
         lo = max(floor, hi - WINDOW_BLOCKS + 1)
         window = await _transfer_logs(rpc, token, lo, hi, budget)
         if not window and logs:

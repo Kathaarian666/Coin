@@ -32,33 +32,75 @@ class RateLimiter:
             self._next = max(now, self._next) + self.interval
 
 
+class RetryableHttpError(Exception):
+    """A response worth retrying elsewhere: rate limited, blocked or server error."""
+
+
 class RpcClient:
-    def __init__(self, url: str, max_rps: float = 8.0, client: httpx.AsyncClient | None = None):
-        self.url = url
+    """JSON-RPC client over one or more endpoints.
+
+    Requests go to the first URL; when it rate-limits, blocks or fails, the
+    client moves on to the next one and comes back to the first after
+    PRIMARY_RETRY_SECONDS.
+    """
+
+    PRIMARY_RETRY_SECONDS = 300
+
+    def __init__(self, url: str, max_rps: float = 8.0, client: httpx.AsyncClient | None = None,
+                 fallback_urls: list[str] | tuple = ()):
+        self.urls = [url, *[u for u in fallback_urls if u and u != url]]
+        self.active = 0
+        self._switched_at = 0.0
         self.http = client or httpx.AsyncClient(timeout=20)
         self.limiter = RateLimiter(max_rps)
         self._ids = itertools.count(1)
 
+    @property
+    def url(self) -> str:
+        return self.urls[self.active]
+
     async def close(self):
         await self.http.aclose()
 
+    def _fail_over(self, reason: str):
+        if len(self.urls) < 2:
+            return False
+        previous = self.url
+        self.active = (self.active + 1) % len(self.urls)
+        self._switched_at = time.monotonic()
+        log.warning("RPC %s failed (%s); switching to %s", previous, reason, self.url)
+        return True
+
     async def request(self, method: str, params: list, retries: int = 4):
+        if self.active and time.monotonic() - self._switched_at > self.PRIMARY_RETRY_SECONDS:
+            self.active = 0  # give the primary endpoint another chance
         payload = {"jsonrpc": "2.0", "id": next(self._ids), "method": method, "params": params}
         delay = 1.0
         for attempt in range(retries + 1):
             await self.limiter.wait()
             try:
                 resp = await self.http.post(self.url, json=payload)
-                if resp.status_code == 429 or resp.status_code >= 500:
-                    raise httpx.HTTPStatusError("retryable", request=resp.request, response=resp)
+                if resp.status_code in (403, 429) or resp.status_code >= 500:
+                    raise RetryableHttpError(f"HTTP {resp.status_code}")
+                if resp.status_code == 400:
+                    # Some providers (dRPC) answer JSON-RPC errors such as range limits with 400.
+                    try:
+                        error = resp.json().get("error")
+                    except ValueError:
+                        error = None
+                    if error:
+                        raise RpcError(f"{method}: {error}")
                 resp.raise_for_status()
                 body = resp.json()
-            except (httpx.TransportError, httpx.HTTPStatusError, ValueError) as exc:
+            except (httpx.TransportError, httpx.HTTPStatusError, RetryableHttpError, ValueError) as exc:
+                reason = str(exc) or exc.__class__.__name__
                 if attempt == retries:
+                    self._fail_over(reason)  # so the next call starts on a healthier endpoint
                     raise
-                log.warning("RPC %s failed (%s), retrying in %.0fs", method, exc, delay)
-                await asyncio.sleep(delay)
-                delay *= 2
+                if not self._fail_over(reason):
+                    log.warning("RPC %s failed (%s), retrying in %.0fs", method, reason, delay)
+                    await asyncio.sleep(delay)
+                    delay *= 2
                 continue
             if "error" in body:
                 raise RpcError(f"{method}: {body['error']}")

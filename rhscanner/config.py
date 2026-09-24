@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 # Robinhood Chain mainnet (Arbitrum Orbit L2, gas paid in ETH).
 CHAIN_ID = 4663
 DEFAULT_RPC_URL = "https://rpc.mainnet.chain.robinhood.com"
+# Used when the main RPC rate-limits or fails. dRPC's free tier needs no key but
+# only serves eth_getLogs over short ranges, which the scanners split down to.
+DEFAULT_RPC_FALLBACK_URLS = "https://robinhood.drpc.org"
 DEFAULT_BLOCKSCOUT_URL = "https://robinhoodchain.blockscout.com"
 DEFAULT_WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
 DEXSCREENER_CHAIN = "robinhood"
@@ -29,6 +32,7 @@ class Settings:
     telegram_token: str = ""
     telegram_chat_ids: list[int] = field(default_factory=list)
     rpc_url: str = DEFAULT_RPC_URL
+    rpc_fallback_urls: list[str] = field(default_factory=lambda: _list(DEFAULT_RPC_FALLBACK_URLS))
     blockscout_url: str = DEFAULT_BLOCKSCOUT_URL
     weth: str = DEFAULT_WETH
     # Extra quote tokens (e.g. stablecoins) besides WETH/native ETH, lowercased.
@@ -64,6 +68,7 @@ class Settings:
             telegram_token=env("TELEGRAM_BOT_TOKEN", ""),
             telegram_chat_ids=[int(x) for x in _list(env("TELEGRAM_CHAT_IDS", ""))],
             rpc_url=env("RPC_URL", DEFAULT_RPC_URL),
+            rpc_fallback_urls=_list(env("RPC_FALLBACK_URLS", DEFAULT_RPC_FALLBACK_URLS)),
             blockscout_url=env("BLOCKSCOUT_URL", DEFAULT_BLOCKSCOUT_URL).rstrip("/"),
             weth=env("WETH_ADDRESS", DEFAULT_WETH),
             extra_quote_tokens=[a.lower() for a in _list(env("EXTRA_QUOTE_TOKENS", ""))],

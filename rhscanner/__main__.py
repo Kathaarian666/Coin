@@ -16,7 +16,7 @@ import httpx
 from .analyzer import Analyzer
 from .bot import ScannerApp
 from .config import Settings
-from .fomo import FOMO_ENTRY, FOMO_EXECUTOR, FOMO_TRANSFER_TOPIC, FomoTracker, parse_fomo_logs
+from .fomo import FomoTracker, fetch_fomo_logs, parse_fomo_logs
 from .report import format_report
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
@@ -32,7 +32,7 @@ def _analyzer(settings: Settings, rpc: RpcClient, http: httpx.AsyncClient, stora
 
 async def _check(settings: Settings, token: str):
     async with httpx.AsyncClient(timeout=20) as http:
-        rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps)
+        rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps, fallback_urls=settings.rpc_fallback_urls)
         storage = Storage(settings.db_path)
         try:
             report = await _analyzer(settings, rpc, http, storage).analyze(token)
@@ -43,12 +43,12 @@ async def _check(settings: Settings, token: str):
 
 
 async def _trend(settings: Settings, analyze_top: int):
-    rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps)
+    rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps, fallback_urls=settings.rpc_fallback_urls)
     tracker = FomoTracker()
     head = await rpc.block_number()
     start = head - settings.fomo_lookback_blocks
     for lo in range(start, head + 1, 3000):
-        logs = await rpc.get_logs(lo, min(head, lo + 2999), [FOMO_TRANSFER_TOPIC], address=[FOMO_ENTRY, FOMO_EXECUTOR])
+        logs = await fetch_fomo_logs(rpc, lo, min(head, lo + 2999))
         for trade in parse_fomo_logs(logs):
             trade.timestamp = time.time()
             tracker.add(trade)
