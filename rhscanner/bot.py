@@ -45,6 +45,7 @@ HELP = (
     "/check &lt;adres&gt; — bir token'ı hemen analiz et\n"
     "/minskor &lt;0-100&gt; — bu skorun altındakiler için bildirim gönderme\n"
     "/minmomentum &lt;0-100&gt; — momentumu bunun altındakiler için bildirim gönderme (0 = kapalı)\n"
+    "/maxrug &lt;1-100&gt;|kapat — rug riski bunun üstündekiler için bildirim gönderme\n"
     "/minalici &lt;sayı&gt; — bildirim için gereken farklı Fomo alıcısı sayısı\n"
     "/minhacim &lt;$&gt; — bildirim için gereken en az Fomo alım hacmi\n"
     "/durdur — otomatik bildirimleri durdur\n"
@@ -109,6 +110,11 @@ class ScannerApp:
     @property
     def min_momentum(self) -> int:
         return int(self.storage.get_state("min_momentum", "0"))
+
+    @property
+    def max_rug(self) -> int:
+        """Alerts need a rug risk below this; 101 = off."""
+        return int(self.storage.get_state("max_rug", "101"))
 
     @property
     def momentum_v2(self) -> bool:
@@ -316,7 +322,9 @@ class ScannerApp:
                 self.decimals[job.token.lower()] = report.get("decimals", 18)
                 self.storage.save_report(job.token, report["score"], report)
                 momentum = (report.get("momentum") or {}).get("score") or 0
-                sent = self.alerts_on and report["score"] >= self.min_score and momentum >= self.min_momentum
+                risk = (report.get("rug_risk") or {}).get("score") or 0
+                sent = (self.alerts_on and report["score"] >= self.min_score and momentum >= self.min_momentum
+                        and risk < self.max_rug)
                 self.record_outcome(report, "alert" if sent else "filtered")
                 if sent:
                     header = "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz"
@@ -512,7 +520,7 @@ class ScannerApp:
         for bucket in ("✅ 70+", "⚠️ 50-69", "🔸 30-49", "⛔ <30"):
             groups.append((f"Güven {bucket} (analiz edilenler)",
                            summarize([r for r in analysed if trust_bucket(r["trust"]) == bucket])))
-        for bucket in ("🟢 düşük (<20)", "🟠 orta (20-39)", "🔴 yüksek (40+)"):
+        for bucket in ("🟢 düşük (<20)", "🟡 orta (20-59)", "🔴 yüksek (60+)"):
             groups.append((f"Bildirim gidenler, rug riski {bucket}",
                            summarize([r for r in by_kind["alert"] if rug_bucket(rug_risk_of(r)) == bucket])))
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
@@ -558,7 +566,7 @@ class ScannerApp:
             await update.message.reply_text("Kazanan listesi alınamadı (GeckoTerminal), biraz sonra tekrar deneyin.")
             return
         bars = {"min_score": self.min_score, "min_momentum": self.min_momentum, "min_buyers": self.min_buyers,
-                "min_buy_usd": self.min_buy_usd}
+                "min_buy_usd": self.min_buy_usd, "max_rug": self.max_rug}
         for text in format_winners(days, multiple, winners, checked, bars):
             await update.message.reply_html(text)
 
@@ -657,6 +665,21 @@ class ScannerApp:
         self.storage.set_state("min_momentum", context.args[0])
         await update.message.reply_text(f"✅ Artık sadece momentumu {context.args[0]} ve üstü olanlar bildirilecek.")
 
+    async def cmd_max_rug(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        arg = (context.args or [""])[0].lower()
+        if arg == "kapat":
+            self.storage.set_state("max_rug", "101")
+            await update.message.reply_text("✅ Rug riski filtresi kapatıldı.")
+            return
+        if not arg.isdigit() or not 1 <= int(arg) <= 100:
+            now = "kapalı" if self.max_rug > 100 else str(self.max_rug)
+            await update.message.reply_text(f"Kullanım: /maxrug 1-100 | kapat (şu an: {now})")
+            return
+        self.storage.set_state("max_rug", arg)
+        await update.message.reply_text(f"✅ Rug riski {arg} ve üstü olanlar artık bildirilmeyecek.")
+
     async def cmd_min_buyers(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -704,6 +727,7 @@ class ScannerApp:
                if self.settings.enable_pons_watcher else "")
             + f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
             f"Min. momentum: {self.min_momentum} ({'v2' if self.momentum_v2 else 'v1'}) · "
+            f"Maks. rug riski: {'kapalı' if self.max_rug > 100 else self.max_rug} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
 
@@ -759,6 +783,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("strateji", self.cmd_strategies))
         self.app.add_handler(CommandHandler("tarama", self.cmd_sweep))
         self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
+        self.app.add_handler(CommandHandler("maxrug", self.cmd_max_rug))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

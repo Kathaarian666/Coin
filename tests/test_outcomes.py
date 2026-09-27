@@ -197,6 +197,8 @@ def test_blocking_gates_name_the_bar_and_value():
     assert blocking_gates(signal, 30, 70, 10, 500) == [
         "alıcı 8 (eşik 10)", "10 dk alım $300 (eşik $500)", "güven 25 (eşik 30)", "momentum 64 (eşik 70)"]
     assert blocking_gates(signal, 20, 60, 8, 300) == []
+    risky = {**signal, "features": {**signal["features"], "rug_risk": 70}}
+    assert blocking_gates(risky, 20, 60, 8, 300, max_rug=60) == ["rug riski 70 (sınır 60)"]
 
 
 def test_parameter_sweep_trades_precision_for_recall():

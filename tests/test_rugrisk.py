@@ -11,7 +11,8 @@ def test_rug_risk_adds_up_the_warning_signs():
     assert score == 25 + 20 + 15 + 10 + 10 and reasons[0].startswith("alıcı başına küçük alım")
     assert rug_risk(CLEAN) == (0, [])
     assert rug_risk({}) == (0, [])  # nothing recorded: no points
-    assert [rug_bucket(s) for s in (0, 20, 40, None)] == ["🟢 düşük (<20)", "🟠 orta (20-39)", "🔴 yüksek (40+)", "?"]
+    assert [rug_bucket(s) for s in (0, 20, 59, 60, None)] == [
+        "🟢 düşük (<20)", "🟡 orta (20-59)", "🟡 orta (20-59)", "🔴 yüksek (60+)", "?"]
     assert rug_risk_of({"features": RISKY}) == 80 and rug_risk_of({"features": {**CLEAN, "rug_risk": 55}}) == 55
 
 
@@ -26,5 +27,7 @@ def test_rug_filter_sweep_and_alert_line():
     assert rows["rug riski <40"]["kept_winners"] == 6 and rows["rug riski <40"]["winners"] == 6
     text = "\n".join(format_sweep(168, 10, 6, [], (75, 30), list(rows.items())))
     assert "rug riski &lt;40: 6 bildirim" in text and "5x'lerden kalan 6/6" in text
-    report = {"token": "0x" + "a" * 40, "score": 60, "findings": [], "rug_risk": {"score": 45, "reasons": ["x", "y"]}}
-    assert "Rug riski: 🔴 yüksek" in format_report(report, "https://example.org")
+    report = {"token": "0x" + "a" * 40, "score": 60, "findings": [], "rug_risk": {"score": 65, "reasons": ["x", "y"]}}
+    assert "Rug riski yüksek</b> (65/100)" in format_report(report, "https://example.org")
+    report["rug_risk"]["score"] = 45  # 40-59 held the most winners: no warning
+    assert "Rug riski" not in format_report(report, "https://example.org")

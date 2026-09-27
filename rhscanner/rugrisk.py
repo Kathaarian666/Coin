@@ -3,8 +3,14 @@
 /tarama showed that neither the trust score nor momentum moves the rug rate
 (about 10% at every bar). The first /analiz did find features that do, and
 this score adds them up; the points follow how far each one lifted the rug
-rate over the ~10% base. Measured first (/analiz, /karne), not used to filter.
+rate over the ~10% base.
+
+The first /tarama showed it tracks volatility more than rugs: 40-59 held the
+most 5x winners (40%) at the base rug rate, and only 60+ was bad (30% rugs, no
+5x). Alerts warn from HIGH_RISK up, and /maxrug can hold those back.
 """
+
+HIGH_RISK = 60
 
 
 def rug_points(f: dict) -> list[tuple[int, str]]:
@@ -35,4 +41,4 @@ def rug_risk(f: dict) -> tuple[int, list[str]]:
 def rug_bucket(score: int | None) -> str:
     if score is None:
         return "?"
-    return "🟢 düşük (<20)" if score < 20 else "🟠 orta (20-39)" if score < 40 else "🔴 yüksek (40+)"
+    return "🟢 düşük (<20)" if score < 20 else "🟡 orta (20-59)" if score < HIGH_RISK else "🔴 yüksek (60+)"

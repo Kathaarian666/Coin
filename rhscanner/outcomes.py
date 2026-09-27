@@ -418,7 +418,7 @@ def lower_bar_candidates(shadows: list[dict], min_buyers: int, min_momentum: int
 
 
 def blocking_gates(signal: dict, min_score: int, min_momentum: int, min_buyers: int,
-                   min_buy_usd: float) -> list[str]:
+                   min_buy_usd: float, max_rug: int = 101) -> list[str]:
     """Which of today's alert bars a recorded signal would fail, with its values (empty: it would alert).
 
     Momentum is compared as v2, the score alerts use now."""
@@ -434,6 +434,8 @@ def blocking_gates(signal: dict, min_score: int, min_momentum: int, min_buyers: 
     momentum = momentum_v2_of(signal)
     if momentum is not None and momentum < min_momentum:
         out.append(f"momentum {momentum} (eşik {min_momentum})")
+    if max_rug <= 100 and rug_risk_of(signal) >= max_rug:
+        out.append(f"rug riski {rug_risk_of(signal)} (sınır {max_rug})")
     return out
 
 

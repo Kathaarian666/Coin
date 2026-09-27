@@ -5,6 +5,7 @@ from html import escape
 from .config import DEXSCREENER_CHAIN
 from .momentum import momentum_label
 from .outcomes import blocking_gates, momentum_v2_of
+from .rugrisk import HIGH_RISK
 from .scoring import level
 
 ICONS = {"critical": "⛔", "high": "🔴", "medium": "🟠", "low": "🟡", "info": "ℹ️", "good": "✅"}
@@ -34,9 +35,8 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
         f"{icon} <b>Güven skoru: {report['score']}/100</b> — {label}",
     ]
     risk = report.get("rug_risk") or {}
-    if (risk.get("score") or 0) >= 20:
-        icon = "🔴 yüksek" if risk["score"] >= 40 else "🟠 orta"
-        lines.append(f"⚠️ <b>Rug riski: {icon}</b> ({risk['score']}/100) — "
+    if (risk.get("score") or 0) >= HIGH_RISK:
+        lines.append(f"⚠️ <b>Rug riski yüksek</b> ({risk['score']}/100) — "
                      + escape(", ".join(risk["reasons"][:3]), quote=False))
     momentum = report.get("momentum") or {}
     if momentum.get("score") is not None:
@@ -323,7 +323,8 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
               f"{len(winners)} kazanan: " + " · ".join(f"{icons[k]} {n}" for k, n in counts.items()) + "\n"
               f"<b>Bugünkü eşiklerle yakalanırdı: {len(caught)}/{len(winners)}</b> · erken (başlangıcın ≤2x'inde): {early}\n"
               f"<i>Eşikler: alıcı ≥{bars['min_buyers']}, 10 dk alım ≥${bars['min_buy_usd']:,.0f}, "
-              f"güven ≥{bars['min_score']}, momentum (v2) ≥{bars['min_momentum']}</i>\n"]
+              f"güven ≥{bars['min_score']}, momentum (v2) ≥{bars['min_momentum']}"
+              + (f", rug riski &lt;{bars['max_rug']}" if bars.get("max_rug", 101) <= 100 else "") + "</i>\n"]
     for i, w in enumerate(winners[:20], 1):
         lines = [f"{i}. <b>{escape(w['symbol'], quote=False)}</b> {_x(w['multiple'])} · "
                  f"{w['hours_to_peak']:.0f} saatte zirve · zirvede FDV {_usd(w.get('peak_fdv'))}"]
