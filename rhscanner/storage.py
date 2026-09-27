@@ -55,6 +55,9 @@ class Storage:
         self.db.commit()
         return cur.rowcount == 1
 
+    def was_alerted(self, address: str) -> bool:
+        return self.db.execute("SELECT 1 FROM alerts WHERE address = ?", (address.lower(),)).fetchone() is not None
+
     def save_report(self, address: str, score: int, report: dict):
         self.db.execute(
             "INSERT INTO tokens (address, pool, first_seen, score, report) VALUES (?, ?, ?, ?, ?) "

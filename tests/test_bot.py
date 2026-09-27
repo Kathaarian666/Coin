@@ -138,3 +138,55 @@ async def test_second_wave_is_recorded_with_market_and_v2_momentum(tmp_path):
     assert kind == "wave2" and momentum is not None
     assert '"price_vs_first": 2.0' in features and '"first_kind": "alert"' in features and '"fdv": 15000' in features
     await app.rpc.close()
+
+
+async def test_early_entry_is_analysed_before_the_buyer_bar_and_alerts_only_at_its_momentum(tmp_path):
+    app = ScannerApp(Settings(db_path=str(tmp_path / "e.db"), fomo_min_buyers=10, fomo_min_buy_usd=0))
+    users = ["0x" + f"{i:040x}" for i in range(1, 6)]
+
+    async def feed():
+        trades = parse_fomo_logs([leg for i, u in enumerate(users) for leg in buy(u, 200, f"0x{i}")])
+        for t in trades:
+            t.timestamp = time.time()
+            app.tracker.add(t)
+        await app.on_fomo_trades(trades)
+
+    await feed()
+    assert app.queue.qsize() == 0  # early alerts are off by default
+    app.storage.set_state("early_momentum", "85")
+    await feed()
+    job = app.queue.get_nowait()
+    app.queue.task_done()
+    assert job.early and app.queue.qsize() == 0
+    await feed()
+    assert app.queue.qsize() == 0  # checked once per coin
+
+    sent = []
+
+    async def fake_broadcast(text):
+        sent.append(text)
+
+    async def analyze(token, pool, fomo):
+        return {"token": token, "score": 60, "findings": [], "decimals": 18}
+
+    app.broadcast, app.analyzer.analyze = fake_broadcast, analyze
+    app.settings.followup_min, app.settings.exit_checks_min = 0, []
+
+    async def run(momentum):
+        def attach(report):
+            report["momentum"] = {"score": momentum, "reasons": [], "features": {}}
+            report["rug_risk"] = {"score": 0, "reasons": []}
+        app.attach_momentum = attach
+        await app.queue.put(job)
+        worker = asyncio.create_task(app.worker())
+        await app.queue.join()
+        worker.cancel()
+
+    await run(80)  # under the early bar: nothing sent, nothing recorded, the coin stays open for the normal bar
+    assert sent == [] and not app.storage.was_alerted(TOKEN)
+    assert app.outcomes.db.execute("SELECT COUNT(*) FROM signals WHERE kind != 'shadow'").fetchone()[0] == 0
+    await run(90)
+    assert len(sent) == 1 and "Erken sinyal" in sent[0] and app.storage.was_alerted(TOKEN)
+    (features,) = app.outcomes.db.execute("SELECT features FROM signals WHERE kind = 'alert'").fetchone()
+    assert '"early": true' in features
+    await app.rpc.close()

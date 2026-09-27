@@ -20,7 +20,7 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
 from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup,
                      format_report, format_scorecard, format_signal, format_strategies, format_sweep,
@@ -47,6 +47,7 @@ HELP = (
     "/check &lt;adres&gt; — bir token'ı hemen analiz et\n"
     "/minskor &lt;0-100&gt; — bu skorun altındakiler için bildirim gönderme\n"
     "/minmomentum &lt;0-100&gt; — momentumu bunun altındakiler için bildirim gönderme (0 = kapalı)\n"
+    "/erken &lt;momentum&gt;|kapat — alıcı eşiğinden önce ⚡ erken sinyal (büyük, tutulan, sıfırdan başlayan alımlar)\n"
     "/maxrug &lt;1-100&gt;|kapat — rug riski bunun üstündekiler için bildirim gönderme\n"
     "/minalici &lt;sayı&gt; — bildirim için gereken farklı Fomo alıcısı sayısı\n"
     "/minhacim &lt;$&gt; — bildirim için gereken en az Fomo alım hacmi\n"
@@ -73,6 +74,7 @@ class Job:
     pool: dict | None = None
     from_fomo: bool = False
     delay: float = 0.0
+    early: bool = False  # early-entry rule A under the buyer bar: needs /erken momentum
 
 
 class ScannerApp:
@@ -95,6 +97,7 @@ class ScannerApp:
         self.pons_seen: set[tuple[str, str]] = {(row[0], row[1].removesuffix("_junk")) for row in self.storage.db.execute(
             "SELECT token, kind FROM signals WHERE kind LIKE 'pons%' AND ts >= ?", (time.time() - 86400,))}
         self.decimals: dict[str, int] = {}  # from analysed reports; Fomo prices assume 18 otherwise
+        self.early_checked: set[str] = set()
         self.waves_seen: set[str] = {row[0] for row in self.storage.db.execute(
             "SELECT token FROM signals WHERE kind = 'wave2'")}
         self.eth_usd: float | None = None
@@ -118,6 +121,11 @@ class ScannerApp:
     def max_rug(self) -> int:
         """Alerts need a rug risk below this; 101 = off."""
         return int(self.storage.get_state("max_rug", "101"))
+
+    @property
+    def early_momentum(self) -> int:
+        """Momentum an early-entry alert needs (0 = early alerts off)."""
+        return int(self.storage.get_state("early_momentum", "0"))
 
     @property
     def momentum_v2(self) -> bool:
@@ -157,6 +165,8 @@ class ScannerApp:
             rising = stats["buyers"] >= self.min_buyers and stats["buy_usd"] >= self.min_buy_usd
             if rising and not warmup:
                 self.check_second_wave(token)
+            if not rising and not warmup:
+                await self.check_early_entry(token)
             if rising and self.storage.mark_alerted(token):
                 if warmup:
                     # Already trending when the bot started: visible in /trend, no alert flood.
@@ -205,6 +215,19 @@ class ScannerApp:
         price = await eth_usd_price(self.analyzer.dexscreener, self.settings.weth)
         if price:
             self.eth_usd, self.eth_usd_at = price, time.time()
+
+    async def check_early_entry(self, token: str):
+        """Rule A (few large buys from nothing, all held) under the buyer bar: analyse now instead of waiting for
+        the bar; the worker alerts only at /erken momentum. /geritest: A at momentum 85+ held 5x 45% (11 in a week)."""
+        key = token.lower()
+        if not self.early_momentum or key in self.early_checked:
+            return
+        if self.tracker.stats(token, 300)["buyers"] < 5 or self.storage.was_alerted(key):
+            return  # cheap checks first: this runs for every coin bought, every poll
+        if early_entry(fomo_features(self.tracker, token), "A"):
+            self.early_checked.add(key)
+            log.info("%s matches the early-entry rule; analysing", token)
+            await self.queue.put(Job(token, from_fomo=True, early=True))
 
     def check_second_wave(self, token: str):
         """A coin signalled an hour or more ago that went quiet and is being bought hard again: measured as
@@ -286,6 +309,7 @@ class ScannerApp:
             "fdv": (report.get("market") or {}).get("fdv"),
             "socials": (report.get("market") or {}).get("socials"),
             "findings": [f["code"] for f in report.get("findings", [])],
+            "early": bool(report.get("early")),
             **{k: (report.get("deployer") or {}).get(k)
                for k in ("previous_launches", "launches_24h", "checked", "alive", "best_previous_fdv")},
         }
@@ -326,11 +350,18 @@ class ScannerApp:
                 self.storage.save_report(job.token, report["score"], report)
                 momentum = (report.get("momentum") or {}).get("score") or 0
                 risk = (report.get("rug_risk") or {}).get("score") or 0
-                sent = (self.alerts_on and report["score"] >= self.min_score and momentum >= self.min_momentum
+                bar = max(self.min_momentum, self.early_momentum) if job.early else self.min_momentum
+                sent = (self.alerts_on and report["score"] >= self.min_score and momentum >= bar
                         and risk < self.max_rug)
+                if job.early:
+                    # an early check that fails leaves the coin to the normal buyer bar; one that passes claims it
+                    if not sent or not self.storage.mark_alerted(job.token):
+                        continue
+                    report["early"] = True
                 self.record_outcome(report, "alert" if sent else "filtered")
                 if sent:
-                    header = "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz"
+                    header = ("⚡ Erken sinyal (alım sıfırdan başladı, büyük ve tutulan alımlar)" if job.early
+                              else "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz")
                     await self.broadcast(format_report(report, self.settings.blockscout_url, header))
                     if self.settings.followup_min > 0 or self.settings.exit_checks_min:
                         task = asyncio.create_task(self.watch(report))
@@ -502,6 +533,7 @@ class ScannerApp:
             ("🔔 Bildirim gidenler", summarize(by_kind["alert"])),
             ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
             ("👤 Gölge grup", summarize(by_kind["shadow"])),
+            ("⚡ Erken bildirimler", summarize([r for r in by_kind["alert"] if (r.get("features") or {}).get("early")])),
             ("🔁 İkinci dalga (ölçüm, bildirim yok)", summarize(by_kind["wave2"])),
         ]
         for bucket in ("🚀 70+", "🟡 45-69"):
@@ -701,6 +733,23 @@ class ScannerApp:
         self.storage.set_state("max_rug", arg)
         await update.message.reply_text(f"✅ Rug riski {arg} ve üstü olanlar artık bildirilmeyecek.")
 
+    async def cmd_early(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        arg = (context.args or [""])[0].lower()
+        if arg == "kapat":
+            self.storage.set_state("early_momentum", "0")
+            await update.message.reply_text("✅ Erken sinyaller kapatıldı.")
+            return
+        if not arg.isdigit() or not 1 <= int(arg) <= 100:
+            now = self.early_momentum or "kapalı"
+            await update.message.reply_text(f"Kullanım: /erken <momentum 1-100> | kapat (şu an: {now})")
+            return
+        self.storage.set_state("early_momentum", arg)
+        await update.message.reply_text(
+            f"✅ Erken sinyaller açık: alım sıfırdan başlayıp alıcı başına ≥$100 ve tutuluyorsa, 10 alıcı beklemeden "
+            f"analiz edilir; momentum ≥{arg} ise ⚡ bildirim gider.")
+
     async def cmd_min_buyers(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -749,6 +798,7 @@ class ScannerApp:
             + f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
             f"Min. momentum: {self.min_momentum} ({'v2' if self.momentum_v2 else 'v1'}) · "
             f"Maks. rug riski: {'kapalı' if self.max_rug > 100 else self.max_rug} · "
+            f"Erken sinyal: {('momentum ≥' + str(self.early_momentum)) if self.early_momentum else 'kapalı'} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
 
@@ -806,6 +856,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("sinyal", self.cmd_signal))
         self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
         self.app.add_handler(CommandHandler("maxrug", self.cmd_max_rug))
+        self.app.add_handler(CommandHandler("erken", self.cmd_early))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

@@ -115,6 +115,8 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
+| `/erken 85` | ⚡ Erken sinyal: alım sıfırdan başlayıp alıcı başına ≥$100 ve tutuluyorsa 10 alıcıyı beklemeden analiz; momentum ≥85 ise bildirim (`/erken kapat`) |
+| `/maxrug 60` | Rug riski 60 ve üstü olanlar için bildirim gönderme (`/maxrug kapat`) |
 | `/minmomentum 45` | Momentumu 45'in altındakiler için bildirim gönderme (0 = kapalı, varsayılan) |
 | `/minalici 15` | Bildirim için 10 dakikada gereken farklı Fomo alıcısı sayısı |
 | `/durdur` / `/devam` | Otomatik bildirimleri kapat / aç |

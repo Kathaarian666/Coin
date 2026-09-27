@@ -131,6 +131,11 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    kalıcı 5x ~%20+ veren eşik bulunursa erken bildirim o koşulla açılacak.
    `/tarama` kalıcı ile: ham-kalıcı farkı ~5-7 puan, sıralama aynı. 75/30 kalıcı %22.3 yakalama %89.5; 80/30 %25.0 /
    %84.2. **75'te kalındı**: yaş düzeltmesiyle HOODS v2 ≈77 (80 onu yine kaçırırdı). Rug <60: 51/51 kalıcı 5x korunuyor.
+   Erken A momentum eşikleriyle (gölge v2): ≥80 30 sinyal kalıcı 5x %20; **≥85 11 sinyal kalıcı 5x %45.5, 1s sonu
+   medyan 3.29x**; ≥90 9 sinyal %55.6. B 4 sinyal (yetersiz). → Erken sinyal (`/erken <momentum>|kapat`, varsayılan
+   kapalı, önerilen 85): alıcı eşiğinin altında A kuralına uyan coin hemen analiz edilir, v2 ≥ max(min momentum,
+   erken eşik) + güven + rug geçerse "⚡ Erken sinyal" gider; geçemezse coin normal yola açık kalır. Karnede
+   "⚡ Erken bildirimler" grubu (features.early). Küçük örnek (11) → canlıda izlenecek.
    Adresler: HOODS 0x28b0ed2365c8c25b4542d06725acb7662bef6edf, BROBIN 0x1f97391be0ba667886f57273eace827d6e79cf17.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
