@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass
 from html import escape
@@ -19,12 +20,14 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, backtest, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, backtest, pick_pair, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_backtest, format_exit, format_strategies, format_findings, format_followup, format_report,
+from .report import (format_analysis, format_backtest, format_bought, format_exit, format_sold,
+                     format_strategies, format_trades, format_findings, format_followup, format_report,
                      format_scorecard, format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
+from .journal import Journal
 from .storage import Storage
 from .strategy import simulate
 from .wallets import WalletBook
@@ -32,6 +35,7 @@ from .winners import GeckoTerminal, find_winners
 
 log = logging.getLogger(__name__)
 
+ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
 WAVE_MIN_AGE = 3600  # a second wave comes at least an hour after the coin's first signal...
 WAVE_MAX_AGE = 3 * 86400  # ...and within three days
 
@@ -55,6 +59,9 @@ HELP = (
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
     "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (komisyon dahil)\n"
+    "/aldim &lt;adres&gt; &lt;$&gt; — kendi alımını kaydet (fiyat o anki DexScreener fiyatı)\n"
+    "/sattim &lt;adres&gt; [%] — kendi satışını kaydet (varsayılan tamamı)\n"
+    "/islemlerim [saat] — açık pozisyonların ve gerçek kâr/zararın\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -84,6 +91,7 @@ class ScannerApp:
         self.tracker = FomoTracker()
         self.outcomes = OutcomeLog(self.storage.db)
         self.wallets = WalletBook(self.storage.db)
+        self.journal = Journal(self.storage.db, settings.fomo_fee_pct, settings.fomo_fee_min_usd)
         self.pons = PonsTracker(max_age=settings.pons_max_age_min * 60)
         self.pons_seen: set[tuple[str, str]] = {(row[0], row[1].removesuffix("_junk")) for row in self.storage.db.execute(
             "SELECT token, kind FROM signals WHERE kind LIKE 'pons%' AND ts >= ?", (time.time() - 86400,))}
@@ -568,6 +576,66 @@ class ScannerApp:
         for text in format_strategies(hours, self.position_usd, rows):
             await update.message.reply_html(text)
 
+    async def price_now(self, token: str) -> float | None:
+        pairs = await self.analyzer.dexscreener.token_pairs(token) if self.analyzer.dexscreener else []
+        pair = pick_pair(pairs, token, None)
+        return float(pair["priceUsd"]) if pair and pair.get("priceUsd") else None
+
+    async def cmd_bought(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        args = context.args or []
+        try:
+            token, usd = args[0], float(args[1].replace(",", ".").lstrip("$"))
+        except (IndexError, ValueError):
+            token, usd = None, 0
+        if not token or not ADDRESS.fullmatch(token) or usd <= 0:
+            await update.message.reply_text("Kullanım: /aldim 0x...adres 5  (Fomo'da harcadığın $ tutarı)")
+            return
+        price = await self.price_now(token)
+        if not price:
+            await update.message.reply_text("Bu coinin fiyatı DexScreener'da yok, kaydedemedim.")
+            return
+        alert = next(iter(self.outcomes.signals_for(token, ("alert",))), None)
+        try:
+            trade = self.journal.buy(token, usd, price, await self.symbol(token), alert)
+        except ValueError as exc:
+            await update.message.reply_text(f"Kaydedilmedi: {exc}")
+            return
+        await update.message.reply_html(format_bought(await self.symbol(token), trade))
+
+    async def cmd_sold(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        args = context.args or []
+        try:
+            token = args[0]
+            pct = float(args[1].replace(",", ".").rstrip("%")) if len(args) > 1 else 100.0
+        except (IndexError, ValueError):
+            token, pct = None, 0
+        if not token or not ADDRESS.fullmatch(token) or not 0 < pct <= 100:
+            await update.message.reply_text("Kullanım: /sattim 0x...adres [yüzde]  (yüzde yazmazsan tamamı)")
+            return
+        price = await self.price_now(token)
+        if not price:
+            await update.message.reply_text("Bu coinin fiyatı DexScreener'da yok, kaydedemedim.")
+            return
+        trade = self.journal.sell(token, pct / 100, price)
+        if trade is None:
+            await update.message.reply_text("Bu coin için açık bir alım kaydın yok (/aldim ile kaydet).")
+            return
+        await update.message.reply_html(format_sold(await self.symbol(token), pct, trade))
+
+    async def cmd_trades(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        rows = []
+        for position in self.journal.open_positions():
+            price = await self.price_now(position["token"])
+            rows.append((position, self.journal.value_now(position, price) if price else None))
+        await update.message.reply_html(format_trades(hours, rows, self.journal.closed_summary(hours)))
+
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -718,6 +786,9 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("kazananlar", self.cmd_winners, block=False))
         self.app.add_handler(CommandHandler("geritest", self.cmd_backtest))
         self.app.add_handler(CommandHandler("strateji", self.cmd_strategies))
+        self.app.add_handler(CommandHandler("aldim", self.cmd_bought))
+        self.app.add_handler(CommandHandler("sattim", self.cmd_sold))
+        self.app.add_handler(CommandHandler("islemlerim", self.cmd_trades))
         self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))

@@ -380,3 +380,50 @@ def format_strategies(hours: float, position: float, rows: list[tuple[str, dict]
         blocks.append("Yeterli veri yok (en az 1 günlük bildirim gerekiyor).")
     blocks.append("\n<i>Geçmiş sonuç gelecek garantisi değildir; asıl karar yine kim satıyor sorusuna göre.</i>")
     return _chunks(blocks)
+
+
+def format_bought(symbol: str, t: dict) -> str:
+    lines = [f"🟢 <b>{escape(symbol, quote=False)}</b> alımı kaydedildi: ${t['usd']:g} "
+             f"(komisyon ${t['fee']:.2f}) · fiyat ${t['price']:.10g}" + (" · mevcut pozisyona eklendi" if t["added"] else "")]
+    if t.get("vs_alert") is not None:
+        lines.append(f"Bildirimden {t['delay_min']:.0f} dk sonra, bildirim fiyatının {t['vs_alert']:.2f}x'inden girdin.")
+    else:
+        lines.append("Bu coin için bot bildirim göndermemişti.")
+    return "\n".join(lines)
+
+
+def format_sold(symbol: str, pct: float, t: dict) -> str:
+    lines = [f"🔴 <b>{escape(symbol, quote=False)}</b> %{pct:g} satış kaydedildi: net ${t['net']:.2f} "
+             f"(girişin {t['multiple']:.2f}x'i)"]
+    if t["closed"]:
+        sign = "+" if t["pnl"] >= 0 else ""
+        lines.append(f"Pozisyon kapandı: ${t['usd']:g} girdin, ${t['proceeds']:.2f} aldın → <b>{sign}${t['pnl']:.2f}</b>")
+    else:
+        lines.append(f"Kalan: pozisyonun %{t['left_share'] * 100:.0f}'i")
+    return "\n".join(lines)
+
+
+def format_trades(hours: float, open_rows: list[tuple[dict, float | None]], closed: dict) -> str:
+    lines = ["💼 <b>İşlemlerim</b>", ""]
+    if open_rows:
+        lines.append("<b>Açık pozisyonlar</b> (şimdi satsan, komisyon dahil)")
+        for p, value in open_rows:
+            name = escape(p["symbol"] or p["token"][:10], quote=False)
+            if value is None:
+                lines.append(f"• {name}: ${p['usd']:g} girdin · fiyat yok")
+            else:
+                pnl = value - p["usd"]
+                lines.append(f"• {name}: ${p['usd']:g} girdin → ${value:.2f} ({'+' if pnl >= 0 else ''}{pnl:.2f}$)")
+        lines.append("")
+    if closed.get("n"):
+        sign = "+" if closed["pnl"] >= 0 else ""
+        lines.append(f"<b>Son {hours:g} saatte kapanan {closed['n']} işlem</b>")
+        lines.append(f"   toplam {sign}${closed['pnl']:.2f} (${closed['invested']:.2f} yatırımla) · "
+                     f"kazanan %{closed['win_rate']}")
+        lines.append(f"   en iyi +${closed['best']:.2f} · en kötü ${closed['worst']:.2f}")
+        if closed.get("avg_delay_min") is not None:
+            lines.append(f"   bildirimden ortalama {closed['avg_delay_min']:.0f} dk sonra, "
+                         f"bildirim fiyatının ortalama {closed['avg_vs_alert']}x'inden girdin")
+    elif not open_rows:
+        lines.append("Henüz kayıtlı işlem yok. Alınca /aldim, satınca /sattim yaz.")
+    return "\n".join(lines)

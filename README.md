@@ -110,6 +110,9 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/geritest 168` | Yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle (v1) karşılaştırır; dönem ikiye bölünür, asıl sınav yeni yarı |
 | `/momentumv2 ac` | Bildirimlerde v2 momentum puanını kullan (`kapat` ile v1'e dön) |
 | `/strateji 168` | Çıkış kurallarını (1s/24s tut, 2x/3x/5x'te sat, yarısını sat, ÇIK'ta sat) geçmiş bildirimlerde dener; $ kâr/zarar, komisyon dahil |
+| `/aldim 0x... 5` | Kendi alımını kaydet (fiyat o anki DexScreener fiyatı; bildirimden kaç dk sonra, kaç kat fiyattan girdiğin not edilir) |
+| `/sattim 0x... [50]` | Kendi satışını kaydet (yüzde yazmazsan tamamı); komisyon dahil net sonuç |
+| `/islemlerim` | Açık pozisyonların şu anki değeri ve kapanan işlemlerin gerçek kâr/zararı |
 | `/kazananlar 3 10` | Son 3 günde 10x+ yapan coinler (GeckoTerminal, ücretsiz) ve bot onları yakaladı mı: bildirim / filtre / gölge / hiç görülmedi, hangi fiyattan |
 | `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
@@ -165,6 +168,7 @@ rhscanner/
   checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   pons.py           mezuniyet öncesi Pons curve alım/satımları ve bariz çöp filtresi
+  journal.py        kullanıcının kendi işlemleri (/aldim, /sattim, /islemlerim)
   strategy.py       çıkış kurallarının geçmiş bildirimlerde simülasyonu (/strateji)
   winners.py        10x+ yapan coinleri GeckoTerminal'den bulup sinyal kayıtlarıyla eşleştirir (/kazananlar)
   pons_backfill.py  aynı Pons sinyallerini geçmiş günlerin zincir verisinden yeniden üretir
