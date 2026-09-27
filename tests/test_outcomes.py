@@ -238,5 +238,7 @@ def test_early_entry_rule_matches_hoods_shadow():
     shadow = {"kind": "shadow", "max_60": 7.7, "max_all": 116.0, "held_all": 45.0, "ret_60": 7.7, "rugged": False,
               "features": hoods}
     assert early_entry_candidates([shadow, {**shadow, "kind": "alert"}], min_buyers=10)["n"] == 1
+    assert early_entry_candidates([{**shadow, "momentum": 86, "features": {**hoods, "momentum_v2": 86}}],
+                                  min_buyers=10, min_momentum=90)["n"] == 0
     brobin = {"buyers_5m": 8, "buyers_prev_5m": 1, "buyers_10m": 8, "buy_usd_10m": 189, "hold_rate_30m": 1.0}
     assert not early_entry(brobin, "A") and early_entry(brobin, "B") and not early_entry(hoods, "B")

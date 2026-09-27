@@ -504,7 +504,12 @@ def early_entry(f: dict, rule: str = "A") -> bool:
     return b5 >= 8
 
 
-def early_entry_candidates(results: list[dict], min_buyers: int, rule: str = "A") -> dict:
-    """Signals under the buyer bar (shadows) that an early-entry rule would have alerted on."""
+def early_entry_candidates(results: list[dict], min_buyers: int, rule: str = "A", min_momentum: int = 0) -> dict:
+    """Signals under the buyer bar (shadows) that an early-entry rule would have alerted on, at a momentum
+    (v2, as scored for the shadow) of at least `min_momentum`."""
     return summarize([r for r in results if r["kind"] == "shadow" and early_entry(r.get("features") or {}, rule)
-                      and ((r.get("features") or {}).get("buyers_10m") or 0) < min_buyers])
+                      and ((r.get("features") or {}).get("buyers_10m") or 0) < min_buyers
+                      and (momentum_v2_of(r) or 0) >= min_momentum])
+
+
+EARLY_MOMENTUM_STEPS = (0, 70, 80, 85, 90)

@@ -125,6 +125,10 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    İki erken giriş kuralı (`outcomes.early_entry`) `/geritest` sonunda gölgeler üzerinde ölçülüyor: A büyük
    alıcılar (son 5 dk ≥5, önceki ≤1, alıcı başına ≥$100, tutma ≥0.9), B kalabalık (son 5 dk ≥8, önceki ≤1,
    tutma ≥0.9). İyi çıkan alıcı eşiğini baypas eden bildirim olacak.
+   `/geritest` kalıcı 5x ile: v2 hâlâ açıkça iyi (yeni yarı kalıcı 5x v1 %18.6 → v2 %26.0; v2'nin çıkardıkları %0)
+   → /tarama çelişkisi gürültü değilmiş, HOODS'u kaçırtan yaş hatasıymış. Erken A: 180 fazladan bildirim, kalıcı
+   5x %7 (çok gürültülü); B: 4 sinyal. → A ve B artık gölge momentumu (v2) eşikleriyle (0/70/80/85/90) ölçülüyor;
+   kalıcı 5x ~%20+ veren eşik bulunursa erken bildirim o koşulla açılacak.
    Adresler: HOODS 0x28b0ed2365c8c25b4542d06725acb7662bef6edf, BROBIN 0x1f97391be0ba667886f57273eace827d6e79cf17.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
