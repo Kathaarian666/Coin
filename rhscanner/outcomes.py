@@ -179,8 +179,14 @@ class OutcomeLog:
             if pair and not pair_address:
                 updates["pair"] = pair.get("pairAddress")
             if momentum is None and momentum_fn and pairs and idx == 0:
-                # Shadow signals are scored here, from the same data an alert would have seen.
-                updates["momentum"] = momentum_fn(json.loads(features or "{}"), pairs, updates.get("pair"))
+                # Shadow signals are scored here, from the same data an alert would have seen; momentum_fn may
+                # also return market features (FDV, liquidity, age...) to keep with the signal.
+                stored = json.loads(features or "{}")
+                result = momentum_fn(stored, pairs, updates.get("pair") or pair_address)
+                score, extra = result if isinstance(result, tuple) else (result, None)
+                updates["momentum"] = score
+                if extra:
+                    updates["features"] = json.dumps({**stored, **extra}, default=str)
             sets = ", ".join(f"{k} = ?" for k in updates)
             self.db.execute(f"UPDATE signals SET {sets} WHERE id = ?", (*updates.values(), signal_id))
             written += 1
@@ -301,6 +307,7 @@ ANALYSIS_FEATURES = {
     "smart_buyers_10m": "akıllı cüzdan sayısı",
     "churn_share_30m": "al-sat döngüsü payı",
     "fomo_share_h1": "Fomo'nun hacim payı",
+    "market_buyers_1h": "piyasa hareketliliği (1 saatte tüm Fomo alıcıları)",
     "age_min": "yaş (dk)",
     "liquidity_usd": "likidite ($)",
     "fdv": "FDV ($)",
@@ -393,3 +400,14 @@ def backtest(results: list[dict], min_score: int, min_momentum: int) -> list[tup
             "all": summarize(part),
         }))
     return out
+
+
+def lower_bar_candidates(shadows: list[dict], min_buyers: int, min_momentum: int, fdv_below: float = 20_000,
+                         buyers_from: int = 8) -> dict:
+    """Shadow signals a lower buyer bar for tiny coins would have alerted on: `buyers_from` up to the bar,
+    FDV under `fdv_below` and v2 momentum over the bar (FDV is recorded for shadows only since that was added)."""
+    picked = [r for r in shadows
+              if buyers_from <= ((r.get("features") or {}).get("buyers_10m") or 0) < min_buyers
+              and 0 < ((r.get("features") or {}).get("fdv") or 0) < fdv_below
+              and (momentum_v2_of(r) or 0) >= min_momentum]
+    return summarize(picked)

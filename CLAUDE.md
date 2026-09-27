@@ -88,6 +88,9 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    Veri kalitesi: DexScreener yeni coini listelemeden gelen sinyallerin başlangıç fiyatı yoktu → karne/analiz/
    strateji'den sessizce düşüyordu (şüphe: "0 ÇIK eşleşti"). Artık yedek fiyat son Fomo işleminden (USDG ÷ miktar,
    decimals rapordan, yoksa 18); `/karne` başında ölçülemeyen sinyal sayısı gösteriliyor.
+   Gölge sinyallere de piyasa verisi (FDV, likidite, yaş, Fomo payı, v1/v2) kaydediliyor → `/geritest` sonunda
+   "küçük coinlerde alıcı eşiği 8 olsaydı" bölümü (BROBIN vakası). F) Piyasa rejimi: her sinyalde
+   `market_buyers_1h` (1 saatte tüm Fomo alıcıları), `/analiz`'de dilimli.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

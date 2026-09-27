@@ -43,6 +43,9 @@ def fomo_features(tracker: FomoTracker, token: str, now: float | None = None) ->
         "hold_rate_30m": round(1 - len(buyers30 & sellers30) / len(buyers30), 3) if buyers30 else None,
         "whale_share_10m": round(max(per_buyer.values()) / buy10, 3) if per_buyer and buy10 else None,
         "fomo_usd_60m": round(usd(window(3600, 0), "buy") + usd(window(3600, 0), "sell"), 2),
+        # market regime: how busy Fomo is overall (distinct buyers of any coin in the last hour)
+        "market_buyers_1h": len({t.trader for ts in tracker.trades.values() for t in ts
+                                 if t.side == "buy" and t.timestamp > now - 3600}),
     }
 
 

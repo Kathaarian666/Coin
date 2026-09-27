@@ -48,12 +48,13 @@ async def test_rug_detection_and_shadow_momentum():
 
     def momentum_fn(features, pairs, pair):
         seen.append((features, len(pairs), pair))
-        return 42
+        return 42, {"fdv": 9000}
 
     dex.price = 1.0
     await log.tick(dex, momentum_fn, now=T0)
     assert seen == [({"buyers_10m": 12}, 1, "0xpool")]
     assert log.db.execute("SELECT momentum, pair FROM signals").fetchone() == (42, "0xpool")
+    assert '"fdv": 9000' in log.db.execute("SELECT features FROM signals").fetchone()[0]
     await run_to(log, dex, 60, 0.3, liq=1_000)  # liquidity pulled
     [r] = log.results(hours=24, now=T0 + 3600)
     assert r["rugged"] and r["kind"] == "shadow" and momentum_bucket(r["momentum"]) == "🧊 <45"
@@ -176,3 +177,15 @@ async def test_unmeasured_signals_are_counted_and_shown():
     await log.tick(dex, now=T0 + 3600, price_fn=None)
     text = format_scorecard(24, [], None, {"alert": 1, "pons": 5})[0]
     assert "ölçülemeyen: bildirim 1" in text and "pons" not in text
+
+
+def test_lower_bar_candidates_pick_small_shadows():
+    from rhscanner.outcomes import lower_bar_candidates
+
+    def shadow(buyers, fdv, momentum):
+        return {"momentum": momentum, "max_60": 2.0, "max_all": 2.0, "ret_60": 1.0, "rugged": False,
+                "features": {"buyers_10m": buyers, "fdv": fdv, "momentum_v2": momentum}}
+
+    picked = lower_bar_candidates([shadow(8, 9000, 80), shadow(7, 9000, 80), shadow(9, 50_000, 80),
+                                   shadow(9, None, 80), shadow(9, 9000, 60)], min_buyers=10, min_momentum=70)
+    assert picked["n"] == 1

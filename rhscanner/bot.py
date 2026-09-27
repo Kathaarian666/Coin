@@ -19,7 +19,7 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, backtest, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, backtest, lower_bar_candidates, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
 from .report import (format_analysis, format_backtest, format_exit, format_strategies, format_findings, format_followup, format_report,
                      format_scorecard, format_winners)
@@ -251,9 +251,14 @@ class ScannerApp:
         report["momentum"] = {"score": score, "reasons": reasons,
                               "features": {**features, **extra, "momentum_v1": v1, "momentum_v2": v2}}
 
-    def shadow_momentum(self, features: dict, pairs: list[dict], pair_address: str | None) -> int:
-        score, _, _ = momentum_score(features, market_summary(pairs, pair_address), v2=self.momentum_v2)
-        return score
+    def shadow_momentum(self, features: dict, pairs: list[dict], pair_address: str | None) -> tuple[int, dict]:
+        market = market_summary(pairs, pair_address)
+        v1, _, extra = momentum_score(features, market)
+        v2, _, _ = momentum_score(features, market, v2=True)
+        return (v2 if self.momentum_v2 else v1), {
+            **extra, "liquidity_usd": market.get("liquidity_usd"), "fdv": market.get("fdv"),
+            "socials": market.get("socials"), "momentum_v1": v1, "momentum_v2": v2,
+        }
 
     def record_outcome(self, report: dict, kind: str):
         launch = report.get("launch") or {}
@@ -551,9 +556,13 @@ class ScannerApp:
         if not self._authorized(update):
             return
         hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
-        results = [r for r in self.outcomes.results(hours) if r["kind"] in ("alert", "filtered")]
+        everything = self.outcomes.results(hours)
+        results = [r for r in everything if r["kind"] in ("alert", "filtered")]
         halves = backtest(results, self.min_score, self.min_momentum)
-        for text in format_backtest(hours, self.min_score, self.min_momentum, halves, self.momentum_v2):
+        lower = lower_bar_candidates([r for r in everything if r["kind"] == "shadow"], self.min_buyers,
+                                     self.min_momentum)
+        for text in format_backtest(hours, self.min_score, self.min_momentum, halves, self.momentum_v2,
+                                    lower, self.min_buyers):
             await update.message.reply_html(text)
 
     async def cmd_momentum_v2(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

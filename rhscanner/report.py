@@ -345,7 +345,7 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
 
 
 def format_backtest(hours: float, min_score: int, min_momentum: int, halves: list[tuple[str, dict]],
-                    v2_on: bool) -> list[str]:
+                    v2_on: bool, lower: dict | None = None, min_buyers: int = 10) -> list[str]:
     """/geritest: which past signals v1 and v2 momentum would have alerted on, and how those did."""
     def line(title: str, s: dict) -> str:
         if not s.get("n"):
@@ -364,6 +364,13 @@ def format_backtest(hours: float, min_score: int, min_momentum: int, halves: lis
             line("v2 bildirirdi", g["v2"]),
             line("sadece v2 ekler", g["added"]),
             line("v2 çıkarır", g["dropped"]),
+        ]))
+    if lower is not None:
+        blocks.append("\n".join([
+            f"<b>Küçük coinlerde alıcı eşiği 8 olsaydı</b> (gölgede kalan 8-{min_buyers - 1} alıcılı, "
+            f"FDV <$20k, v2 momentum ≥{min_momentum})",
+            line("fazladan bildirilirdi", lower),
+            "   <i>(gölgeler için FDV bu güncellemeden beri kaydediliyor; veri birikince dolar)</i>",
         ]))
     blocks.append("\n<i>v2, \"Yeni yarı\"da da v1'den iyiyse (daha yüksek 2x/5x, rug benzer) /momentumv2 ac ile açılabilir.</i>")
     return _chunks(blocks)
