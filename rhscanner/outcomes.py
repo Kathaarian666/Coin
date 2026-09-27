@@ -213,13 +213,16 @@ class OutcomeLog:
             p0, l0 = base[1], base[2]
             priced = [(m, p, liq) for m, p, liq in samples if p]
             within = lambda limit: [p / p0 for m, p, _ in priced if m <= limit]  # noqa: E731
+            day = within(1440)
             at60 = next((p / p0 for m, p, _ in priced if m == 60), None)
             last_m, last_p, last_l = priced[-1]
             rugged = last_p / p0 <= 0.1 or (l0 and last_l is not None and last_l / l0 <= 0.2)
             out.append({
                 "token": token, "kind": kind, "trust": trust, "momentum": momentum,
                 "max_60": max(within(60), default=None),
-                "max_all": max(within(1440), default=None),
+                "max_all": max(day, default=None),
+                # a level held over two samples in a row: one trade on a shallow pool can print a spike
+                "held_all": max((min(a, b) for a, b in zip(day, day[1:])), default=None),
                 "ret_60": at60,
                 "last_min": last_m,
                 "rugged": bool(rugged),
@@ -244,6 +247,7 @@ def summarize(results: list[dict]) -> dict:
         "x2_60": rate(lambda r: (r["max_60"] or 0) >= 2),
         "x2_all": rate(lambda r: (r["max_all"] or 0) >= 2),
         "x5_all": rate(lambda r: (r["max_all"] or 0) >= 5),
+        "x5_held": rate(lambda r: (r.get("held_all") or 0) >= 5),
         "up50_60": rate(lambda r: (r["max_60"] or 0) >= 1.5),
         "down50_60": rate(lambda r: r["ret_60"] is not None and r["ret_60"] <= 0.5),
         "rugged": rate(lambda r: r["rugged"]),
@@ -447,14 +451,15 @@ def parameter_sweep(results: list[dict], winner_multiple: float = 5.0, min_n: in
     """Every (min momentum v2, min trust) pair on the analysed signals: how many would alert, how they did, and
     what share of the signals that went on to `winner_multiple`x within a day each pair would have caught."""
     rows = [r for r in results if r.get("trust") is not None and momentum_v2_of(r) is not None]
-    winners = [r for r in rows if (r.get("max_all") or 0) >= winner_multiple]
+    won = lambda r: (r.get("held_all") or 0) >= winner_multiple  # noqa: E731  (held, not a one-sample spike)
+    winners = [r for r in rows if won(r)]
     out = []
     for min_momentum in SWEEP_MOMENTUM:
         for min_score in SWEEP_SCORE:
             picked = [r for r in rows if r["trust"] >= min_score and momentum_v2_of(r) >= min_momentum]
             if len(picked) < min_n:
                 continue
-            caught = sum(1 for r in picked if (r.get("max_all") or 0) >= winner_multiple)
+            caught = sum(1 for r in picked if won(r))
             out.append({"min_momentum": min_momentum, "min_score": min_score, **summarize(picked),
                         "recall": round(100.0 * caught / len(winners), 1) if winners else None})
     return out
@@ -471,10 +476,10 @@ def rug_filter_sweep(results: list[dict], min_momentum: int, min_score: int,
     """Today's bars plus a rug-risk ceiling: does dropping risky signals cut rugs without losing winners?"""
     base = [r for r in results if r.get("trust") is not None and r["trust"] >= min_score
             and (momentum_v2_of(r) or 0) >= min_momentum]
-    winners = sum(1 for r in base if (r.get("max_all") or 0) >= winner_multiple)
+    winners = sum(1 for r in base if (r.get("held_all") or 0) >= winner_multiple)
     out = []
     for name, ceiling in (("filtre yok", 101), ("rug riski <60", 60), ("rug riski <40", 40), ("rug riski <20", 20)):
         kept = [r for r in base if rug_risk_of(r) < ceiling]
-        caught = sum(1 for r in kept if (r.get("max_all") or 0) >= winner_multiple)
+        caught = sum(1 for r in kept if (r.get("held_all") or 0) >= winner_multiple)
         out.append((name, {**summarize(kept), "kept_winners": caught, "winners": winners}))
     return out

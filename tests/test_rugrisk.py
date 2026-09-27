@@ -18,7 +18,7 @@ def test_rug_risk_adds_up_the_warning_signs():
 
 def test_rug_filter_sweep_and_alert_line():
     def sig(features, rugged, big):
-        return {"trust": 60, "momentum": 80, "max_60": 1.0, "max_all": 6.0 if big else 1.0, "ret_60": 1.0,
+        return {"trust": 60, "momentum": 80, "max_60": 1.0, "max_all": 6.0 if big else 1.0, "held_all": 6.0 if big else 1.0, "ret_60": 1.0,
                 "rugged": rugged, "features": {**features, "momentum_v2": 80}}
 
     results = [sig(RISKY, True, False)] * 4 + [sig(CLEAN, False, True)] * 6

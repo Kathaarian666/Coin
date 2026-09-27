@@ -37,3 +37,13 @@ def test_every_report_is_valid_telegram_html():
         {**sig(), "kind": "shadow", "trust": None, "entry_vs_start": 1.3, "peak_after": 9.5, "before_peak": True}]}
     bars = {"min_score": 30, "min_momentum": 75, "min_buyers": 10, "min_buy_usd": 500, "max_rug": 60}
     assert_valid(format_winners(7, 10, [winner], 30, bars))
+
+
+def test_signal_report():
+    from rhscanner.report import format_signal
+    s = {**sig(fdv=12000, age_min=30, findings=["liq_usd_low"]), "kind": "alert"}
+    text = format_signal("HOODS", [s], {"alert": {"max_60": 3.0, "max_all": 45.0, "held_all": 40.0, "ret_60": 2.0,
+                                                  "rugged": False}})
+    assert_valid(text)
+    assert "10 dk alıcı 8" in text and "FDV $12,000" in text and "kalıcı 40x" in text and "liq_usd_low" in text
+    assert "kayıtlı sinyal yok" in format_signal("X", [], {})

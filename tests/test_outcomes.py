@@ -206,7 +206,7 @@ def test_parameter_sweep_trades_precision_for_recall():
     from rhscanner.report import format_sweep
 
     def sig(momentum, trust, big):
-        return {"trust": trust, "momentum": momentum, "max_60": 1.0, "max_all": 6.0 if big else 1.0,
+        return {"trust": trust, "momentum": momentum, "max_60": 1.0, "max_all": 6.0 if big else 1.0, "held_all": 6.0 if big else 1.0,
                 "ret_60": 1.0, "rugged": False, "features": {"momentum_v2": momentum}}
 
     results = [sig(90, 60, True) for _ in range(10)] + [sig(65, 60, True) for _ in range(5)] + \
@@ -216,3 +216,13 @@ def test_parameter_sweep_trades_precision_for_recall():
     assert rows[(60, 20)]["recall"] == 100.0 and rows[(60, 0)]["x5_all"] == 42.9
     text = "\\n".join(format_sweep(168, 35, 15, list(rows.values()), (70, 30)))
     assert "<b>60 / 20</b>" in text and "yakalanan %100.0" in text and "yakalanan %66.7" in text
+
+
+async def test_held_multiple_ignores_one_sample_spikes():
+    log, dex = OutcomeLog(sqlite3.connect(":memory:")), FakeDex()
+    log.record(TOKEN, "alert", ts=T0)
+    for minute, price in [(0, 1.0), (5, 1.2), (10, 9.0), (15, 1.3), (20, 1.1), (30, 6.0), (45, 5.5), (60, 1.0)]:
+        await run_to(log, dex, minute, price)
+    [r] = log.results(hours=24, now=T0 + 3600)
+    assert r["max_all"] == 9.0 and r["held_all"] == 5.5  # the 9x print was one trade; 5.5x held twice
+    assert summarize([r])["x5_held"] == 100.0

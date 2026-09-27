@@ -111,6 +111,13 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    40-59 %11 rug / **%40 5x**, 20-39 %13 / %29, <20 %7 / %29. <40 filtresi 14 kazanan kaybettiriyor. → `/maxrug`
    komutu (varsayılan kapalı; **sunucuda `/maxrug 60` yapıldı**), bildirim uyarısı sadece 60+. Rug ~%10 sabit;
    odak kazananlarda. Güncel set: güven ≥30, momentum v2 ≥75, rug <60, alıcı ≥10, 10 dk alım ≥$500.
+   **`/kazananlar` 7 gün (8 kazanan ≥10x) bugünkü setle 1/8 yakalanırdı, 0 erken.** HOODS (başta bildirilmiş, 45x)
+   bugün v2 momentum 62 < 75 ile ENGELLENİR (v1 72 idi; v2 taze bonusu ve hızlanmayı düşürdü). ROBINPEPE'nin zirve
+   bildirimi doğru engelleniyor. BROBIN alıcı 8/hacim $189/momentum 74. SW 17x başlangıç fiyatı yok. → `/tarama`
+   ile çelişki: /tarama'nın 5x'i tek DexScreener ölçümünün max'ı (sığ havuz sıçraması olabilir). Eklendi:
+   `held_all` = art arda iki ölçümde tutulan çarpan, "kalıcı 5x" (/tarama recall'u artık kalıcıya göre, /analiz,
+   /karne de gösteriyor) ve `/sinyal <adres>` (bir coinin tüm kayıtlı özellikleri + sonucu). Parametreler
+   değiştirilmedi; kalıcı 5x ile /tarama yeniden bakılacak, gerekirse v2 ağırlıkları (taze/hızlanma) gözden geçirilecek.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

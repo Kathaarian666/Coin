@@ -1,10 +1,11 @@
 """Formats a report as a Telegram HTML message (Turkish)."""
 
+import time
 from html import escape
 
 from .config import DEXSCREENER_CHAIN
 from .momentum import momentum_label
-from .outcomes import blocking_gates, momentum_v2_of
+from .outcomes import blocking_gates, momentum_v2_of, rug_risk_of
 from .rugrisk import HIGH_RISK
 from .scoring import level
 
@@ -225,7 +226,8 @@ def format_scorecard(hours: float, groups: list[tuple[str, dict]],
             continue
         blocks.append(
             f"<b>{escape(title, quote=False)}</b> ({s['n']} sinyal)\n"
-            f"   1 saatte 2x: %{s['x2_60']} · 1.5x: %{s['up50_60']} · 24s içinde 2x: %{s['x2_all']} · 5x: %{s['x5_all']}\n"
+            f"   1 saatte 2x: %{s['x2_60']} · 1.5x: %{s['up50_60']} · 24s içinde 2x: %{s['x2_all']} · 5x: %{s['x5_all']} "
+            f"(kalıcı %{s['x5_held']})\n"
             f"   1 saatte yarıya düşen: %{s['down50_60']} · rug: %{s['rugged']}\n"
             f"   medyan 1s zirvesi: {s['median_max60']}x · medyan 1s sonu: {s['median_ret60']}x"
         )
@@ -269,11 +271,12 @@ def format_analysis(hours: float, n: int, table: list[tuple[str, list[tuple[str,
     """/analiz: each feature split into thirds, with how each third did."""
     blocks = [f"🔬 <b>Özellik analizi — son {hours:g} saat</b>\n"
               f"<i>({n} sinyal: bildirim + filtre + gölge; her özellik değerine göre üçe bölündü)\n"
-              f"Her dilim: 1 saatte 2x % · 24s içinde 5x % · rug % · (sinyal sayısı)</i>\n"]
+              f"Her dilim: 1 saatte 2x % · 24s içinde 5x % (kalıcı 5x %) · rug % · (sinyal sayısı)</i>\n"]
     for label, parts in table:
         rows = [f"<b>{escape(label, quote=False)}</b>"]
         for tag, s in parts:
-            rows.append(f"   {escape(tag, quote=False)}: 2x %{s['x2_60']} · 5x %{s['x5_all']} · rug %{s['rugged']} ({s['n']})")
+            rows.append(f"   {escape(tag, quote=False)}: 2x %{s['x2_60']} · 5x %{s['x5_all']} (kalıcı %{s['x5_held']}) · "
+                        f"rug %{s['rugged']} ({s['n']})")
         blocks.append("\n".join(rows))
     if not table:
         blocks.append("Yeterli veri yok (özellik başına en az 30 sinyal gerekiyor).")
@@ -426,7 +429,7 @@ def format_sweep(hours: float, total: int, winners: int, rows: list[dict], curre
     for r in ranked[:20]:
         mark = " ◀ şu an" if (r["min_momentum"], r["min_score"]) == current else ""
         blocks.append(f"<b>{r['min_momentum']} / {r['min_score']}</b>: {r['n']} bildirim · 2x %{r['x2_60']} · "
-                      f"5x %{r['x5_all']} · rug %{r['rugged']} · yakalanan %{r['recall']}{mark}")
+                      f"5x %{r['x5_all']} (kalıcı %{r['x5_held']}) · rug %{r['rugged']} · yakalanan %{r['recall']}{mark}")
     if not rows:
         blocks.append("Yeterli veri yok.")
     if rug_rows:
@@ -436,8 +439,56 @@ def format_sweep(hours: float, total: int, winners: int, rows: list[dict], curre
             if not r.get("n"):
                 blocks.append(f"   {name}: bildirim kalmaz")
                 continue
-            blocks.append(f"   {name}: {r['n']} bildirim · 2x %{r['x2_60']} · 5x %{r['x5_all']} · rug %{r['rugged']} · "
-                          f"5x'lerden kalan {r['kept_winners']}/{r['winners']}")
+            blocks.append(f"   {name}: {r['n']} bildirim · 2x %{r['x2_60']} · 5x %{r['x5_all']} "
+                          f"(kalıcı %{r['x5_held']}) · rug %{r['rugged']} · kalıcı 5x'lerden kalan "
+                          f"{r['kept_winners']}/{r['winners']}")
     blocks.append("\n<i>Sıralama: isabet (5x %) × yakalama (5x'lerin payı). Az bildirim + yüksek isabet ile "
                   "çok bildirim + yüksek yakalama arasında denge ara. Aynı veriden seçildiği için biraz iyimserdir.</i>")
     return _chunks(blocks)
+
+
+SIGNAL_FIELDS = [
+    ("buyers_10m", "10 dk alıcı", "{:.0f}"), ("buyers_5m", "son 5 dk alıcı", "{:.0f}"),
+    ("buyers_prev_5m", "önceki 5 dk alıcı", "{:.0f}"), ("buy_usd_10m", "10 dk alım", "${:,.0f}"),
+    ("hold_rate_30m", "tutma oranı", "{:.2f}"), ("whale_share_10m", "en büyük alıcı payı", "{:.2f}"),
+    ("buy_ratio_10m", "alım oranı", "{:.2f}"), ("smart_buyers_10m", "akıllı cüzdan", "{:.0f}"),
+    ("fomo_share_h1", "Fomo hacim payı", "{:.2f}"), ("age_min", "yaş (dk)", "{:.0f}"),
+    ("fdv", "FDV", "${:,.0f}"), ("liquidity_usd", "likidite", "${:,.0f}"),
+    ("top10_pct", "ilk 10 cüzdan %", "{:.1f}"), ("sniper_pct", "sniper %", "{:.1f}"),
+    ("dev_pct", "dev %", "{:.1f}"), ("market_buyers_1h", "piyasa (1s tüm alıcı)", "{:.0f}"),
+    ("momentum_v1", "momentum v1", "{:.0f}"), ("momentum_v2", "momentum v2", "{:.0f}"),
+]
+KIND_TITLES = {"alert": "🔔 Bildirim", "filtered": "🚫 Filtre", "shadow": "👤 Gölge", "wave2": "🔁 İkinci dalga",
+               "exit": "🔴 ÇIK", "caution": "🟠 DİKKAT"}
+
+
+def format_signal(symbol: str, signals: list[dict], outcomes: dict[str, dict]) -> str:
+    """/sinyal: everything recorded about one coin's signals, to see what set a winner apart."""
+    lines = [f"🔍 <b>{escape(symbol, quote=False)}</b> — kayıtlı sinyaller", ""]
+    if not signals:
+        return "\n".join(lines + ["Bu coin için kayıtlı sinyal yok."])
+    for s in signals:
+        f = s.get("features") or {}
+        ago = (time.time() - s["ts"]) / 3600
+        head = f"<b>{KIND_TITLES.get(s['kind'], s['kind'])}</b> · {ago:.1f} saat önce"
+        if s.get("trust") is not None:
+            head += f" · güven {s['trust']}"
+        if s.get("momentum") is not None:
+            head += f" · momentum {s['momentum']}"
+        lines.append(head)
+        values = [f"{label} {fmt.format(f[key])}" for key, label, fmt in SIGNAL_FIELDS
+                  if isinstance(f.get(key), (int, float)) and not isinstance(f.get(key), bool)]
+        if f.get("buyers_10m") and f.get("buy_usd_10m") is not None:
+            values.append(f"alıcı başına ${f['buy_usd_10m'] / f['buyers_10m']:,.0f}")
+        values.append(f"rug riski {rug_risk_of(s)}")
+        lines.append("   " + escape(" · ".join(values), quote=False))
+        if f.get("findings"):
+            lines.append("   bulgular: " + escape(", ".join(f["findings"]), quote=False))
+        o = outcomes.get(s["kind"])
+        if o:
+            lines.append(f"   sonuç: 1s zirve {_x(o['max_60'])} · 24s zirve {_x(o['max_all'])} "
+                         f"(kalıcı {_x(o.get('held_all'))}) · 1s sonu {_x(o['ret_60'])}" + (" · RUG" if o["rugged"] else ""))
+        elif not s.get("p0"):
+            lines.append("   sonuç: başlangıç fiyatı yok, ölçülemedi")
+        lines.append("")
+    return "\n".join(lines)

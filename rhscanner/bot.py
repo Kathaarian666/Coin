@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from html import escape
 
 import httpx
+from eth_utils import to_checksum_address
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -22,7 +23,8 @@ from .momentum import fomo_features, momentum_score
 from .outcomes import OutcomeLog, backtest, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
 from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup,
-                     format_report, format_scorecard, format_strategies, format_sweep, format_winners)
+                     format_report, format_scorecard, format_signal, format_strategies, format_sweep,
+                     format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .rugrisk import rug_bucket, rug_risk
@@ -57,6 +59,7 @@ HELP = (
     "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı, ne engelledi (varsayılan 7 gün, 10x)\n"
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
+    "/sinyal &lt;adres&gt; — bir coin için kaydedilen sinyallerin tüm özellikleri ve sonucu\n"
     "/tarama [saat] — min momentum × min güven kombinasyonlarının isabeti ve yakalaması\n"
     "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (sabit $100 test tutarı)\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
@@ -575,6 +578,17 @@ class ScannerApp:
             log.exception("winner report failed")
             await update.message.reply_text(f"Kazanan raporu gönderilemedi ({exc.__class__.__name__}: {exc})"[:500])
 
+    async def cmd_signal(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        token = (context.args or [""])[0].lower()
+        if not (token.startswith("0x") and len(token) == 42):
+            await update.message.reply_text("Kullanım: /sinyal 0x...  (coinin adresi)")
+            return
+        signals = self.outcomes.signals_for(token, ("alert", "filtered", "shadow", "wave2", "exit", "caution"))
+        outcome = {r["kind"]: r for r in self.outcomes.results(24 * 30) if r["token"] == token}
+        await update.message.reply_html(format_signal(await self.symbol(to_checksum_address(token)), signals, outcome))
+
     async def cmd_backtest(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -787,6 +801,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("geritest", self.cmd_backtest))
         self.app.add_handler(CommandHandler("strateji", self.cmd_strategies))
         self.app.add_handler(CommandHandler("tarama", self.cmd_sweep))
+        self.app.add_handler(CommandHandler("sinyal", self.cmd_signal))
         self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
         self.app.add_handler(CommandHandler("maxrug", self.cmd_max_rug))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
