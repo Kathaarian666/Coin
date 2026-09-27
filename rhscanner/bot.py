@@ -19,9 +19,9 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, backtest, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_exit, format_findings, format_followup, format_report,
+from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup, format_report,
                      format_scorecard, format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
@@ -48,6 +48,8 @@ HELP = (
     "/bulgular [saat] [pons|erken] — güven bulgularına (veya Pons çöp nedenlerine) göre sonuçlar\n"
     "/analiz [saat] — hangi özellik kazandırıyor (varsayılan son 7 gün)\n"
     "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı (varsayılan 3 gün, 10x)\n"
+    "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
+    "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -96,6 +98,10 @@ class ScannerApp:
     @property
     def min_momentum(self) -> int:
         return int(self.storage.get_state("min_momentum", "0"))
+
+    @property
+    def momentum_v2(self) -> bool:
+        return self.storage.get_state("momentum_v2", "0") == "1"
 
     @property
     def min_buyers(self) -> int:
@@ -184,11 +190,15 @@ class ScannerApp:
             "position": self.position_usd,
             "breakeven": breakeven_multiple(self.position_usd, self.settings.fomo_fee_pct, self.settings.fomo_fee_min_usd),
         }
-        score, reasons, extra = momentum_score(features, report.get("market") or {}, report.get("launch"))
-        report["momentum"] = {"score": score, "reasons": reasons, "features": {**features, **extra}}
+        market, launch = report.get("market") or {}, report.get("launch")
+        v1, reasons1, extra = momentum_score(features, market, launch)
+        v2, reasons2, _ = momentum_score(features, market, launch, v2=True)
+        score, reasons = (v2, reasons2) if self.momentum_v2 else (v1, reasons1)
+        report["momentum"] = {"score": score, "reasons": reasons,
+                              "features": {**features, **extra, "momentum_v1": v1, "momentum_v2": v2}}
 
     def shadow_momentum(self, features: dict, pairs: list[dict], pair_address: str | None) -> int:
-        score, _, _ = momentum_score(features, market_summary(pairs, pair_address))
+        score, _, _ = momentum_score(features, market_summary(pairs, pair_address), v2=self.momentum_v2)
         return score
 
     def record_outcome(self, report: dict, kind: str):
@@ -478,6 +488,27 @@ class ScannerApp:
                                    self.min_buyers):
             await update.message.reply_html(text)
 
+    async def cmd_backtest(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        results = [r for r in self.outcomes.results(hours) if r["kind"] in ("alert", "filtered")]
+        halves = backtest(results, self.min_score, self.min_momentum)
+        for text in format_backtest(hours, self.min_score, self.min_momentum, halves, self.momentum_v2):
+            await update.message.reply_html(text)
+
+    async def cmd_momentum_v2(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        arg = (context.args or [""])[0].lower()
+        if arg not in ("ac", "aç", "kapat"):
+            await update.message.reply_text(
+                f"Kullanım: /momentumv2 ac | kapat (şu an: {'açık' if self.momentum_v2 else 'kapalı'})")
+            return
+        self.storage.set_state("momentum_v2", "0" if arg == "kapat" else "1")
+        await update.message.reply_text(
+            "✅ Yeni momentum puanı (v2) kullanılıyor." if arg != "kapat" else "✅ Eski momentum puanına (v1) dönüldü.")
+
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -574,7 +605,7 @@ class ScannerApp:
             + (f"Pons curve'ünde işlem gören (son {self.settings.pons_max_age_min:g} dk): {len(self.pons.trades)} coin\n"
                if self.settings.enable_pons_watcher else "")
             + f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
-            f"Min. momentum: {self.min_momentum} · "
+            f"Min. momentum: {self.min_momentum} ({'v2' if self.momentum_v2 else 'v1'}) · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
 
@@ -626,6 +657,8 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("bulgular", self.cmd_findings))
         self.app.add_handler(CommandHandler("analiz", self.cmd_analysis))
         self.app.add_handler(CommandHandler("kazananlar", self.cmd_winners, block=False))
+        self.app.add_handler(CommandHandler("geritest", self.cmd_backtest))
+        self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

@@ -334,3 +334,28 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
     if not winners:
         blocks.append(f"Bu sürede {min_multiple:g}x yapan coin bulunamadı.")
     return _chunks(blocks)
+
+
+def format_backtest(hours: float, min_score: int, min_momentum: int, halves: list[tuple[str, dict]],
+                    v2_on: bool) -> list[str]:
+    """/geritest: which past signals v1 and v2 momentum would have alerted on, and how those did."""
+    def line(title: str, s: dict) -> str:
+        if not s.get("n"):
+            return f"   {title}: yok"
+        return (f"   {title} ({s['n']}): 2x %{s['x2_60']} · 5x %{s['x5_all']} · rug %{s['rugged']} · "
+                f"1s sonu {s['median_ret60']}x")
+
+    blocks = [f"🧪 <b>Geri test — son {hours:g} saat</b>\n"
+              f"<i>Analiz edilen sinyaller; bildirim kuralı: güven ≥{min_score} ve momentum ≥{min_momentum}.\n"
+              f"v2 ağırlıkları tüm dönemden çıkarıldı; asıl sınav \"Yeni yarı\".\n"
+              f"Şu an kullanılan: {'v2' if v2_on else 'v1'}</i>\n"]
+    for name, g in halves:
+        blocks.append("\n".join([
+            f"<b>{name}</b> (analiz edilen {g['all'].get('n', 0)})",
+            line("v1 bildirirdi", g["v1"]),
+            line("v2 bildirirdi", g["v2"]),
+            line("sadece v2 ekler", g["added"]),
+            line("v2 çıkarır", g["dropped"]),
+        ]))
+    blocks.append("\n<i>v2, \"Yeni yarı\"da da v1'den iyiyse (daha yüksek 2x/5x, rug benzer) /momentumv2 ac ile açılabilir.</i>")
+    return _chunks(blocks)

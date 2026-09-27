@@ -137,3 +137,23 @@ def test_feature_table_splits_into_thirds():
     assert "güven skoru" not in table  # one value only: nothing to split
     messages = format_analysis(168, len(results), list(table.items()))
     assert "10 dk alıcı" in messages[0] and all(len(m) <= 3500 for m in messages)
+
+
+def test_backtest_compares_v1_and_v2_selection():
+    from rhscanner.outcomes import backtest, momentum_v2_of
+    from rhscanner.report import format_backtest
+
+    def sig(ts, momentum, fdv, won):
+        return {"ts": ts, "trust": 60, "momentum": momentum, "max_60": 3.0 if won else 1.0, "max_all": 1.0,
+                "ret_60": 1.0, "rugged": False, "features": {"fdv": fdv, "age_min": 100}}
+
+    # small coins sit just under the bar in v1 and win; big ones pass v1 and lose
+    results = [sig(i, 62, 10_000, True) for i in range(10)] + [sig(i, 75, 5_000_000, False) for i in range(10)]
+    # v1 gave a 100-minute-old coin +3; v2 drops that and adds the FDV points
+    assert momentum_v2_of(results[0]) == 62 - 3 + 15 and momentum_v2_of(results[-1]) == 75 - 3 - 10
+    assert momentum_v2_of({"momentum": 50, "features": {"momentum_v2": 80}}) == 80  # recorded live
+    halves = dict(backtest(results, min_score=30, min_momentum=70))
+    assert halves["Tümü"]["v1"]["x2_60"] == 0.0 and halves["Tümü"]["v2"]["x2_60"] == 100.0
+    assert halves["Tümü"]["added"]["n"] == 10 and halves["Tümü"]["dropped"]["n"] == 10
+    text = "\n".join(format_backtest(168, 30, 70, list(halves.items()), v2_on=False))
+    assert "Yeni yarı" in text and "sadece v2 ekler (10)" in text and "Şu an kullanılan: v1" in text

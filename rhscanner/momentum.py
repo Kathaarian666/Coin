@@ -46,8 +46,62 @@ def fomo_features(tracker: FomoTracker, token: str, now: float | None = None) ->
     }
 
 
-def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tuple[int, list[str], dict]:
-    """Returns (score, reasons, extra features). market: analyzer.market_summary output."""
+def tuned_points(f: dict, v2: bool) -> list[tuple[float, str]]:
+    """The rules re-weighted from /analiz (v2) or as first guessed (v1), from recorded feature values.
+
+    f: buyers_5m, buyers_prev_5m, whale_share_10m, fomo_share_h1, age_min, liquidity_usd, fdv (any may be missing).
+    Shared by the live score and /geritest, which replays both versions on past signals."""
+    out: list[tuple[float, str]] = []
+    b5, prev = f.get("buyers_5m") or 0, f.get("buyers_prev_5m") or 0
+    accel = b5 / max(prev, 1)
+    if b5 >= 4 and accel >= 2:
+        out.append((4 if v2 else 12, f"hızlanıyor: son 5 dk {b5} alıcı (önceki 5 dk {prev})"))
+    elif b5 >= 3 and accel >= 1.2:
+        out.append((2 if v2 else 6, "alım hızı artıyor"))
+    elif prev >= 4 and accel <= 0.5:
+        out.append((-6 if v2 else -12, f"yavaşlıyor: son 5 dk {b5} alıcı (önceki {prev})"))
+
+    whale = f.get("whale_share_10m")
+    if whale is not None:
+        if whale >= (0.62 if v2 else 0.5):
+            out.append((-10, f"alımın %{whale * 100:.0f}'i tek cüzdandan"))
+        elif whale <= (0.42 if v2 else 0.25):
+            out.append((6 if v2 else 4, "alım çok sayıda cüzdana yayılmış"))
+
+    share = f.get("fomo_share_h1")
+    if share is not None and share >= (0.95 if v2 else 0.3):
+        out.append((10 if v2 else 6, f"organik akış: 1s hacmin %{share * 100:.0f}'i Fomo kullanıcılarından"))
+
+    age = f.get("age_min")
+    if age is not None:
+        if v2:
+            if age > 1800:
+                out.append((-15, f"{age / 1440:.1f} günlük (30 saati geçen coinler nadiren koşuyor)"))
+        elif age <= 60:
+            out.append((8, f"taze: {age:.0f} dk önce çıktı"))
+        elif age <= 360:
+            out.append((3, f"{age / 60:.1f} saatlik"))
+        elif age > 1440:
+            out.append((-5, f"{age / 1440:.0f} günlük (vur-kaç için geç olabilir)"))
+
+    liquidity = f.get("liquidity_usd")
+    if not v2 and liquidity is not None and liquidity < 3000:
+        out.append((-10, f"likidite çok ince (${liquidity:,.0f}), kayma yüksek"))
+
+    fdv = f.get("fdv")
+    if v2 and fdv:
+        if fdv < 20_000:
+            out.append((15, f"çok erken: FDV ${fdv:,.0f}"))
+        elif fdv > 110_000:
+            out.append((-10, f"FDV ${fdv / 1000:,.0f}k: büyük koşuların çoğu bundan küçükken başlıyor"))
+    return out
+
+
+def momentum_score(fomo: dict, market: dict, launch: dict | None = None,
+                   v2: bool = False) -> tuple[int, list[str], dict]:
+    """Returns (score, reasons, extra features). market: analyzer.market_summary output.
+
+    v2 uses the weights re-fitted from /analiz (see tuned_points)."""
     launch = launch or {}
     points = 50.0
     reasons: list[tuple[float, str]] = []
@@ -65,15 +119,6 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
     elif b10 >= 10:
         add(5, f"10 dk'da {b10} alıcı")
 
-    b5, prev = fomo.get("buyers_5m", 0), fomo.get("buyers_prev_5m", 0)
-    accel = b5 / max(prev, 1)
-    if b5 >= 4 and accel >= 2:
-        add(12, f"hızlanıyor: son 5 dk {b5} alıcı (önceki 5 dk {prev})")
-    elif b5 >= 3 and accel >= 1.2:
-        add(6, "alım hızı artıyor")
-    elif prev >= 4 and accel <= 0.5:
-        add(-12, f"yavaşlıyor: son 5 dk {b5} alıcı (önceki {prev})")
-
     ratio = fomo.get("buy_ratio_10m")
     if ratio is not None:
         if ratio >= 0.7:
@@ -87,13 +132,6 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
             add(8, f"alıcıların %{hold * 100:.0f}'i hâlâ tutuyor")
         elif hold <= 0.5:
             add(-10, f"alıcıların yarısından fazlası sattı bile (%{hold * 100:.0f} tutuyor)")
-
-    whale = fomo.get("whale_share_10m")
-    if whale is not None:
-        if whale >= 0.5:
-            add(-10, f"alımın %{whale * 100:.0f}'i tek cüzdandan")
-        elif whale <= 0.25:
-            add(4, "alım çok sayıda cüzdana yayılmış")
 
     churn = fomo.get("churn_share_30m")
     if churn is not None and churn >= 0.4:
@@ -113,9 +151,7 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
     if volume_h1:
         share = min(1.0, fomo.get("fomo_usd_60m", 0) / volume_h1)
         features["fomo_share_h1"] = round(share, 3)
-        if share >= 0.3:
-            add(6, f"organik akış: 1s hacmin %{share * 100:.0f}'i Fomo kullanıcılarından")
-        elif share < 0.05 and volume_h1 > 20_000:
+        if share < 0.05 and volume_h1 > 20_000:
             add(-6, "hacmin neredeyse tamamı Fomo dışından (bot/sniper olabilir)")
 
     age = launch.get("age_min")
@@ -123,12 +159,10 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
         age = (time.time() - market["pair_created_at"] / 1000) / 60
     if age is not None:
         features["age_min"] = round(age, 1)
-        if age <= 60:
-            add(8, f"taze: {age:.0f} dk önce çıktı")
-        elif age <= 360:
-            add(3, f"{age / 60:.1f} saatlik")
-        elif age > 1440:
-            add(-5, f"{age / 1440:.0f} günlük (vur-kaç için geç olabilir)")
+
+    tuned = {**fomo, **features, "liquidity_usd": market.get("liquidity_usd"), "fdv": market.get("fdv")}
+    for delta, why in tuned_points(tuned, v2):
+        add(delta, why)
 
     change_h1, change_m5 = market.get("change_h1"), market.get("change_m5")
     if change_h1 is not None and change_h1 > 500:
@@ -143,10 +177,6 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
         add(3, "X hesabı var")
     if market.get("websites"):
         add(2, "web sitesi var")
-
-    liquidity = market.get("liquidity_usd")
-    if liquidity is not None and liquidity < 3000:
-        add(-10, f"likidite çok ince (${liquidity:,.0f}), kayma yüksek")
 
     score = int(max(0, min(100, round(points))))
     ordered = [why for delta, why in sorted(reasons, key=lambda r: -abs(r[0]))]

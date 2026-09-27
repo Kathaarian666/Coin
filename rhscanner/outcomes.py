@@ -21,6 +21,8 @@ import statistics
 import time
 from collections import defaultdict
 
+from .momentum import tuned_points
+
 log = logging.getLogger(__name__)
 
 CHECKPOINTS_MIN = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 720, 1440]
@@ -329,3 +331,36 @@ def _short(value: float) -> str:
     if abs(value) >= 10 or value == int(value):
         return f"{value:.0f}"
     return f"{value:.2f}"
+
+
+def momentum_v2_of(r: dict) -> int | None:
+    """The v2 momentum of a recorded signal: its v1 score with the re-weighted rules swapped in."""
+    f = r.get("features") or {}
+    if f.get("momentum_v2") is not None:
+        return f["momentum_v2"]
+    if r.get("momentum") is None:
+        return None
+    delta = sum(d for d, _ in tuned_points(f, True)) - sum(d for d, _ in tuned_points(f, False))
+    return int(max(0, min(100, r["momentum"] + delta)))
+
+
+def backtest(results: list[dict], min_score: int, min_momentum: int) -> list[tuple[str, dict]]:
+    """Signals v1 and v2 momentum would each have alerted on, in the older and the newer half of the period.
+
+    The v2 weights were fitted on /analiz over the whole period; the newer half is the fairer test."""
+    rows = sorted((r for r in results if r.get("momentum") is not None and r.get("trust") is not None),
+                  key=lambda r: r["ts"])
+    halves = [("Eski yarı", rows[: len(rows) // 2]), ("Yeni yarı", rows[len(rows) // 2:]), ("Tümü", rows)]
+    out = []
+    for name, part in halves:
+        passes_v1 = [r for r in part if r["trust"] >= min_score and r["momentum"] >= min_momentum]
+        passes_v2 = [r for r in part if r["trust"] >= min_score and (momentum_v2_of(r) or 0) >= min_momentum]
+        ids1, ids2 = {id(r) for r in passes_v1}, {id(r) for r in passes_v2}
+        out.append((name, {
+            "v1": summarize(passes_v1),
+            "v2": summarize(passes_v2),
+            "added": summarize([r for r in passes_v2 if id(r) not in ids1]),
+            "dropped": summarize([r for r in passes_v1 if id(r) not in ids2]),
+            "all": summarize(part),
+        }))
+    return out

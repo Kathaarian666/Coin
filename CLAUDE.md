@@ -67,6 +67,13 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    kaçıyor), D) yeni özellikler (alıcı başına alım $, holder artış hızı, Fomo dışı alıcı), E) çıkış stratejisi
    simülasyonu, F) piyasa rejimi. Araştırma: en güçlü tahminci az işlemle hızlı biriken para (Pump.fun çalışması),
    bot oranı negatif, Telegram varlığı ~9x mezuniyet, akıllı para etkisi karışık.
+   İlk `/analiz` (7 gün, 1212 sinyal): büyük kazananlar genç + küçük FDV + hacmi tamamen Fomo'dan. FDV <$17k 5x %39
+   vs >$109k %2; yaş >30 saat 5x %4; Fomo payı %100 5x %31; güven skoru ters; hızlanma ayırmıyor; sniper varsa
+   daha iyi. `/kazananlar` (3 gün, 6 kazanan): HOODS 45x rallinin başında bildirildi; ROBINPEPE 291x zirvede
+   (FDV $3M) bildirildi; BROBIN 8 alıcıyla gölgede kaldı (12x); FILR/SI Fomo'da hiç yoktu.
+   → Momentum v2 (`momentum.tuned_points`): FDV <$20k +15, >$110k −10; yaş >30s −15 (taze bonusu kalktı);
+   Fomo payı ≥%95 +10; ince likidite cezası kalktı; balina eşikleri 0.42/0.62; hızlanma +12→+4. Varsayılan
+   kapalı; `/geritest` ile yeni yarıda v1'den iyiyse `/momentumv2 ac`. v1 ve v2 her sinyalde features'a yazılıyor.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

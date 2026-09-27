@@ -44,3 +44,23 @@ def test_fading_whale_driven_late_token_scores_low():
     score, reasons, _ = momentum_score(fomo, market, {"age_min": 3000})
     assert score == 0 and momentum_label(score)[1] == "Zayıf"
     assert reasons[0].startswith("satış ağırlıklı") or reasons[0].startswith("yavaşlıyor")
+
+
+def test_v2_rewards_small_young_fomo_coins_and_penalises_late_big_ones():
+    from rhscanner.momentum import tuned_points
+
+    fomo = {"buyers_10m": 12, "buyers_5m": 8, "buyers_prev_5m": 2, "buy_ratio_10m": 0.8, "hold_rate_30m": 0.9,
+            "whale_share_10m": 0.3, "fomo_usd_60m": 5000}
+    early = {"liquidity_usd": 2500, "fdv": 12_000, "volume_h1": 5000}
+    late = {"liquidity_usd": 400_000, "fdv": 3_000_000, "volume_h1": 50_000}
+    v1_early, _, _ = momentum_score(fomo, early, {"age_min": 30})
+    v2_early, reasons, _ = momentum_score(fomo, early, {"age_min": 30}, v2=True)
+    v1_late, _, _ = momentum_score(fomo, late, {"age_min": 2000})
+    v2_late, _, _ = momentum_score(fomo, late, {"age_min": 2000}, v2=True)
+    assert v2_early > v1_early and v2_late < v1_late
+    assert any("FDV $12,000" in r for r in reasons)
+    # v1 is exactly the old rules: +12 acceleration, +6 Fomo share, +8 fresh, -10 thin liquidity
+    # (a 30% top buyer was not "spread" before: that needed 25%); v2: +4, +6 spread, +10, +15 small FDV
+    f = {**fomo, "fomo_share_h1": 1.0, "age_min": 30, "liquidity_usd": 2500, "fdv": 12_000}
+    assert sum(d for d, _ in tuned_points(f, False)) == 12 + 6 + 8 - 10
+    assert sum(d for d, _ in tuned_points(f, True)) == 4 + 6 + 10 + 15

@@ -107,6 +107,8 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge / Pons, momentum ve güven aralıkları, ÇIK/DİKKAT sinyallerinin isabeti); uzunsa birkaç mesaja bölünür |
 | `/bulgular 72` | Analiz edilen sinyallerin sonuçları, güven bulgusu koduna göre (varsayılan 72 saat) |
 | `/analiz 168` | Her özellik (alıcı sayısı, hızlanma, tutma oranı, akıllı cüzdan, FDV, likidite…) değerine göre üçe bölünür, her dilimin sonucu gösterilir: hangi özellik gerçekten kazandırıyor |
+| `/geritest 168` | Yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle (v1) karşılaştırır; dönem ikiye bölünür, asıl sınav yeni yarı |
+| `/momentumv2 ac` | Bildirimlerde v2 momentum puanını kullan (`kapat` ile v1'e dön) |
 | `/kazananlar 3 10` | Son 3 günde 10x+ yapan coinler (GeckoTerminal, ücretsiz) ve bot onları yakaladı mı: bildirim / filtre / gölge / hiç görülmedi, hangi fiyattan |
 | `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
