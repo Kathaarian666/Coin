@@ -189,3 +189,11 @@ def test_lower_bar_candidates_pick_small_shadows():
     picked = lower_bar_candidates([shadow(8, 9000, 80), shadow(7, 9000, 80), shadow(9, 50_000, 80),
                                    shadow(9, None, 80), shadow(9, 9000, 60)], min_buyers=10, min_momentum=70)
     assert picked["n"] == 1
+
+
+def test_blocking_gates_name_the_bar_and_value():
+    from rhscanner.outcomes import blocking_gates
+    signal = {"trust": 25, "momentum": 60, "features": {"buyers_10m": 8, "buy_usd_10m": 300, "momentum_v2": 64}}
+    assert blocking_gates(signal, 30, 70, 10, 500) == [
+        "alıcı 8 (eşik 10)", "10 dk alım $300 (eşik $500)", "güven 25 (eşik 30)", "momentum 64 (eşik 70)"]
+    assert blocking_gates(signal, 20, 60, 8, 300) == []

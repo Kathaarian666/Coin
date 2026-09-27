@@ -32,6 +32,7 @@ from .winners import GeckoTerminal, find_winners
 
 log = logging.getLogger(__name__)
 
+TEST_POSITION_USD = 100.0  # tests measure the signals, not position sizing: a size where the fee floor barely matters
 WAVE_MIN_AGE = 3600  # a second wave comes at least an hour after the coin's first signal...
 WAVE_MAX_AGE = 3 * 86400  # ...and within three days
 
@@ -51,10 +52,10 @@ HELP = (
     "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
     "/bulgular [saat] [pons|erken] — güven bulgularına (veya Pons çöp nedenlerine) göre sonuçlar\n"
     "/analiz [saat] — hangi özellik kazandırıyor (varsayılan son 7 gün)\n"
-    "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı (varsayılan 3 gün, 10x)\n"
+    "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı, ne engelledi (varsayılan 7 gün, 10x)\n"
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
-    "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (komisyon dahil)\n"
+    "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (sabit $100 test tutarı)\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -539,17 +540,18 @@ class ScannerApp:
         if not self._authorized(update):
             return
         numbers = [float(a) for a in (context.args or []) if a.replace(".", "", 1).isdigit()]
-        days = numbers[0] if numbers else 3.0
+        days = numbers[0] if numbers else 7.0
         multiple = numbers[1] if len(numbers) > 1 else 10.0
-        await update.message.reply_text(f"⏳ Son {days:g} günde {multiple:g}x yapan coinler aranıyor (GeckoTerminal yavaş, 3-5 dk sürer)...")
+        await update.message.reply_text(f"⏳ Son {days:g} günde {multiple:g}x yapan coinler aranıyor (GeckoTerminal yavaş, 5-10 dk sürer)...")
         try:
             winners, checked = await find_winners(GeckoTerminal(self.http), self.outcomes, days, multiple)
         except Exception:
             log.exception("winner autopsy failed")
             await update.message.reply_text("Kazanan listesi alınamadı (GeckoTerminal), biraz sonra tekrar deneyin.")
             return
-        for text in format_winners(days, multiple, winners, checked, self.min_score, self.min_momentum,
-                                   self.min_buyers):
+        bars = {"min_score": self.min_score, "min_momentum": self.min_momentum, "min_buyers": self.min_buyers,
+                "min_buy_usd": self.min_buy_usd}
+        for text in format_winners(days, multiple, winners, checked, bars):
             await update.message.reply_html(text)
 
     async def cmd_backtest(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -581,9 +583,9 @@ class ScannerApp:
         if not self._authorized(update):
             return
         hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
-        rows = simulate(self.outcomes.alert_paths(hours), self.position_usd, self.settings.fomo_fee_pct,
+        rows = simulate(self.outcomes.alert_paths(hours), TEST_POSITION_USD, self.settings.fomo_fee_pct,
                         self.settings.fomo_fee_min_usd)
-        for text in format_strategies(hours, self.position_usd, rows):
+        for text in format_strategies(hours, TEST_POSITION_USD, rows):
             await update.message.reply_html(text)
 
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

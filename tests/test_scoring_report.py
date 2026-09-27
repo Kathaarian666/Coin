@@ -75,3 +75,8 @@ def test_fee_line_in_alert():
     report = {"token": "0x" + "1" * 40, "name": "A", "symbol": "A", "score": 80, "findings": [],
               "fees": {"position": 5.0, "breakeven": 1.47}}
     assert "$5 pozisyonda komisyonla başa baş: <b>1.47x</b>" in format_report(report, "https://x")
+
+
+def test_usd_formatting_keeps_small_amounts():
+    from rhscanner.report import _usd
+    assert (_usd(300), _usd(557034.2), _usd(3e6), _usd(None)) == ("$300", "$557.0K", "$3.00M", "?")

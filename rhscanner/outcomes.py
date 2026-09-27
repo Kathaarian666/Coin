@@ -411,3 +411,23 @@ def lower_bar_candidates(shadows: list[dict], min_buyers: int, min_momentum: int
               and 0 < ((r.get("features") or {}).get("fdv") or 0) < fdv_below
               and (momentum_v2_of(r) or 0) >= min_momentum]
     return summarize(picked)
+
+
+def blocking_gates(signal: dict, min_score: int, min_momentum: int, min_buyers: int,
+                   min_buy_usd: float) -> list[str]:
+    """Which of today's alert bars a recorded signal would fail, with its values (empty: it would alert).
+
+    Momentum is compared as v2, the score alerts use now."""
+    f = signal.get("features") or {}
+    out = []
+    buyers, usd = f.get("buyers_10m"), f.get("buy_usd_10m")
+    if buyers is not None and buyers < min_buyers:
+        out.append(f"alıcı {buyers} (eşik {min_buyers})")
+    if usd is not None and usd < min_buy_usd:
+        out.append(f"10 dk alım ${usd:,.0f} (eşik ${min_buy_usd:,.0f})")
+    if signal.get("trust") is not None and signal["trust"] < min_score:
+        out.append(f"güven {signal['trust']} (eşik {min_score})")
+    momentum = momentum_v2_of(signal)
+    if momentum is not None and momentum < min_momentum:
+        out.append(f"momentum {momentum} (eşik {min_momentum})")
+    return out

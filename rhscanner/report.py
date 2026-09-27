@@ -4,6 +4,7 @@ from html import escape
 
 from .config import DEXSCREENER_CHAIN
 from .momentum import momentum_label
+from .outcomes import blocking_gates, momentum_v2_of
 from .scoring import level
 
 ICONS = {"critical": "⛔", "high": "🔴", "medium": "🟠", "low": "🟡", "info": "ℹ️", "good": "✅"}
@@ -282,12 +283,6 @@ def _x(value: float | None) -> str:
     return f"{value:.1f}x" if value < 10 else f"{value:.0f}x"
 
 
-def _usd(value: float | None) -> str:
-    if not value:
-        return "?"
-    return f"${value / 1e6:.1f}M" if value >= 1e6 else f"${value / 1e3:.0f}k"
-
-
 def _entry(s: dict) -> str:
     if not s.get("entry_vs_start"):
         return "giriş fiyatı yok"
@@ -300,44 +295,60 @@ def _entry(s: dict) -> str:
 
 
 def format_winners(days: float, min_multiple: float, winners: list[dict], checked: int,
-                   min_score: int, min_momentum: int, min_buyers: int) -> list[str]:
-    """/kazananlar: each coin that ran, and what the bot did with it."""
+                   bars: dict) -> list[str]:
+    """/kazananlar: each coin that ran, what the bot saw of it, and which of today's bars would stop it.
+
+    bars: min_score, min_momentum, min_buyers, min_buy_usd (today's settings)."""
     def status(w: dict) -> str:
         kinds = {s["kind"] for s in w["signals"]}
         return "alert" if "alert" in kinds else "filtered" if "filtered" in kinds else "shadow" if kinds else "none"
 
+    def first_passing(w: dict) -> dict | None:
+        """The earliest analysed signal (alert or filtered) that today's bars would alert on."""
+        return next((s for s in w["signals"] if s["kind"] in ("alert", "filtered")
+                     and not blocking_gates(s, **bars)), None)
+
     icons = {"alert": "✅ bildirim", "filtered": "🚫 filtre", "shadow": "👤 sadece gölge", "none": "❓ görülmedi"}
     counts = {k: sum(1 for w in winners if status(w) == k) for k in icons}
+    caught = [s for w in winners if (s := first_passing(w))]
+    early = sum(1 for s in caught if (s.get("entry_vs_start") or 99) <= 2)
     blocks = [f"🏆 <b>Kazanan otopsisi — son {days:g} gün, {min_multiple:g}x ve üstü</b>\n"
-              f"<i>(GeckoTerminal'de bu sürede açılan en işlek {checked} havuz; çarpan ilk işlem saatinin kapanışından en yüksek saatlik kapanışa)</i>\n"
-              f"{len(winners)} kazanan: " + " · ".join(f"{icons[k]} {n}" for k, n in counts.items()) + "\n"]
+              f"<i>(GeckoTerminal'de bu sürede açılan en işlek {checked} havuz; çarpan ilk işlem saatinin "
+              f"kapanışından en yüksek saatlik kapanışa)</i>\n"
+              f"{len(winners)} kazanan: " + " · ".join(f"{icons[k]} {n}" for k, n in counts.items()) + "\n"
+              f"<b>Bugünkü eşiklerle yakalanırdı: {len(caught)}/{len(winners)}</b> · erken (başlangıcın ≤2x'inde): {early}\n"
+              f"<i>Eşikler: alıcı ≥{bars['min_buyers']}, 10 dk alım ≥${bars['min_buy_usd']:,.0f}, "
+              f"güven ≥{bars['min_score']}, momentum (v2) ≥{bars['min_momentum']}</i>\n"]
     for i, w in enumerate(winners[:20], 1):
         lines = [f"{i}. <b>{escape(w['symbol'], quote=False)}</b> {_x(w['multiple'])} · "
                  f"{w['hours_to_peak']:.0f} saatte zirve · zirvede FDV {_usd(w.get('peak_fdv'))}"]
-        by_kind = {}
+        by_kind: dict[str, dict] = {}
         for s in w["signals"]:
             by_kind.setdefault(s["kind"], s)
         st = status(w)
-        if st == "alert":
-            s = by_kind["alert"]
-            lines.append(f"   ✅ Bildirim gitti (güven {s['trust']}, momentum {s['momentum']}) — {_entry(s)}")
-        elif st == "filtered":
-            s = by_kind["filtered"]
-            passes = (s["trust"] or 0) >= min_score and (s["momentum"] or 0) >= min_momentum
-            codes = ", ".join((s["features"].get("findings") or [])[:4])
-            lines.append(f"   🚫 Filtreye takıldı (güven {s['trust']}, momentum {s['momentum']}) — {_entry(s)}\n"
-                         f"      bugünkü eşiklerle (skor ≥{min_score}, momentum ≥{min_momentum}) "
-                         f"{'GÖNDERİLİRDİ' if passes else 'yine elenirdi'}" + (f" · bulgular: {escape(codes)}" if codes else ""))
-        elif st == "shadow":
-            s = by_kind["shadow"]
-            buyers = s["features"].get("buyers_10m")
-            lines.append(f"   👤 Sadece gölge grupta: Fomo'da 10 dk'da {buyers} alıcı "
-                         f"(bildirim eşiği {min_buyers}) — {_entry(s)}")
-        else:
+        if st == "none":
             lines.append("   ❓ Hiç görülmedi: Fomo'da alım eşiğin yarısına bile ulaşmadı (ya da bot o sırada kapalıydı)")
-        shadow = by_kind.get("shadow")
-        if st in ("alert", "filtered") and shadow and shadow["ts"] < by_kind[st]["ts"]:
-            lines.append(f"      (gölgede {(by_kind[st]['ts'] - shadow['ts']) / 60:.0f} dk önce görülmüştü, {_entry(shadow)})")
+        else:
+            s = by_kind[st]
+            head = {"alert": "✅ Bildirim gitti", "filtered": "🚫 Filtreye takıldı",
+                    "shadow": "👤 Sadece gölge grupta (analiz edilmedi)"}[st]
+            values = [f"alıcı {s['features'].get('buyers_10m')}"]
+            if s.get("trust") is not None:
+                values.append(f"güven {s['trust']}")
+            if momentum_v2_of(s) is not None:
+                values.append(f"momentum {momentum_v2_of(s)}")
+            lines.append(f"   {head} ({', '.join(values)}) — {_entry(s)}")
+            gates = blocking_gates(s, **bars)
+            if gates:
+                lines.append(f"      ⛔ bugün engelleyen: {escape(', '.join(gates), quote=False)}")
+            elif st != "alert":
+                lines.append("      ✅ bugünkü eşiklerin hepsini geçiyor" + (" (ama güven ölçülmedi)" if st == "shadow" else ""))
+            codes = ", ".join((s["features"].get("findings") or [])[:4])
+            if st == "filtered" and codes:
+                lines.append(f"      bulgular: {escape(codes, quote=False)}")
+            shadow = by_kind.get("shadow")
+            if st != "shadow" and shadow and shadow["ts"] < s["ts"]:
+                lines.append(f"      (gölgede {(s['ts'] - shadow['ts']) / 60:.0f} dk önce görülmüştü, {_entry(shadow)})")
         blocks.append("\n".join(lines))
     if not winners:
         blocks.append(f"Bu sürede {min_multiple:g}x yapan coin bulunamadı.")

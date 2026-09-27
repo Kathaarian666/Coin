@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 GECKOTERMINAL = "https://api.geckoterminal.com/api/v2/networks/robinhood"
 PAUSE_SEC = 2.5  # stay under the free tier's ~30 calls a minute
-MAX_CANDIDATES = 30
+MAX_CANDIDATES = 40
 MIN_VOLUME_H24 = 20_000
 MIN_CANDLE_USD = 1_000  # thinner hours are ignored: on shallow pools one trade makes a wild print
 MIN_PEAK_FDV = 50_000  # below that a "100x" was never tradeable
