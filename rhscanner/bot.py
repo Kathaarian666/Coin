@@ -20,7 +20,7 @@ from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
 from .outcomes import OutcomeLog, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
-from .pons import BLOCKS_PER_MIN, DAY_BLOCKS_PONS, PonsTracker, PonsWatcher, junk_reasons
+from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
 from .report import format_exit, format_findings, format_followup, format_report, format_scorecard
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
@@ -141,41 +141,18 @@ class ScannerApp:
             await self.queue.put(Job(pool.token, pool_dict, delay=self.settings.analysis_delay))
 
     def pons_tiers(self) -> list[tuple[str, int, float]]:
-        """Signal bars measured side by side: (kind, min distinct buyers, min USD bought) in 10 minutes."""
-        return [("pons", self.settings.pons_min_buyers, self.settings.pons_min_buy_usd),
-                ("pons_early", self.settings.pons_early_min_buyers, self.settings.pons_early_min_buy_usd)]
+        return pons_tiers(self.settings)
 
     async def on_pons_trades(self, trades, warmup: bool = False):
         """A young Pons coin that enough wallets are buying on its curve: recorded for /karne (no alert)."""
         if warmup or not self.eth_usd:
             return
-        index = self.analyzer.launches
-        for curve in {t.curve for t in trades if t.side == "buy"}:
-            launch = index.by_curve(curve)
-            if not launch:
-                continue  # not indexed yet (the index syncs every 30 s; later buys retry)
-            token, launcher, launch_block = launch
-            tiers = [tier for tier in self.pons_tiers() if (token, tier[0]) not in self.pons_seen]
-            if not tiers:
-                continue
-            head = max(t.block for t in trades)
-            age_min = (head - launch_block) / BLOCKS_PER_MIN
-            if age_min > self.settings.pons_max_age_min:
-                continue
-            stats = self.pons.stats(curve, launcher, launch_block, self.fomo_window)
-            buy_usd = stats["buy_eth_10m"] * self.eth_usd
-            launches_24h = None
-            for kind, min_buyers, min_usd in tiers:
-                if stats["buyers_10m"] < min_buyers or buy_usd < min_usd:
-                    continue
-                if launches_24h is None:
-                    launches_24h = index.launches_since(launcher, head - DAY_BLOCKS_PONS)
-                reasons = junk_reasons(stats, launches_24h)
-                self.pons_seen.add((token, kind))
-                features = {**stats, "buy_usd_10m": round(buy_usd, 2), "age_min": round(age_min, 1),
-                            "launches_24h": launches_24h, "findings": reasons}
-                self.outcomes.record(token, f"{kind}_junk" if reasons else kind, features=features, pair=None)
-                log.info("Pons signal %s %s (%s): %s", kind, token, ",".join(reasons) or "clean", features)
+        for token, kind, features in detect_signals(
+            self.pons, self.analyzer.launches, trades, self.pons_tiers(), self.settings.pons_max_age_min,
+            self.fomo_window, self.eth_usd, self.pons_seen,
+        ):
+            self.outcomes.record(token, kind, features=features, pair=None)
+            log.info("Pons signal %s %s: %s", kind, token, features)
 
     def pons_price(self, token: str) -> float | None:
         """USD price of a coin still on its Pons curve (last trade), for outcome sampling."""
@@ -186,12 +163,9 @@ class ScannerApp:
     async def refresh_eth_usd(self):
         if time.time() - self.eth_usd_at < 600 or not self.analyzer.dexscreener:
             return
-        weth = self.settings.weth.lower()
-        pairs = [p for p in await self.analyzer.dexscreener.tokens([weth])
-                 if (p.get("baseToken") or {}).get("address", "").lower() == weth and p.get("priceUsd")]
-        if pairs:
-            best = max(pairs, key=lambda p: (p.get("liquidity") or {}).get("usd") or 0)
-            self.eth_usd, self.eth_usd_at = float(best["priceUsd"]), time.time()
+        price = await eth_usd_price(self.analyzer.dexscreener, self.settings.weth)
+        if price:
+            self.eth_usd, self.eth_usd_at = price, time.time()
 
     def _is_shadow(self, stats: dict) -> bool:
         """A lower bar than alerts: the baseline group for measuring the filters."""

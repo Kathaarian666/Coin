@@ -77,6 +77,26 @@ class OutcomeLog:
         self.db.commit()
         return cur.rowcount == 1
 
+    def record_history(self, token: str, kind: str, ts: float, features: dict,
+                       samples: dict[int, float | None], now: float) -> bool:
+        """A signal replayed from the past, with the price samples already known (minute -> price).
+
+        Sampling carries on live from the first checkpoint that is still in the future."""
+        if not self.record(token, kind, features=features, ts=ts):
+            return False
+        (signal_id,) = self.db.execute(
+            "SELECT id FROM signals WHERE token = ? AND kind = ?", (token.lower(), kind)
+        ).fetchone()
+        self.db.executemany(
+            "INSERT OR REPLACE INTO samples (signal_id, minute, ts, price, liquidity) VALUES (?, ?, ?, ?, NULL)",
+            [(signal_id, minute, ts + minute * 60, price) for minute, price in samples.items()],
+        )
+        next_idx = next((i for i, m in enumerate(CHECKPOINTS_MIN) if ts + m * 60 > now), len(CHECKPOINTS_MIN))
+        self.db.execute("UPDATE signals SET next_idx = ?, done = ? WHERE id = ?",
+                        (next_idx, int(next_idx >= len(CHECKPOINTS_MIN)), signal_id))
+        self.db.commit()
+        return True
+
     def due(self, now: float) -> list[tuple]:
         rows = self.db.execute(
             "SELECT id, token, ts, next_idx, pair, momentum, features FROM signals WHERE done = 0"

@@ -58,7 +58,8 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    İlk tur (72 saatlik veri): `/minmomentum` eklendi (sunucuda 45), `/karne` güven/momentum kırılımları ve
    `/bulgular` eklendi. `liq_usd_low` high→low (bu coinler ortalamadan iyi), `v4_common_hook` low→medium
    (rug %17). İlk 24 saatte bildirimlerin 1s 2x oranı %27'ye çıktı. 30 Eylül'de `/karne 72` +
-   `/bulgular 72` ile tekrar bak; momentum eşiği 70'e çıksın mı karar ver (70+ %29, 45-69 %17, n=18).
+   `/bulgular 72` ile tekrar bak. 168 saatlik veriyle karar verildi: `/minmomentum 70` (70+ %20 vs 45-69 %11 1s 2x)
+   ve `/minskor 30` (güven 30-49 en iyi grup: %42 1s 2x; rug her aralıkta %9-11, güven rug'ı ayırmıyor).
 2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 3. **Mezuniyet öncesi Pons takibi**: ölçüm modunda kuruldu (kind `pons` / `pons_junk`, bildirim yok).
@@ -68,5 +69,7 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    medyan zirve 1.0x → sinyal geç geliyor. Bu yüzden paralel ikinci eşik eklendi (`pons_early`: 4+ alıcı, $100+;
    `/bulgular 72 erken`). 30 Eylül'de iki eşiği karşılaştır; ikisi de kötüyse bu yolu bırakmayı öner.
    `/karne` artık ÇIK/DİKKAT isabetini de gösteriyor (sinyal sonrası 1 saatte daha aşağıda mı, kaçırılan 1.5x).
+   Geçmiş doldurma: `python -m rhscanner pons-backfill 3` (sunucuda ~10 dk; `features.backfill=true`, mezun
+   olan coinlerin fiyatı mezuniyette kesilir → kazananlara karşı hafif yanlı). Canlı ile tutarlı çıktı.
 4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
 5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.

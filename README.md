@@ -118,6 +118,7 @@ Botu açmadan terminalden de kullanabilirsiniz:
 ```bash
 .venv/bin/python -m rhscanner trend        # son ~10 dk Fomo'da en çok alınanlar
 .venv/bin/python -m rhscanner trend 3      # ... ve ilk 3'ünün tam analizi
+.venv/bin/python -m rhscanner pons-backfill 3   # son 3 günün Pons curve sinyallerini zincirden /karne'ye doldur
 .venv/bin/python -m rhscanner check 0xTOKEN_ADRESI
 ```
 
@@ -159,6 +160,7 @@ rhscanner/
   checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   pons.py           mezuniyet öncesi Pons curve alım/satımları ve bariz çöp filtresi
+  pons_backfill.py  aynı Pons sinyallerini geçmiş günlerin zincir verisinden yeniden üretir
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı
   bot.py            Telegram botu + tarayıcı döngüsü

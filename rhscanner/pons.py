@@ -148,6 +148,54 @@ def junk_reasons(stats: dict, launches_24h: int) -> list[str]:
     return reasons
 
 
+def pons_tiers(settings) -> list[tuple[str, int, float]]:
+    """Signal bars measured side by side: (kind, min distinct buyers, min USD bought) in the window."""
+    return [("pons", settings.pons_min_buyers, settings.pons_min_buy_usd),
+            ("pons_early", settings.pons_early_min_buyers, settings.pons_early_min_buy_usd)]
+
+
+def detect_signals(tracker: PonsTracker, index, trades: list[CurveTrade], tiers, max_age_min: float,
+                   window_sec: float, eth_usd: float, seen: set, now: float | None = None) -> list[tuple[str, str, dict]]:
+    """(token, kind, features) for young coins whose buying just crossed a tier; each (token, tier) once.
+
+    Call after the trades were added to the tracker. `now` is the time of the last trade (replays pass it)."""
+    out = []
+    head = max((t.block for t in trades), default=0)
+    for curve in {t.curve for t in trades if t.side == "buy"}:
+        launch = index.by_curve(curve)
+        if not launch:
+            continue  # not indexed yet (the live index syncs every 30 s; later buys retry)
+        token, launcher, launch_block = launch
+        pending = [tier for tier in tiers if (token, tier[0]) not in seen]
+        age_min = (head - launch_block) / BLOCKS_PER_MIN
+        if not pending or age_min > max_age_min:
+            continue
+        stats = tracker.stats(curve, launcher, launch_block, window_sec, now)
+        buy_usd = stats["buy_eth_10m"] * eth_usd
+        launches_24h = None
+        for kind, min_buyers, min_usd in pending:
+            if stats["buyers_10m"] < min_buyers or buy_usd < min_usd:
+                continue
+            if launches_24h is None:
+                launches_24h = index.launches_since(launcher, head - DAY_BLOCKS_PONS, head)
+            reasons = junk_reasons(stats, launches_24h)
+            seen.add((token, kind))
+            features = {**stats, "buy_usd_10m": round(buy_usd, 2), "age_min": round(age_min, 1),
+                        "launches_24h": launches_24h, "findings": reasons}
+            out.append((token, f"{kind}_junk" if reasons else kind, features))
+    return out
+
+
+async def eth_usd_price(dexscreener, weth: str) -> float | None:
+    """ETH in USD from the deepest WETH pair DexScreener lists on the chain."""
+    weth = weth.lower()
+    pairs = [p for p in await dexscreener.tokens([weth])
+             if (p.get("baseToken") or {}).get("address", "").lower() == weth and p.get("priceUsd")]
+    if not pairs:
+        return None
+    return float(max(pairs, key=lambda p: (p.get("liquidity") or {}).get("usd") or 0)["priceUsd"])
+
+
 async def fetch_curve_logs(rpc: RpcClient, from_block: int, to_block: int) -> list[dict]:
     """Buys and sells on every curve, halving the range when the node refuses it."""
     try:

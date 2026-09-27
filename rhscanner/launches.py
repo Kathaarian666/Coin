@@ -97,6 +97,20 @@ class LaunchIndex:
         self.db.commit()
         return queries
 
+    async def fill_curves(self, rpc, lo: int, hi: int) -> int:
+        """Re-read the launches in [lo, hi] to add the curve to rows indexed before it was kept."""
+        filled = 0
+        for start in range(lo, hi + 1, WINDOW_BLOCKS):
+            logs = await self._fetch(rpc, start, min(hi, start + WINDOW_BLOCKS - 1))
+            self._store(logs)
+            rows = [("0x" + e["topics"][2][-40:].lower(), "0x" + e["topics"][1][-40:].lower())
+                    for e in logs if len(e.get("topics") or []) >= 4]
+            filled += self.db.executemany(
+                "UPDATE pons_launches SET curve = ? WHERE token = ? AND curve IS NULL", rows
+            ).rowcount
+            self.db.commit()
+        return filled
+
     def covers(self, block: int) -> bool:
         low = self._get("low")
         return low is not None and low <= block
@@ -123,9 +137,10 @@ class LaunchIndex:
         row = self.db.execute("SELECT curve FROM pons_launches WHERE token = ?", (token.lower(),)).fetchone()
         return row[0] if row else None
 
-    def launches_since(self, launcher: str, block: int) -> int:
+    def launches_since(self, launcher: str, block: int, until: int | None = None) -> int:
         return self.db.execute(
-            "SELECT COUNT(*) FROM pons_launches WHERE launcher = ? AND block >= ?", (launcher.lower(), block)
+            "SELECT COUNT(*) FROM pons_launches WHERE launcher = ? AND block >= ? AND block <= ?",
+            (launcher.lower(), block, until if until is not None else 2**62),
         ).fetchone()[0]
 
     def count(self) -> int:
