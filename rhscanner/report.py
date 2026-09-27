@@ -359,3 +359,21 @@ def format_backtest(hours: float, min_score: int, min_momentum: int, halves: lis
         ]))
     blocks.append("\n<i>v2, \"Yeni yarı\"da da v1'den iyiyse (daha yüksek 2x/5x, rug benzer) /momentumv2 ac ile açılabilir.</i>")
     return _chunks(blocks)
+
+
+def format_strategies(hours: float, position: float, rows: list[tuple[str, dict]]) -> list[str]:
+    """/strateji: exit rules replayed on past alerts, with Fomo's fees."""
+    n = next((r["n"] for _, r in rows if r.get("n")), 0)
+    blocks = [f"🎯 <b>Çıkış stratejileri — son {hours:g} saatin bildirimleri</b>\n"
+              f"<i>({n} bildirim, her birine ${position:g} girilmiş gibi, Fomo komisyonu dahil. "
+              f"Fiyatlar 5-60 dk aralıklı ölçümlerden; aradaki iğneler görülmez.)</i>\n"]
+    ranked = sorted((r for r in rows if r[1].get("n")), key=lambda r: -r[1]["total"])
+    for i, (name, r) in enumerate(ranked, 1):
+        sign = "+" if r["total"] >= 0 else ""
+        blocks.append(f"{i}. <b>{escape(name, quote=False)}</b>\n"
+                      f"   toplam {sign}${r['total']:,.2f} · işlem başı {r['per_trade']:+.2f}$ · "
+                      f"kazanan işlem %{r['win_rate']} · en iyi +${r['best']:,.2f}")
+    if not ranked:
+        blocks.append("Yeterli veri yok (en az 1 günlük bildirim gerekiyor).")
+    blocks.append("\n<i>Geçmiş sonuç gelecek garantisi değildir; asıl karar yine kim satıyor sorusuna göre.</i>")
+    return _chunks(blocks)

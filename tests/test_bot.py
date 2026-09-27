@@ -1,8 +1,9 @@
+import asyncio
 import time
 
 from rhscanner.bot import ScannerApp
 from rhscanner.config import Settings
-from test_fomo import buy, parse_fomo_logs
+from test_fomo import TOKEN, buy, parse_fomo_logs
 
 
 async def test_alerts_once_per_token_and_not_during_warmup(tmp_path):
@@ -84,4 +85,56 @@ async def test_watch_sends_exit_when_dev_dumps_and_stops(tmp_path, monkeypatch):
     await app.watch(REPORT)
     assert len(sent) == 1 and "ÇIK sinyali" in sent[0] and "Geliştirici satıyor" in sent[0]
     assert app.outcomes.db.execute("SELECT kind FROM signals").fetchall() == [("exit",)]
+    await app.rpc.close()
+
+
+async def test_second_wave_needs_an_old_signal_and_a_quiet_spell(tmp_path):
+    app = ScannerApp(Settings(db_path=str(tmp_path / "w.db"), fomo_min_buyers=2, fomo_min_buy_usd=0))
+    token = TOKEN.lower()
+    calls = []
+
+    async def fake_record(tok, first):
+        calls.append((tok, first["kind"]))
+
+    app.record_second_wave = fake_record
+    now = time.time()
+
+    def add_buy(user, i, ago):
+        [t] = parse_fomo_logs(buy(user, 5, f"0x{i}"))
+        t.timestamp = now - ago
+        app.tracker.add(t)
+
+    app.check_second_wave(token)
+    assert calls == []  # never signalled before
+    app.outcomes.record(token, "shadow", ts=now - 1200)
+    app.check_second_wave(token)
+    assert calls == []  # first signal only 20 minutes ago: same wave
+    app.outcomes.db.execute("UPDATE signals SET ts = ?", (now - 7200,))
+    for i, user in enumerate(["0x" + c * 40 for c in "abc"]):
+        add_buy(user, i, 2400)  # 3 buyers 40 minutes ago: not quiet (bar 2 -> quiet under 1)
+    app.check_second_wave(token)
+    assert calls == []
+    app.tracker.trades.clear()
+    app.check_second_wave(token)
+    await asyncio.sleep(0)
+    assert calls == [(token, "shadow")]
+    app.check_second_wave(token)
+    await asyncio.sleep(0)
+    assert len(calls) == 1  # once per coin
+    await app.rpc.close()
+
+
+async def test_second_wave_is_recorded_with_market_and_v2_momentum(tmp_path):
+    app = ScannerApp(Settings(db_path=str(tmp_path / "r.db")))
+
+    class Dex:
+        async def token_pairs(self, token):
+            return [{"pairAddress": "0xpool", "priceUsd": "3.0", "liquidity": {"usd": 8000}, "fdv": 15000,
+                     "txns": {}, "volume": {}, "priceChange": {}, "info": {}}]
+
+    app.analyzer.dexscreener = Dex()
+    await app.record_second_wave(TOKEN, {"kind": "alert", "ts": time.time() - 7200, "p0": 1.5})
+    [(kind, momentum, features)] = app.outcomes.db.execute("SELECT kind, momentum, features FROM signals").fetchall()
+    assert kind == "wave2" and momentum is not None
+    assert '"price_vs_first": 2.0' in features and '"first_kind": "alert"' in features and '"fdv": 15000' in features
     await app.rpc.close()

@@ -21,15 +21,19 @@ from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit,
 from .momentum import fomo_features, momentum_score
 from .outcomes import OutcomeLog, backtest, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup, format_report,
+from .report import (format_analysis, format_backtest, format_exit, format_strategies, format_findings, format_followup, format_report,
                      format_scorecard, format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
+from .strategy import simulate
 from .wallets import WalletBook
 from .winners import GeckoTerminal, find_winners
 
 log = logging.getLogger(__name__)
+
+WAVE_MIN_AGE = 3600  # a second wave comes at least an hour after the coin's first signal...
+WAVE_MAX_AGE = 3 * 86400  # ...and within three days
 
 HELP = (
     "🤖 <b>Robinhood Chain · Fomo Token Tarayıcı</b>\n\n"
@@ -50,6 +54,7 @@ HELP = (
     "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı (varsayılan 3 gün, 10x)\n"
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
+    "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (komisyon dahil)\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -82,6 +87,8 @@ class ScannerApp:
         self.pons = PonsTracker(max_age=settings.pons_max_age_min * 60)
         self.pons_seen: set[tuple[str, str]] = {(row[0], row[1].removesuffix("_junk")) for row in self.storage.db.execute(
             "SELECT token, kind FROM signals WHERE kind LIKE 'pons%' AND ts >= ?", (time.time() - 86400,))}
+        self.waves_seen: set[str] = {row[0] for row in self.storage.db.execute(
+            "SELECT token FROM signals WHERE kind = 'wave2'")}
         self.eth_usd: float | None = None
         self.eth_usd_at = 0.0
         self.symbols: dict[str, str] = {}
@@ -135,6 +142,8 @@ class ScannerApp:
             if not warmup and self._is_shadow(stats):
                 self.outcomes.record(token, "shadow", features=fomo_features(self.tracker, token))
             rising = stats["buyers"] >= self.min_buyers and stats["buy_usd"] >= self.min_buy_usd
+            if rising and not warmup:
+                self.check_second_wave(token)
             if rising and self.storage.mark_alerted(token):
                 if warmup:
                     # Already trending when the bot started: visible in /trend, no alert flood.
@@ -176,6 +185,43 @@ class ScannerApp:
         price = await eth_usd_price(self.analyzer.dexscreener, self.settings.weth)
         if price:
             self.eth_usd, self.eth_usd_at = price, time.time()
+
+    def check_second_wave(self, token: str):
+        """A coin signalled an hour or more ago that went quiet and is being bought hard again: measured as
+        `wave2` (no alert yet). Quiet = under half the buyer bar 30-60 minutes ago."""
+        key = token.lower()
+        if key in self.waves_seen:
+            return
+        now = time.time()
+        first = next(iter(self.outcomes.signals_for(key, ("alert", "filtered", "shadow"))), None)
+        if not first or not WAVE_MIN_AGE <= now - first["ts"] <= WAVE_MAX_AGE:
+            return
+        if self.tracker.buyers_between(key, 3600, 1800, now) >= self.min_buyers / 2:
+            return  # never cooled off: the same wave
+        self.waves_seen.add(key)
+        task = asyncio.create_task(self.record_second_wave(token, first))
+        self.followups.add(task)
+        task.add_done_callback(self.followups.discard)
+
+    async def record_second_wave(self, token: str, first: dict):
+        try:
+            pairs = await self.analyzer.dexscreener.token_pairs(token) if self.analyzer.dexscreener else []
+            market = market_summary(pairs, None)
+            fomo = fomo_features(self.tracker, token)
+            fomo["smart_buyers_10m"] = len(self.wallets.smart_buyers(self.tracker, token))
+            fomo["churn_share_30m"] = fomo_churn(self.tracker, token)
+            score, reasons, extra = momentum_score(fomo, market, None, v2=True)
+            price = float(market["price_usd"]) if market.get("price_usd") else None
+            features = {
+                **fomo, **extra, "liquidity_usd": market.get("liquidity_usd"), "fdv": market.get("fdv"),
+                "socials": market.get("socials"), "first_kind": first["kind"],
+                "hours_since_first": round((time.time() - first["ts"]) / 3600, 1),
+                "price_vs_first": round(price / first["p0"], 3) if price and first.get("p0") else None,
+            }
+            self.outcomes.record(token, "wave2", momentum=score, features=features)
+            log.info("second wave %s: momentum %s, %s", token, score, features)
+        except Exception:
+            log.exception("second wave check failed for %s", token)
 
     def _is_shadow(self, stats: dict) -> bool:
         """A lower bar than alerts: the baseline group for measuring the filters."""
@@ -419,13 +465,17 @@ class ScannerApp:
         hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 24.0
         results = self.outcomes.results(hours)
         by_kind = {k: [r for r in results if r["kind"] == k]
-                   for k in ("alert", "filtered", "shadow", "pons", "pons_junk", "pons_early", "pons_early_junk",
-                             "exit", "caution")}
+                   for k in ("alert", "filtered", "shadow", "wave2", "pons", "pons_junk", "pons_early",
+                             "pons_early_junk", "exit", "caution")}
         groups = [
             ("🔔 Bildirim gidenler", summarize(by_kind["alert"])),
             ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
             ("👤 Gölge grup", summarize(by_kind["shadow"])),
+            ("🔁 İkinci dalga (ölçüm, bildirim yok)", summarize(by_kind["wave2"])),
         ]
+        for bucket in ("🚀 70+", "🟡 45-69"):
+            groups.append((f"🔁 İkinci dalga, momentum {bucket}",
+                           summarize([r for r in by_kind["wave2"] if momentum_bucket(r["momentum"]) == bucket])))
         if any(by_kind[k] for k in ("pons", "pons_junk", "pons_early", "pons_early_junk")):
             groups += [
                 (f"🐣 Pons {self.settings.pons_min_buyers}+ alıcı (ön filtreden geçen)", summarize(by_kind["pons"])),
@@ -508,6 +558,15 @@ class ScannerApp:
         self.storage.set_state("momentum_v2", "0" if arg == "kapat" else "1")
         await update.message.reply_text(
             "✅ Yeni momentum puanı (v2) kullanılıyor." if arg != "kapat" else "✅ Eski momentum puanına (v1) dönüldü.")
+
+    async def cmd_strategies(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        rows = simulate(self.outcomes.alert_paths(hours), self.position_usd, self.settings.fomo_fee_pct,
+                        self.settings.fomo_fee_min_usd)
+        for text in format_strategies(hours, self.position_usd, rows):
+            await update.message.reply_html(text)
 
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
@@ -658,6 +717,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("analiz", self.cmd_analysis))
         self.app.add_handler(CommandHandler("kazananlar", self.cmd_winners, block=False))
         self.app.add_handler(CommandHandler("geritest", self.cmd_backtest))
+        self.app.add_handler(CommandHandler("strateji", self.cmd_strategies))
         self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))

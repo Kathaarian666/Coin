@@ -76,6 +76,10 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    kapalı; `/geritest` ile yeni yarıda v1'den iyiyse `/momentumv2 ac`. v1 ve v2 her sinyalde features'a yazılıyor.
    `/geritest` (yeni yarı): v2 130 bildirim 2x %31.5 / 5x %32.3 / rug %6.2 vs v1 160 bildirim %26.2 / %24.4 / %7.5.
    **27 Eylül'de sunucuda `/momentumv2 ac` yapıldı.** Canlı hedef: bildirimlerde 1s 2x > %26, 5x > %24.
+   C) İkinci dalga ölçüm modunda eklendi (kind `wave2`, bildirim yok): ilk sinyalden ≥1 saat (≤3 gün) sonra,
+   30-60 dk önce sakin (alıcı < eşik/2) ve şimdi bildirim eşiğini geçen coin; v2 momentum + fiyat/ilk sinyal
+   kaydedilir, `/karne`'de ayrı grup. İyi çıkarsa bildirim açılacak.
+   E) `/strateji`: çıkış kuralları geçmiş bildirimlerin fiyat yolunda, komisyon dahil (`strategy.py`).
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

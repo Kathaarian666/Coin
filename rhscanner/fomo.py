@@ -136,6 +136,12 @@ class FomoTracker:
             "first_seen": self.first_seen.get(token.lower()),
         }
 
+    def buyers_between(self, token: str, start_sec: float, end_sec: float, now: float | None = None) -> int:
+        """Distinct buyers between `start_sec` and `end_sec` seconds ago."""
+        now = now or time.time()
+        return len({t.trader for t in self.trades.get(token.lower(), ())
+                    if t.side == "buy" and now - start_sec < t.timestamp <= now - end_sec})
+
     def top(self, window_sec: float, limit: int = 10, now: float | None = None) -> list[tuple[str, dict]]:
         rows = [(token, self.stats(token, window_sec, now)) for token in self.trades]
         rows = [r for r in rows if r[1]["buyers"]]

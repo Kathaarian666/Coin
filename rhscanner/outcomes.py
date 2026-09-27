@@ -99,6 +99,25 @@ class OutcomeLog:
         self.db.commit()
         return True
 
+    def alert_paths(self, hours: float, now: float | None = None) -> list[tuple[list[tuple[int, float]], int | None]]:
+        """Price paths of alerts at least a day old (price / price at the alert, per checkpoint minute),
+        each with the minute of its 🔴 ÇIK if one was sent."""
+        now = now or time.time()
+        rows = self.db.execute(
+            "SELECT id, token, ts FROM signals WHERE kind = 'alert' AND ts >= ? AND ts <= ?",
+            (now - hours * 3600, now - 86400),
+        ).fetchall()
+        exits = dict(self.db.execute("SELECT token, ts FROM signals WHERE kind = 'exit'").fetchall())
+        paths = []
+        for signal_id, token, ts in rows:
+            priced = [(m, p) for m, p in self.db.execute(
+                "SELECT minute, price FROM samples WHERE signal_id = ? AND price > 0 ORDER BY minute", (signal_id,))]
+            if not priced or priced[0][0] != 0:
+                continue
+            exit_min = int((exits[token] - ts) / 60) if token in exits and exits[token] >= ts else None
+            paths.append(([(m, p / priced[0][1]) for m, p in priced], exit_min))
+        return paths
+
     def signals_for(self, token: str, kinds: tuple[str, ...]) -> list[dict]:
         """A token's signals of the given kinds, oldest first, with the price at the signal (p0)."""
         marks = ",".join("?" * len(kinds))
