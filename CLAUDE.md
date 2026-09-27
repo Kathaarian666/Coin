@@ -13,6 +13,11 @@ analizi yapıp Telegram'dan bildirim gönderen bot. Kod: `rhscanner/`, ayrıntı
 - Kullanım limiti önemli: gereksiz canlı test / uzun keşif yapma; bir iş beklenmedik uzarsa dur ve sor.
 - Branch: `claude/fomo-coin-scanner-app-mhz9rk` (PR açma, kullanıcı istemedikçe).
 
+## Şu anki aşama (kullanıcı kararı, 27 Eylül)
+**Parametre ve check sistemini mükemmelleştirme.** Amaç: en iyi taze coinleri doğru anda tespit etmek.
+Patlayan coinleri sistemin doğru zamanda yakalayıp yakalamadığı simüle edilir. Testler **sabit test tutarıyla**
+(pozisyon büyüklüğü, risk yönetimi, gerçek işlem takibi = sonraki aşama; deploy en son). $5/$20 tartışması yok.
+
 ## Hedef
 Kısa vadeli "vur-kaç": coin başına $3–5, kayıp küçük, moonshot olursa iyi. Fomo komisyonu %0.5, en az ~$0.95
 (başa baş: $3 → 1.93x, $5 → 1.47x). Fomo içindeki "thesis" yazıları değersiz, kullanılmaz.
