@@ -25,6 +25,6 @@ def test_rug_filter_sweep_and_alert_line():
     assert rows["filtre yok"]["rugged"] == 40.0 and rows["rug riski <40"]["rugged"] == 0.0
     assert rows["rug riski <40"]["kept_winners"] == 6 and rows["rug riski <40"]["winners"] == 6
     text = "\n".join(format_sweep(168, 10, 6, [], (75, 30), list(rows.items())))
-    assert "rug riski <40: 6 bildirim" in text and "5x'lerden kalan 6/6" in text
+    assert "rug riski &lt;40: 6 bildirim" in text and "5x'lerden kalan 6/6" in text
     report = {"token": "0x" + "a" * 40, "score": 60, "findings": [], "rug_risk": {"score": 45, "reasons": ["x", "y"]}}
     assert "Rug riski: 🔴 yüksek" in format_report(report, "https://example.org")

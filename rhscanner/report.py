@@ -384,7 +384,7 @@ def format_backtest(hours: float, min_score: int, min_momentum: int, halves: lis
     if lower is not None:
         blocks.append("\n".join([
             f"<b>Küçük coinlerde alıcı eşiği 8 olsaydı</b> (gölgede kalan 8-{min_buyers - 1} alıcılı, "
-            f"FDV <$20k, v2 momentum ≥{min_momentum})",
+            f"FDV &lt;$20k, v2 momentum ≥{min_momentum})",
             line("fazladan bildirilirdi", lower),
             "   <i>(gölgeler için FDV bu güncellemeden beri kaydediliyor; veri birikince dolar)</i>",
         ]))
@@ -430,6 +430,7 @@ def format_sweep(hours: float, total: int, winners: int, rows: list[dict], curre
     if rug_rows:
         blocks.append(f"\n<b>Rug riski filtresi</b> (şu anki eşiklerle: momentum ≥{current[0]}, güven ≥{current[1]})")
         for name, r in rug_rows:
+            name = escape(name, quote=False)
             if not r.get("n"):
                 blocks.append(f"   {name}: bildirim kalmaz")
                 continue
