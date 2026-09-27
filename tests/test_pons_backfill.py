@@ -62,3 +62,22 @@ async def test_backfill_replays_signals_and_prices(tmp_path):
     again = await backfill(settings, FakeRpc(logs), storage, FakeDex(), days=0.5)
     assert again["signals"] == 0  # already recorded
     storage.close()
+
+
+async def test_refused_queries_are_retried(tmp_path, monkeypatch):
+    import rhscanner.pons_backfill as bf
+    monkeypatch.setattr(bf, "PAUSE_SEC", 0)
+
+    class Flaky(FakeRpc):
+        fails = 3
+
+        async def get_logs(self, lo, hi, topics, address=None, retries=4):
+            if topics[0] != PONS_V2_LAUNCH and self.fails:
+                self.fails -= 1
+                raise RuntimeError("429")
+            return await super().get_logs(lo, hi, topics, address, retries)
+
+    storage = Storage(str(tmp_path / "f.db"))
+    result = await backfill(Settings(), Flaky([]), storage, FakeDex(), days=0.01)
+    assert result["signals"] == 0
+    storage.close()

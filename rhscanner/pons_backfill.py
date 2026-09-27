@@ -13,6 +13,7 @@ curve prices after that, so its samples stop at graduation (DexScreener's
 pair creation time).
 """
 
+import asyncio
 import bisect
 import logging
 import time
@@ -26,6 +27,20 @@ log = logging.getLogger(__name__)
 
 STEP_BLOCKS = 5000  # ~2.5k curve trades per query at current rates (the node caps a query at 10k logs)
 BATCH_BLOCKS = 100  # signals are checked every ~10 s of chain time, like the live watcher
+ATTEMPTS = 20
+PAUSE_SEC = 30.0  # the public RPC rate-limits hard, and the bot shares it
+
+
+async def _patiently(call, *args):
+    """A node call retried with long pauses: one refused query must not lose a long replay."""
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            return await call(*args)
+        except Exception as exc:
+            if attempt == ATTEMPTS:
+                raise
+            log.warning("RPC hatası (%s), %.0f sn sonra tekrar denenecek (%d/%d)", exc, PAUSE_SEC, attempt, ATTEMPTS)
+            await asyncio.sleep(PAUSE_SEC)
 
 
 def _existing(db) -> set[tuple[str, str]]:
@@ -59,7 +74,7 @@ async def backfill(settings, rpc, storage, dexscreener, days: float) -> dict:
     lo = head - int(days * DAY_BLOCKS_PONS)
     max_age_blocks = int(settings.pons_max_age_min * BLOCKS_PER_MIN)
     log.info("Pons lansmanlarının curve adresleri dolduruluyor...")
-    filled = await index.fill_curves(rpc, lo - max_age_blocks, head)
+    filled = await _patiently(index.fill_curves, rpc, lo - max_age_blocks, head)
     log.info("%d lansmana curve eklendi", filled)
 
     tracker = PonsTracker(max_age=settings.pons_max_age_min * 60)
@@ -69,12 +84,12 @@ async def backfill(settings, rpc, storage, dexscreener, days: float) -> dict:
     found: list[tuple[str, str, float, dict, str]] = []  # token, kind, ts, features, curve
     history: dict[str, list[tuple[float, float]]] = {}  # curve -> (ts, ETH price) from its first signal on
 
-    t_prev = await rpc.block_timestamp(lo - 1)
+    t_prev = await _patiently(rpc.block_timestamp, lo - 1)
     steps = (head - lo) // STEP_BLOCKS + 1
     for step, start in enumerate(range(lo, head + 1, STEP_BLOCKS), 1):
         end = min(head, start + STEP_BLOCKS - 1)
-        trades = parse_curve_logs(await fetch_curve_logs(rpc, start, end))
-        t_end = await rpc.block_timestamp(end)
+        trades = parse_curve_logs(await _patiently(fetch_curve_logs, rpc, start, end))
+        t_end = await _patiently(rpc.block_timestamp, end)
         span = max(1, end - start + 1)
         for trade in trades:  # block times, interpolated inside the window
             trade.timestamp = t_prev + (trade.block - start + 1) / span * (t_end - t_prev)
