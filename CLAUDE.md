@@ -101,6 +101,12 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    `/strateji` sabit $100 test tutarıyla (pozisyon ayarından bağımsız). `/tarama`: min momentum (v2) ×
    min güven ızgarası → bildirim sayısı, 2x/5x/rug, 5x'lerin yakalanan payı (`outcomes.parameter_sweep`).
    Min alıcı taraması gölgelerde FDV biriktikçe `/geritest` sonundaki bölümle.
+   İlk `/tarama` (463 sinyal, 75 tanesi 5x): güven eşiği (0-40) sonucu neredeyse değiştirmiyor; momentum dilimleri
+   70-74 %6, 75-79 %11, 80-84 %22, 85+ %37 5x → **`/minmomentum 75` yapıldı** (253→220 bildirim, 5x %26.5→%29.5,
+   yakalama %89→%87). Rug her eşikte ~%10 → rug riski puanı (`rugrisk.py`, ölçüm modu, filtre yok): alıcı başına
+   <$74 +25, tutma <0.8 +20, Fomo payı <%23 +15, 10 dk alım <$550 +10, yaş <14 dk +10. Bildirimde ≥20 ise satır,
+   `/karne`'de düşük/orta/yüksek kırılımı, `/analiz`'de özellik, `/tarama` sonunda "rug riski <60/<40/<20" filtresi
+   (kalan 5x'ler ve rug oranı). Geçmiş sinyaller için de kayıtlı özelliklerden hesaplanıyor.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

@@ -110,7 +110,7 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/geritest 168` | Yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle (v1) karşılaştırır; dönem ikiye bölünür, asıl sınav yeni yarı |
 | `/momentumv2 ac` | Bildirimlerde v2 momentum puanını kullan (`kapat` ile v1'e dön) |
 | `/strateji 168` | Çıkış kurallarını (30 dk–24 saat tut, 2x/3x/5x'te sat, yarısını sat, ÇIK'ta sat) geçmiş bildirimlerde dener; sabit $100 test tutarı, komisyon dahil |
-| `/tarama 168` | Min momentum × min güven kombinasyonları: kaç bildirim, isabet (2x/5x/rug), 5x yapanların kaçı yakalanır |
+| `/tarama 168` | Min momentum × min güven kombinasyonları: kaç bildirim, isabet (2x/5x/rug), 5x yapanların kaçı yakalanır; sonunda rug riski filtresi denemesi |
 | `/kazananlar 7 10` | Son 7 günde 10x+ yapan coinler (GeckoTerminal, ücretsiz) ve bot onları yakaladı mı, hangi fiyattan; kaçırıldıysa bugünkü eşiklerden hangisi engelledi |
 | `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
@@ -166,6 +166,7 @@ rhscanner/
   checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   pons.py           mezuniyet öncesi Pons curve alım/satımları ve bariz çöp filtresi
+  rugrisk.py        rug riski puanı (küçük alımlar, satan alıcılar, Fomo dışı hacim, az alım, çok yeni)
   strategy.py       çıkış kurallarının geçmiş bildirimlerde simülasyonu (/strateji)
   winners.py        10x+ yapan coinleri GeckoTerminal'den bulup sinyal kayıtlarıyla eşleştirir (/kazananlar)
   pons_backfill.py  aynı Pons sinyallerini geçmiş günlerin zincir verisinden yeniden üretir

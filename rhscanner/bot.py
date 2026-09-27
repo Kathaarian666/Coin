@@ -19,12 +19,13 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, backtest, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, backtest, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
 from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup,
                      format_report, format_scorecard, format_strategies, format_sweep, format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
+from .rugrisk import rug_bucket, rug_risk
 from .storage import Storage
 from .strategy import simulate
 from .wallets import WalletBook
@@ -250,8 +251,11 @@ class ScannerApp:
         v1, reasons1, extra = momentum_score(features, market, launch)
         v2, reasons2, _ = momentum_score(features, market, launch, v2=True)
         score, reasons = (v2, reasons2) if self.momentum_v2 else (v1, reasons1)
+        risk, risk_reasons = rug_risk({**features, **extra})
+        report["rug_risk"] = {"score": risk, "reasons": risk_reasons}
         report["momentum"] = {"score": score, "reasons": reasons,
-                              "features": {**features, **extra, "momentum_v1": v1, "momentum_v2": v2}}
+                              "features": {**features, **extra, "momentum_v1": v1, "momentum_v2": v2,
+                                           "rug_risk": risk}}
 
     def shadow_momentum(self, features: dict, pairs: list[dict], pair_address: str | None) -> tuple[int, dict]:
         market = market_summary(pairs, pair_address)
@@ -508,6 +512,9 @@ class ScannerApp:
         for bucket in ("✅ 70+", "⚠️ 50-69", "🔸 30-49", "⛔ <30"):
             groups.append((f"Güven {bucket} (analiz edilenler)",
                            summarize([r for r in analysed if trust_bucket(r["trust"]) == bucket])))
+        for bucket in ("🟢 düşük (<20)", "🟠 orta (20-39)", "🔴 yüksek (40+)"):
+            groups.append((f"Bildirim gidenler, rug riski {bucket}",
+                           summarize([r for r in by_kind["alert"] if rug_bucket(rug_risk_of(r)) == bucket])))
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
             groups.append((f"Bildirim gidenler, momentum {bucket}",
                            summarize([r for r in by_kind["alert"] if momentum_bucket(r["momentum"]) == bucket])))
@@ -587,7 +594,8 @@ class ScannerApp:
         results = [r for r in self.outcomes.results(hours) if r["kind"] in ("alert", "filtered")]
         winners = sum(1 for r in results if (r.get("max_all") or 0) >= 5)
         rows = parameter_sweep(results)
-        for text in format_sweep(hours, len(results), winners, rows, (self.min_momentum, self.min_score)):
+        rug_rows = rug_filter_sweep(results, self.min_momentum, self.min_score)
+        for text in format_sweep(hours, len(results), winners, rows, (self.min_momentum, self.min_score), rug_rows):
             await update.message.reply_html(text)
 
     async def cmd_strategies(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

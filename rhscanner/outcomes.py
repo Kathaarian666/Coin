@@ -22,6 +22,7 @@ import time
 from collections import defaultdict
 
 from .momentum import tuned_points
+from .rugrisk import rug_risk
 
 log = logging.getLogger(__name__)
 
@@ -295,6 +296,7 @@ def finding_table(results: list[dict], min_n: int = 5,
 
 # Numeric signal features worth splitting into low / mid / high thirds for /analiz, with Turkish labels.
 ANALYSIS_FEATURES = {
+    "rug_risk": "rug riski puanı",
     "trust": "güven skoru",
     "momentum": "momentum skoru",
     "buyers_10m": "10 dk alıcı",
@@ -323,6 +325,8 @@ def feature_value(r: dict, name: str) -> float | None:
     f = r.get("features") or {}
     if name in ("trust", "momentum"):
         value = r.get(name)
+    elif name == "rug_risk":
+        value = rug_risk_of(r)
     elif name == "accel_5m":
         b5, prev = f.get("buyers_5m"), f.get("buyers_prev_5m")
         value = b5 / max(prev, 1) if b5 is not None and prev is not None else None
@@ -451,4 +455,24 @@ def parameter_sweep(results: list[dict], winner_multiple: float = 5.0, min_n: in
             caught = sum(1 for r in picked if (r.get("max_all") or 0) >= winner_multiple)
             out.append({"min_momentum": min_momentum, "min_score": min_score, **summarize(picked),
                         "recall": round(100.0 * caught / len(winners), 1) if winners else None})
+    return out
+
+
+def rug_risk_of(r: dict) -> int:
+    """The rug risk of a recorded signal, from its stored features (recorded live, or worked out again)."""
+    f = r.get("features") or {}
+    return f["rug_risk"] if f.get("rug_risk") is not None else rug_risk(f)[0]
+
+
+def rug_filter_sweep(results: list[dict], min_momentum: int, min_score: int,
+                     winner_multiple: float = 5.0) -> list[tuple[str, dict]]:
+    """Today's bars plus a rug-risk ceiling: does dropping risky signals cut rugs without losing winners?"""
+    base = [r for r in results if r.get("trust") is not None and r["trust"] >= min_score
+            and (momentum_v2_of(r) or 0) >= min_momentum]
+    winners = sum(1 for r in base if (r.get("max_all") or 0) >= winner_multiple)
+    out = []
+    for name, ceiling in (("filtre yok", 101), ("rug riski <60", 60), ("rug riski <40", 40), ("rug riski <20", 20)):
+        kept = [r for r in base if rug_risk_of(r) < ceiling]
+        caught = sum(1 for r in kept if (r.get("max_all") or 0) >= winner_multiple)
+        out.append((name, {**summarize(kept), "kept_winners": caught, "winners": winners}))
     return out

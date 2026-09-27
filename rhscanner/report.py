@@ -33,6 +33,11 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
         "",
         f"{icon} <b>Güven skoru: {report['score']}/100</b> — {label}",
     ]
+    risk = report.get("rug_risk") or {}
+    if (risk.get("score") or 0) >= 20:
+        icon = "🔴 yüksek" if risk["score"] >= 40 else "🟠 orta"
+        lines.append(f"⚠️ <b>Rug riski: {icon}</b> ({risk['score']}/100) — "
+                     + escape(", ".join(risk["reasons"][:3]), quote=False))
     momentum = report.get("momentum") or {}
     if momentum.get("score") is not None:
         m_icon, m_label = momentum_label(momentum["score"])
@@ -408,7 +413,8 @@ def format_strategies(hours: float, position: float, rows: list[tuple[str, dict]
     return _chunks(blocks)
 
 
-def format_sweep(hours: float, total: int, winners: int, rows: list[dict], current: tuple[int, int]) -> list[str]:
+def format_sweep(hours: float, total: int, winners: int, rows: list[dict], current: tuple[int, int],
+                 rug_rows: list[tuple[str, dict]] | None = None) -> list[str]:
     """/tarama: alert bars side by side; sorted by the share of 5x signals caught, then by precision."""
     blocks = [f"🎛 <b>Parametre taraması — son {hours:g} saat</b>\n"
               f"<i>{total} analiz edilen sinyal, {winners} tanesi 24 saat içinde 5x yaptı.\n"
@@ -421,6 +427,14 @@ def format_sweep(hours: float, total: int, winners: int, rows: list[dict], curre
                       f"5x %{r['x5_all']} · rug %{r['rugged']} · yakalanan %{r['recall']}{mark}")
     if not rows:
         blocks.append("Yeterli veri yok.")
+    if rug_rows:
+        blocks.append(f"\n<b>Rug riski filtresi</b> (şu anki eşiklerle: momentum ≥{current[0]}, güven ≥{current[1]})")
+        for name, r in rug_rows:
+            if not r.get("n"):
+                blocks.append(f"   {name}: bildirim kalmaz")
+                continue
+            blocks.append(f"   {name}: {r['n']} bildirim · 2x %{r['x2_60']} · 5x %{r['x5_all']} · rug %{r['rugged']} · "
+                          f"5x'lerden kalan {r['kept_winners']}/{r['winners']}")
     blocks.append("\n<i>Sıralama: isabet (5x %) × yakalama (5x'lerin payı). Az bildirim + yüksek isabet ile "
                   "çok bildirim + yüksek yakalama arasında denge ara. Aynı veriden seçildiği için biraz iyimserdir.</i>")
     return _chunks(blocks)
