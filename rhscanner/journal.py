@@ -1,124 +1,82 @@
-"""The user's own trades (/aldim, /sattim, /islemlerim), to compare real results with the simulations.
+"""The user's own Fomo trades, picked up from the chain (/cuzdan, /islemlerim).
 
-Prices are DexScreener's at the moment of the command; Fomo's fee (pct, with a
-dollar minimum) is taken from the buy and from every sell, as in
-exits.breakeven_multiple. One open position per coin: buying more adds to it.
+Every Fomo trade names the trader's wallet (fomo.py), so once the user tells
+the bot their Fomo wallet, their buys and sells are recorded as they happen,
+with the dollars that actually moved (the USDG leg, Fomo's fee included).
+A coin's position is closed once at least 99% of the tokens bought were sold.
 """
 
 import time
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS positions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE IF NOT EXISTS my_trades (
+    tx TEXT NOT NULL,
     token TEXT NOT NULL,
-    symbol TEXT,
-    opened_ts REAL NOT NULL,
-    usd REAL NOT NULL,          -- paid, fees included
-    tokens REAL NOT NULL,       -- bought after the buy fee
-    remaining REAL NOT NULL,    -- tokens still held
-    entry_price REAL NOT NULL,
-    alert_ts REAL,
-    alert_price REAL,
-    proceeds REAL NOT NULL DEFAULT 0,  -- received from sells, after fees
-    closed_ts REAL
+    side TEXT NOT NULL,
+    ts REAL NOT NULL,
+    usd REAL,
+    amount REAL NOT NULL,
+    PRIMARY KEY (tx, token, side)
 );
-CREATE INDEX IF NOT EXISTS positions_open ON positions (token, closed_ts);
+CREATE INDEX IF NOT EXISTS my_trades_token ON my_trades (token, ts);
 """
-
-
-def fee(amount: float, pct: float, minimum: float) -> float:
-    return max(minimum, amount * pct / 100)
+CLOSED_SHARE = 0.99
 
 
 class Journal:
-    def __init__(self, db, fee_pct: float = 0.5, fee_min: float = 0.95):
+    def __init__(self, db):
         self.db = db
-        self.fee_pct, self.fee_min = fee_pct, fee_min
         self.db.executescript(SCHEMA)
         self.db.commit()
 
-    def _open(self, token: str):
-        return self.db.execute(
-            "SELECT id, usd, tokens, remaining, entry_price FROM positions WHERE token = ? AND closed_ts IS NULL",
-            (token.lower(),),
-        ).fetchone()
-
-    def buy(self, token: str, usd: float, price: float, symbol: str | None = None,
-            alert: dict | None = None, now: float | None = None) -> dict:
-        """alert: the coin's alert signal ({"ts", "p0"}) if the bot sent one."""
-        now = now or time.time()
-        invested = usd - fee(usd, self.fee_pct, self.fee_min)
-        if invested <= 0:
-            raise ValueError("tutar komisyonu karşılamıyor")
-        tokens = invested / price
-        row = self._open(token)
-        if row:
-            pid, _, old_tokens, _, old_entry = row
-            entry = (old_entry * old_tokens + price * tokens) / (old_tokens + tokens)
-            self.db.execute("UPDATE positions SET usd = usd + ?, tokens = tokens + ?, remaining = remaining + ?,"
-                            " entry_price = ? WHERE id = ?", (usd, tokens, tokens, entry, pid))
-        else:
-            self.db.execute(
-                "INSERT INTO positions (token, symbol, opened_ts, usd, tokens, remaining, entry_price, alert_ts,"
-                " alert_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (token.lower(), symbol, now, usd, tokens, tokens, price,
-                 (alert or {}).get("ts"), (alert or {}).get("p0")),
-            )
+    def record(self, trade) -> bool:
+        """A fomo.FomoTrade by the user's wallet; False if it was already recorded."""
+        cur = self.db.execute(
+            "INSERT OR IGNORE INTO my_trades (tx, token, side, ts, usd, amount) VALUES (?, ?, ?, ?, ?, ?)",
+            (trade.tx_hash, trade.token.lower(), trade.side, trade.timestamp or time.time(), trade.usd,
+             float(trade.amount)),
+        )
         self.db.commit()
-        out = {"usd": usd, "fee": round(usd - invested, 2), "price": price, "added": bool(row)}
-        if alert and alert.get("p0"):
-            out["vs_alert"] = price / alert["p0"]
-            out["delay_min"] = (now - alert["ts"]) / 60
-        return out
+        return cur.rowcount == 1
 
-    def sell(self, token: str, share: float, price: float, now: float | None = None) -> dict | None:
-        """Sell `share` (0-1] of what is left; returns the trade so far, or None without an open position."""
-        row = self._open(token)
-        if not row:
-            return None
-        pid, usd, tokens, remaining, entry = row
-        sold = remaining * min(1.0, share)
-        gross = sold * price
-        net = max(0.0, gross - fee(gross, self.fee_pct, self.fee_min))
-        left = remaining - sold
-        closed = (now or time.time()) if left <= tokens * 1e-9 else None
-        self.db.execute("UPDATE positions SET remaining = ?, proceeds = proceeds + ?, closed_ts = ? WHERE id = ?",
-                        (0.0 if closed else left, net, closed, pid))
-        self.db.commit()
-        (proceeds,) = self.db.execute("SELECT proceeds FROM positions WHERE id = ?", (pid,)).fetchone()
-        return {"net": round(net, 2), "multiple": price / entry, "closed": bool(closed),
-                "pnl": round(proceeds - usd, 2) if closed else None, "left_share": left / tokens if tokens else 0,
-                "usd": usd, "proceeds": round(proceeds, 2)}
-
-    def open_positions(self) -> list[dict]:
-        rows = self.db.execute("SELECT token, symbol, opened_ts, usd, tokens, remaining, entry_price, proceeds "
-                               "FROM positions WHERE closed_ts IS NULL ORDER BY opened_ts").fetchall()
-        keys = ("token", "symbol", "opened_ts", "usd", "tokens", "remaining", "entry_price", "proceeds")
-        return [dict(zip(keys, r)) for r in rows]
-
-    def value_now(self, position: dict, price: float) -> float:
-        """What selling the rest now would bring, after the fee, plus what was already sold."""
-        gross = position["remaining"] * price
-        return max(0.0, gross - fee(gross, self.fee_pct, self.fee_min)) + position["proceeds"]
-
-    def closed_summary(self, hours: float, now: float | None = None) -> dict:
+    def positions(self, hours: float, now: float | None = None) -> list[dict]:
+        """One row per coin first bought in the last `hours`: dollars in and out, and whether it is closed."""
         now = now or time.time()
         rows = self.db.execute(
-            "SELECT usd, proceeds, opened_ts, alert_ts, alert_price, entry_price FROM positions "
-            "WHERE closed_ts IS NOT NULL AND closed_ts >= ?", (now - hours * 3600,),
+            "SELECT token, MIN(ts), "
+            "SUM(CASE WHEN side = 'buy' THEN usd END), SUM(CASE WHEN side = 'sell' THEN usd END), "
+            "SUM(CASE WHEN side = 'buy' THEN amount ELSE 0 END), SUM(CASE WHEN side = 'sell' THEN amount ELSE 0 END), "
+            "SUM(CASE WHEN usd IS NULL THEN 1 ELSE 0 END), MAX(ts) "
+            "FROM my_trades GROUP BY token HAVING MIN(CASE WHEN side = 'buy' THEN ts END) >= ? ORDER BY MIN(ts)",
+            (now - hours * 3600,),
         ).fetchall()
-        if not rows:
-            return {"n": 0}
-        pnls = [proceeds - usd for usd, proceeds, *_ in rows]
-        delays = [(opened - alert_ts) / 60 for _, _, opened, alert_ts, _, _ in rows if alert_ts]
-        vs_alert = [entry / alert_p for *_, alert_p, entry in rows if alert_p]
-        return {
-            "n": len(rows),
-            "pnl": round(sum(pnls), 2),
-            "invested": round(sum(usd for usd, *_ in rows), 2),
-            "win_rate": round(100.0 * sum(1 for p in pnls if p > 0) / len(pnls), 1),
-            "best": round(max(pnls), 2),
-            "worst": round(min(pnls), 2),
-            "avg_delay_min": round(sum(delays) / len(delays), 1) if delays else None,
-            "avg_vs_alert": round(sum(vs_alert) / len(vs_alert), 2) if vs_alert else None,
-        }
+        out = []
+        for token, first_ts, usd_in, usd_out, bought, sold, unpriced, last_ts in rows:
+            closed = bought > 0 and sold >= CLOSED_SHARE * bought
+            out.append({
+                "token": token, "first_ts": first_ts, "last_ts": last_ts,
+                "usd_in": usd_in or 0.0, "usd_out": usd_out or 0.0,
+                "held_share": max(0.0, 1 - sold / bought) if bought else 0.0,
+                "closed": closed, "unpriced": bool(unpriced),
+                "pnl": round((usd_out or 0.0) - (usd_in or 0.0), 2) if closed else None,
+            })
+        return out
+
+
+def summarize_closed(positions: list[dict]) -> dict:
+    closed = [p for p in positions if p["closed"] and not p["unpriced"]]
+    if not closed:
+        return {"n": 0}
+    pnls = [p["pnl"] for p in closed]
+    delays = [p["delay_min"] for p in closed if p.get("delay_min") is not None]
+    held = [(p["last_ts"] - p["first_ts"]) / 60 for p in closed]
+    return {
+        "n": len(closed),
+        "pnl": round(sum(pnls), 2),
+        "invested": round(sum(p["usd_in"] for p in closed), 2),
+        "win_rate": round(100.0 * sum(1 for x in pnls if x > 0) / len(pnls), 1),
+        "best": max(pnls),
+        "worst": min(pnls),
+        "avg_delay_min": round(sum(delays) / len(delays), 1) if delays else None,
+        "avg_hold_min": round(sum(held) / len(held)),
+    }
