@@ -109,7 +109,8 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    (kalan 5x'ler ve rug oranı). Geçmiş sinyaller için de kayıtlı özelliklerden hesaplanıyor.
    Rug filtresi sonucu (221 bildirim): puan rug'dan çok oynaklığı ölçüyor — 60+ %30 rug / 0 5x (10 bildirim),
    40-59 %11 rug / **%40 5x**, 20-39 %13 / %29, <20 %7 / %29. <40 filtresi 14 kazanan kaybettiriyor. → `/maxrug`
-   komutu (varsayılan kapalı, önerilen 60), bildirim uyarısı sadece 60+. Rug ~%10 sabit; odak kazananlarda.
+   komutu (varsayılan kapalı; **sunucuda `/maxrug 60` yapıldı**), bildirim uyarısı sadece 60+. Rug ~%10 sabit;
+   odak kazananlarda. Güncel set: güven ≥30, momentum v2 ≥75, rug <60, alıcı ≥10, 10 dk alım ≥$500.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve
