@@ -67,8 +67,9 @@ class Settings:
     fomo_fee_pct: float = 0.5
     fomo_fee_min_usd: float = 0.95
     fomo_lookback_blocks: int = 6000
-    # Pons coins before graduation (bonding-curve trading); measured in /karne, not alerted.
-    enable_pons_watcher: bool = True
+    # Pons coins before graduation (bonding-curve trading). Off: 3 days / ~9k signals showed they lose
+    # (median 0.7-0.8x after an hour, 5x ~2% vs ~15% for Fomo alerts); kept for re-measuring.
+    enable_pons_watcher: bool = False
     pons_poll_interval: float = 10.0
     pons_lookback_blocks: int = 6000
     pons_min_buyers: int = 8
@@ -115,7 +116,7 @@ class Settings:
             fomo_fee_pct=float(env("FOMO_FEE_PCT", "0.5")),
             fomo_fee_min_usd=float(env("FOMO_FEE_MIN_USD", "0.95")),
             fomo_lookback_blocks=int(env("FOMO_LOOKBACK_BLOCKS", "6000")),
-            enable_pons_watcher=_flag(env("ENABLE_PONS_WATCHER", "1")),
+            enable_pons_watcher=_flag(env("ENABLE_PONS_WATCHER", "0")),
             pons_poll_interval=float(env("PONS_POLL_INTERVAL", "10")),
             pons_lookback_blocks=int(env("PONS_LOOKBACK_BLOCKS", "6000")),
             pons_min_buyers=int(env("PONS_MIN_BUYERS", "8")),

@@ -45,7 +45,7 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 | **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
 | **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
 | **Geliştirici geçmişi** | Pons V2 lansmanlarından: coini çıkaran cüzdanın son ~3 haftada kaç coin daha çıkardığı, son 30'unun kaçının hâlâ yaşadığı (likidite ≥ $5k), en iyisinin FDV'si. Bot tüm Pons lansmanlarını yerel bir indekste tutar (ilk açılışta ~10 dk'da doldurur) |
-| **Mezuniyet öncesi Pons** | Pons coinleri doğduğu curve kontratında işlem görürken (DexScreener'da yokken) izlenir: 10 dk'da ≥ 8 farklı alıcı ve ≥ $300 alım olan 2 saatten genç coinler kaydedilir (yanında daha erken bir eşik de ölçülür: ≥ 4 alıcı, ≥ $100). Bariz çöp ön filtresi: seri geliştirici (24 saatte ≥ 10 coin), geliştirici sattı / kendi aldı, tek cüzdan alımı, ilk saniyelerde küme alım, satış baskısı, aynı cüzdanların tekrar tekrar alması. Şimdilik bildirim yok, sonuçlar `/karne` ve `/bulgular 72 pons` ile ölçülür |
+| **Mezuniyet öncesi Pons** | Pons coinleri doğduğu curve kontratında işlem görürken (DexScreener'da yokken) izlenir: 10 dk'da ≥ 8 farklı alıcı ve ≥ $300 alım olan 2 saatten genç coinler kaydedilir (yanında daha erken bir eşik de ölçülür: ≥ 4 alıcı, ≥ $100). Bariz çöp ön filtresi: seri geliştirici (24 saatte ≥ 10 coin), geliştirici sattı / kendi aldı, tek cüzdan alımı, ilk saniyelerde küme alım, satış baskısı, aynı cüzdanların tekrar tekrar alması. **Varsayılan kapalı** (`ENABLE_PONS_WATCHER=1` ile açılır): 3 günlük ölçümde bu coinler Fomo bildirimlerinden çok daha kötü çıktı |
 | **Sahte hacim (wash trading)** | Son 5 dk transferlerinde kaç farklı cüzdan var, en aktif cüzdanın payı; Fomo'da aynı coini tekrar tekrar alıp satan cüzdanların hacim payı |
 
 **İki ayrı skor:**
@@ -173,7 +173,7 @@ tests/              testler
 - [x] Robinhood Chain tarayıcı + güvenlik kontrolleri + Telegram botu
 - [x] Fomo akışını zincirden okuma, Fomo'da yükselen coinler için bildirim
 - [ ] Sunucuya kurulum ve canlı ayar (eşikler, gerçek verilerle kalibrasyon)
-- [x] Pons coinlerini doğduğu anda (curve üzerinde) yakalama — şimdilik ölçüm modunda
+- [x] Pons coinlerini doğduğu anda (curve üzerinde) yakalama — denendi, kârsız çıktı, varsayılan kapalı
 - [ ] V3/V4 honeypot simülasyonu
 - [x] Geliştirici geçmişi (aynı cüzdanın önceki token'ları rug oldu mu?)
 - [x] Sniper / bundle tespiti, momentum takibi, çıkış sinyalleri, sahte hacim tespiti

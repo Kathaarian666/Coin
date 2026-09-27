@@ -411,13 +411,16 @@ class ScannerApp:
             ("🔔 Bildirim gidenler", summarize(by_kind["alert"])),
             ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
             ("👤 Gölge grup", summarize(by_kind["shadow"])),
-            (f"🐣 Pons {self.settings.pons_min_buyers}+ alıcı (ön filtreden geçen)", summarize(by_kind["pons"])),
-            (f"🗑️ Pons {self.settings.pons_min_buyers}+ alıcı (çöp sayılan)", summarize(by_kind["pons_junk"])),
-            (f"🐣 Pons {self.settings.pons_early_min_buyers}+ alıcı, erken (ön filtreden geçen)",
-             summarize(by_kind["pons_early"])),
-            (f"🗑️ Pons {self.settings.pons_early_min_buyers}+ alıcı, erken (çöp sayılan)",
-             summarize(by_kind["pons_early_junk"])),
         ]
+        if any(by_kind[k] for k in ("pons", "pons_junk", "pons_early", "pons_early_junk")):
+            groups += [
+                (f"🐣 Pons {self.settings.pons_min_buyers}+ alıcı (ön filtreden geçen)", summarize(by_kind["pons"])),
+                (f"🗑️ Pons {self.settings.pons_min_buyers}+ alıcı (çöp sayılan)", summarize(by_kind["pons_junk"])),
+                (f"🐣 Pons {self.settings.pons_early_min_buyers}+ alıcı, erken (ön filtreden geçen)",
+                 summarize(by_kind["pons_early"])),
+                (f"🗑️ Pons {self.settings.pons_early_min_buyers}+ alıcı, erken (çöp sayılan)",
+                 summarize(by_kind["pons_early_junk"])),
+            ]
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
             groups.append((f"Momentum {bucket} (tüm gruplar)",
                            summarize([r for r in results if momentum_bucket(r["momentum"]) == bucket])))
@@ -539,8 +542,9 @@ class ScannerApp:
             f"Fomo'da izlenen coin (son 1 saat): {len(self.tracker.trades)}\n"
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
             f"Pons lansman indeksi: {self.analyzer.launches.count():,} coin\n"
-            f"Pons curve'ünde işlem gören (son {self.settings.pons_max_age_min:g} dk): {len(self.pons.trades)} coin\n"
-            f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
+            + (f"Pons curve'ünde işlem gören (son {self.settings.pons_max_age_min:g} dk): {len(self.pons.trades)} coin\n"
+               if self.settings.enable_pons_watcher else "")
+            + f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
             f"Min. momentum: {self.min_momentum} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )

@@ -46,7 +46,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 ## Yapılanlar (özet)
 Fomo akışı izleme ve bildirim · güven skoru (kontrat, likidite, V2 honeypot simülasyonu, V4 hook tanıma,
 holder dağılımı, lansman: dev/sniper/bundle) · momentum skoru · çıkış sinyalleri (ÇIK/DİKKAT, 5/15/30 dk) ·
-akıllı Fomo cüzdanları · mezuniyet öncesi Pons takibi (ölçüm modu) · komisyon/başa baş · sonuç kaydı ve `/karne` · geliştirici geçmişi · sahte hacim tespiti ·
+akıllı Fomo cüzdanları · komisyon/başa baş · sonuç kaydı ve `/karne` · geliştirici geçmişi · sahte hacim tespiti ·
 Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
 
 ## Sıradaki işler
@@ -58,18 +58,15 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    İlk tur (72 saatlik veri): `/minmomentum` eklendi (sunucuda 45), `/karne` güven/momentum kırılımları ve
    `/bulgular` eklendi. `liq_usd_low` high→low (bu coinler ortalamadan iyi), `v4_common_hook` low→medium
    (rug %17). İlk 24 saatte bildirimlerin 1s 2x oranı %27'ye çıktı. 30 Eylül'de `/karne 72` +
-   `/bulgular 72` ile tekrar bak. 168 saatlik veriyle karar verildi: `/minmomentum 70` (70+ %20 vs 45-69 %11 1s 2x)
+   `/bulgular 72` ile tekrar bak. ÇIK sinyalleri isabetli (10 sinyal: %50'si 1s sonra aşağıda, kaçırılan 1.5x yok).
+   168 saatlik veriyle karar verildi: `/minmomentum 70` (70+ %20 vs 45-69 %11 1s 2x)
    ve `/minskor 30` (güven 30-49 en iyi grup: %42 1s 2x; rug her aralıkta %9-11, güven rug'ı ayırmıyor).
 2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
-3. **Mezuniyet öncesi Pons takibi**: ölçüm modunda kuruldu (kind `pons` / `pons_junk`, bildirim yok).
-   Karne kontrolünde `/karne 72` Pons grupları ve `/bulgular 72 pons` ile bak: ön filtre çöpü ayırıyor mu,
-   filtreden geçenler iyi mi? İyiyse bildirim (ör. `/pons ac` komutu) eklenecek; eşikler `config.py` `pons_*`.
-   İlk 24 saat: ön filtre dump'ları ayırıyor (1s yarıya düşen %6.5 vs %31) ama geçenler de medyan 1s sonu 0.74x,
-   medyan zirve 1.0x → sinyal geç geliyor. Bu yüzden paralel ikinci eşik eklendi (`pons_early`: 4+ alıcı, $100+;
-   `/bulgular 72 erken`). 30 Eylül'de iki eşiği karşılaştır; ikisi de kötüyse bu yolu bırakmayı öner.
-   `/karne` artık ÇIK/DİKKAT isabetini de gösteriyor (sinyal sonrası 1 saatte daha aşağıda mı, kaçırılan 1.5x).
-   Geçmiş doldurma: `python -m rhscanner pons-backfill 3` (sunucuda ~10 dk; `features.backfill=true`, mezun
-   olan coinlerin fiyatı mezuniyette kesilir → kazananlara karşı hafif yanlı). Canlı ile tutarlı çıktı.
+3. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve
+   alım/satımlarını okuyup 8+ ve 4+ alıcı eşiğinde sinyal + bariz çöp filtresi uyguluyordu; `pons-backfill` ile
+   3 günlük veri (~9k sinyal): filtreden geçenler bile medyan 1s sonu 0.70–0.78x, 5x %1.5–1.9 (Fomo bildirimleri
+   %14.7). Erken eşik daha iyi değil → sorun zamanlama değil, coinlerin çoğu satmak için çıkarılıyor. Fomo'da hacim
+   gelmesi zaten güçlü bir eleme. Kod duruyor, `ENABLE_PONS_WATCHER=1` ile açılır (RPC yükü getirir).
 4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
 5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.
