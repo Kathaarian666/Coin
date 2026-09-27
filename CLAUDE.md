@@ -74,6 +74,8 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    → Momentum v2 (`momentum.tuned_points`): FDV <$20k +15, >$110k −10; yaş >30s −15 (taze bonusu kalktı);
    Fomo payı ≥%95 +10; ince likidite cezası kalktı; balina eşikleri 0.42/0.62; hızlanma +12→+4. Varsayılan
    kapalı; `/geritest` ile yeni yarıda v1'den iyiyse `/momentumv2 ac`. v1 ve v2 her sinyalde features'a yazılıyor.
+   `/geritest` (yeni yarı): v2 130 bildirim 2x %31.5 / 5x %32.3 / rug %6.2 vs v1 160 bildirim %26.2 / %24.4 / %7.5.
+   **27 Eylül'de sunucuda `/momentumv2 ac` yapıldı.** Canlı hedef: bildirimlerde 1s 2x > %26, 5x > %24.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve
