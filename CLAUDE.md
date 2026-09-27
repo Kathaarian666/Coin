@@ -33,6 +33,9 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 - Fomo emir akışı: entry `0xccc88a9d...`, executor `0xb92fe925...` (sabitler `fomo.py`'de).
 - Pons V2 factory `0x7ed598bc...`, lansman olayı: topic1=token, topic2=curve, topic3=launcher
   (`checks/deployer.py`). Günde binlerce lansman var; `launches.py` hepsini SQLite'ta indeksliyor.
+- Her Pons coini mezuniyete kadar kendi curve kontratında işlem görür: `CurveBuy`/`CurveSell`
+  (topic1=router, topic2=alıcı/satıcı; data: eth, token, ücret, vergi — `pons.py`). Zincir genelinde ~5 işlem/sn.
+  DexScreener mezuniyet öncesi coinleri göstermez; fiyat curve işlemlerinden hesaplanır (ETH fiyatı DexScreener WETH).
 - Uniswap V4 PoolManager, WETH, USDG adresleri `config.py`'de.
 
 ## Geliştirme
@@ -43,7 +46,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 ## Yapılanlar (özet)
 Fomo akışı izleme ve bildirim · güven skoru (kontrat, likidite, V2 honeypot simülasyonu, V4 hook tanıma,
 holder dağılımı, lansman: dev/sniper/bundle) · momentum skoru · çıkış sinyalleri (ÇIK/DİKKAT, 5/15/30 dk) ·
-akıllı Fomo cüzdanları · komisyon/başa baş · sonuç kaydı ve `/karne` · geliştirici geçmişi · sahte hacim tespiti ·
+akıllı Fomo cüzdanları · mezuniyet öncesi Pons takibi (ölçüm modu) · komisyon/başa baş · sonuç kaydı ve `/karne` · geliştirici geçmişi · sahte hacim tespiti ·
 Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
 
 ## Sıradaki işler
@@ -57,7 +60,8 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    (rug %17). Birkaç gün sonra `/karne 72` + `/bulgular 72` ile tekrar bak.
 2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
-3. **Mezuniyet öncesi Pons takibi** (opsiyonel): lansman indeksi hazır olduğu için yeni Pons coinlerini
-   doğduğu anda (Fomo'da hacim gelmeden) izleme.
+3. **Mezuniyet öncesi Pons takibi**: ölçüm modunda kuruldu (kind `pons` / `pons_junk`, bildirim yok).
+   Karne kontrolünde `/karne 72` Pons grupları ve `/bulgular 72 pons` ile bak: ön filtre çöpü ayırıyor mu,
+   filtreden geçenler iyi mi? İyiyse bildirim (ör. `/pons ac` komutu) eklenecek; eşikler `config.py` `pons_*`.
 4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
 5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.

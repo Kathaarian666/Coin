@@ -203,10 +203,11 @@ def format_scorecard(hours: float, groups: list[tuple[str, dict]]) -> str:
     return "\n".join(lines)
 
 
-def format_findings(hours: float, overall: dict, rows: list[tuple[str, dict]]) -> str:
-    """/bulgular: how analysed signals did, split by the findings that lowered their trust score."""
-    lines = [f"🔎 <b>Bulgulara göre sonuçlar — son {hours:g} saat</b>",
-             "<i>(analiz edilen sinyaller: bildirim + filtre)</i>", ""]
+def format_findings(hours: float, overall: dict, rows: list[tuple[str, dict]], pons: bool = False) -> str:
+    """/bulgular: how analysed signals did, split by the findings that lowered their trust score
+    (pons=True: early Pons signals, split by the junk filter's reasons)."""
+    scope = "erken Pons sinyalleri, çöp nedenlerine göre" if pons else "analiz edilen sinyaller: bildirim + filtre"
+    lines = [f"🔎 <b>Bulgulara göre sonuçlar — son {hours:g} saat</b>", f"<i>({scope})</i>", ""]
     if not overall.get("n"):
         return "\n".join(lines + ["Veri yok."])
     lines.append(f"<b>Hepsi</b> ({overall['n']}): 1s 2x %{overall['x2_60']} · rug %{overall['rugged']} · "
@@ -216,5 +217,7 @@ def format_findings(hours: float, overall: dict, rows: list[tuple[str, dict]]) -
                      f"rug %{s['rugged']} · 1s sonu {s['median_ret60']}x")
     if not rows:
         lines.append("En az 5 sinyalde görülen bulgu yok.")
-    lines += ["", "<i>Bir bulgu \"Hepsi\"nden iyi sonuç veriyorsa güven skorunu gereksiz düşürüyor olabilir.</i>"]
+    hint = ("Bir çöp nedeni \"Hepsi\"nden iyi sonuç veriyorsa iyi coinleri eliyor olabilir." if pons else
+            "Bir bulgu \"Hepsi\"nden iyi sonuç veriyorsa güven skorunu gereksiz düşürüyor olabilir.")
+    lines += ["", f"<i>{hint}</i>"]
     return "\n".join(lines)

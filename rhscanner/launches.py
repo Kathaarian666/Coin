@@ -1,4 +1,4 @@
-"""Local index of every Pons V2 launch (token -> launcher, block).
+"""Local index of every Pons V2 launch (token -> curve, launcher, block).
 
 Asking the node for one launcher's history directly means scanning weeks of
 blocks with a topic filter, which the public RPC often times out on. Pons
@@ -18,7 +18,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS pons_launches (
     token TEXT PRIMARY KEY,
     launcher TEXT NOT NULL,
-    block INTEGER NOT NULL
+    block INTEGER NOT NULL,
+    curve TEXT
 );
 CREATE INDEX IF NOT EXISTS pons_launches_launcher ON pons_launches (launcher);
 CREATE INDEX IF NOT EXISTS pons_launches_block ON pons_launches (block);
@@ -35,6 +36,10 @@ class LaunchIndex:
         self.db = db
         self.lookback = lookback
         self.db.executescript(SCHEMA)
+        columns = {row[1] for row in self.db.execute("PRAGMA table_info(pons_launches)")}
+        if "curve" not in columns:  # indexes made before the curve was kept
+            self.db.execute("ALTER TABLE pons_launches ADD COLUMN curve TEXT")
+        self.db.execute("CREATE INDEX IF NOT EXISTS pons_launches_curve ON pons_launches (curve)")
         self.db.commit()
 
     def _get(self, key: str) -> int | None:
@@ -59,8 +64,11 @@ class LaunchIndex:
         for entry in logs:
             topics = entry.get("topics") or []
             if len(topics) >= 4:
-                rows.append(("0x" + topics[1][-40:].lower(), "0x" + topics[3][-40:].lower(), int(entry["blockNumber"], 16)))
-        self.db.executemany("INSERT OR IGNORE INTO pons_launches (token, launcher, block) VALUES (?, ?, ?)", rows)
+                rows.append(("0x" + topics[1][-40:].lower(), "0x" + topics[3][-40:].lower(),
+                             int(entry["blockNumber"], 16), "0x" + topics[2][-40:].lower()))
+        self.db.executemany(
+            "INSERT OR IGNORE INTO pons_launches (token, launcher, block, curve) VALUES (?, ?, ?, ?)", rows
+        )
 
     async def sync(self, rpc, head: int | None = None, backfill_steps: int = BACKFILL_STEPS) -> int:
         """Catch up to the head, then backfill a few windows. Returns the number of queries made."""
@@ -104,6 +112,21 @@ class LaunchIndex:
     def launches_by(self, launcher: str) -> dict[str, int]:
         rows = self.db.execute("SELECT token, block FROM pons_launches WHERE launcher = ?", (launcher.lower(),))
         return dict(rows.fetchall())
+
+    def by_curve(self, curve: str) -> tuple[str, str, int] | None:
+        """(token, launcher, launch block) of a bonding curve."""
+        return self.db.execute(
+            "SELECT token, launcher, block FROM pons_launches WHERE curve = ?", (curve.lower(),)
+        ).fetchone()
+
+    def curve_of(self, token: str) -> str | None:
+        row = self.db.execute("SELECT curve FROM pons_launches WHERE token = ?", (token.lower(),)).fetchone()
+        return row[0] if row else None
+
+    def launches_since(self, launcher: str, block: int) -> int:
+        return self.db.execute(
+            "SELECT COUNT(*) FROM pons_launches WHERE launcher = ? AND block >= ?", (launcher.lower(), block)
+        ).fetchone()[0]
 
     def count(self) -> int:
         return self.db.execute("SELECT COUNT(*) FROM pons_launches").fetchone()[0]

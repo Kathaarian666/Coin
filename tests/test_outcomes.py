@@ -83,3 +83,18 @@ async def test_findings_are_returned_and_tabulated():
     text = format_findings(72, summarize(results), [(code, s)])
     assert "<code>DEV_HEAVY</code> (5)" in text and "Hepsi</b> (7)" in text
     assert "Veri yok" in format_findings(72, {"n": 0}, [])
+
+
+async def test_unlisted_coins_are_priced_by_price_fn():
+    log = OutcomeLog(sqlite3.connect(":memory:"))
+
+    class NoPairs:
+        async def tokens(self, addresses):
+            return []
+
+    log.record(TOKEN, "pons", ts=T0)
+    prices = {0: 1.0, 60: 3.0}
+    await log.tick(NoPairs(), now=T0, price_fn=lambda token: prices[0])
+    await log.tick(NoPairs(), now=T0 + 3600, price_fn=lambda token: prices[60])
+    [r] = log.results(hours=24, now=T0 + 3600)
+    assert (r["kind"], r["max_60"], r["rugged"]) == ("pons", 3.0, False)

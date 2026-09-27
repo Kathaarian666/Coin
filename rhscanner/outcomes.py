@@ -1,13 +1,16 @@
 """Outcome log: what happened to every signal, so the filters can be measured.
 
-Three kinds of signals are tracked, each at most once per token:
+The kinds of signals tracked, each at most once per token:
   alert     analysed and sent to Telegram
   filtered  analysed but held back (trust or momentum score below the minimum)
   shadow    crossed a lower bar of Fomo buying and was never analysed: the
             baseline the alerts have to beat
+  pons      a Pons coin buying up on its bonding curve before graduation
+  pons_junk the same, dropped by the obvious-junk filter (pons.junk_reasons)
 
 For each, price and liquidity are sampled from DexScreener at fixed minutes
 after the signal (0, 5, 10 ... 1440), in batches of up to 30 tokens per call.
+Coins DexScreener does not list yet (Pons curves) are priced by `price_fn`.
 """
 
 import json
@@ -78,7 +81,7 @@ class OutcomeLog:
         ).fetchall()
         return [r for r in rows if r[2] + CHECKPOINTS_MIN[r[3]] * 60 <= now]
 
-    async def tick(self, dexscreener, momentum_fn=None, now: float | None = None) -> int:
+    async def tick(self, dexscreener, momentum_fn=None, now: float | None = None, price_fn=None) -> int:
         """Take every sample that is due; returns how many were written."""
         now = now or time.time()
         rows = self.due(now)
@@ -101,6 +104,8 @@ class OutcomeLog:
             pair = pick_pair(pairs, token, pair_address)
             price = float(pair["priceUsd"]) if pair and pair.get("priceUsd") else None
             liquidity = (pair.get("liquidity") or {}).get("usd") if pair else None
+            if price is None and price_fn:
+                price = price_fn(token)  # USD, from the bonding curve; no liquidity figure
             self.db.execute(
                 "INSERT OR REPLACE INTO samples (signal_id, minute, ts, price, liquidity) VALUES (?, ?, ?, ?, ?)",
                 (signal_id, CHECKPOINTS_MIN[idx], now, price, liquidity),
@@ -184,11 +189,12 @@ def trust_bucket(score: int | None) -> str:
     return "✅ 70+" if score >= 70 else "⚠️ 50-69" if score >= 50 else "🔸 30-49" if score >= 30 else "⛔ <30"
 
 
-def finding_table(results: list[dict], min_n: int = 5) -> list[tuple[str, dict]]:
-    """Hit rates of analysed signals (alert + filtered) that carried each finding code, most common first."""
+def finding_table(results: list[dict], min_n: int = 5,
+                  kinds: tuple[str, ...] = ("alert", "filtered")) -> list[tuple[str, dict]]:
+    """Hit rates of the signals of `kinds` (default: analysed ones) carrying each finding code, most common first."""
     by_code: dict[str, list[dict]] = defaultdict(list)
     for r in results:
-        if r["kind"] in ("alert", "filtered"):
+        if r["kind"] in kinds:
             for code in set(r.get("findings") or []):
                 by_code[code].append(r)
     rows = [(code, summarize(rs)) for code, rs in by_code.items() if len(rs) >= min_n]

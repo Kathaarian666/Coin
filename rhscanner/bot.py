@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from html import escape
 
@@ -19,6 +20,7 @@ from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
 from .outcomes import OutcomeLog, finding_table, momentum_bucket, summarize, trust_bucket
+from .pons import BLOCKS_PER_MIN, DAY_BLOCKS_PONS, PonsTracker, PonsWatcher, junk_reasons
 from .report import format_exit, format_findings, format_followup, format_report, format_scorecard
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
@@ -41,7 +43,7 @@ HELP = (
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
     "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
-    "/bulgular [saat] — güven bulgularına göre sonuçlar\n"
+    "/bulgular [saat] [pons] — güven bulgularına (veya Pons çöp nedenlerine) göre sonuçlar\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -71,6 +73,11 @@ class ScannerApp:
         self.tracker = FomoTracker()
         self.outcomes = OutcomeLog(self.storage.db)
         self.wallets = WalletBook(self.storage.db)
+        self.pons = PonsTracker(max_age=settings.pons_max_age_min * 60)
+        self.pons_seen: set[str] = {row[0] for row in self.storage.db.execute(
+            "SELECT token FROM signals WHERE kind IN ('pons', 'pons_junk') AND ts >= ?", (time.time() - 86400,))}
+        self.eth_usd: float | None = None
+        self.eth_usd_at = 0.0
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
@@ -133,6 +140,48 @@ class ScannerApp:
             # Give indexers a moment to see the token and its first holders.
             await self.queue.put(Job(pool.token, pool_dict, delay=self.settings.analysis_delay))
 
+    async def on_pons_trades(self, trades, warmup: bool = False):
+        """A young Pons coin that enough wallets are buying on its curve: recorded for /karne (no alert)."""
+        if warmup or not self.eth_usd:
+            return
+        index = self.analyzer.launches
+        for curve in {t.curve for t in trades if t.side == "buy"}:
+            launch = index.by_curve(curve)
+            if not launch or launch[0] in self.pons_seen:
+                continue  # not indexed yet (the index syncs every 30 s; later buys retry) or already recorded
+            token, launcher, launch_block = launch
+            head = max(t.block for t in trades)
+            age_min = (head - launch_block) / BLOCKS_PER_MIN
+            if age_min > self.settings.pons_max_age_min:
+                continue
+            stats = self.pons.stats(curve, launcher, launch_block, self.fomo_window)
+            buy_usd = stats["buy_eth_10m"] * self.eth_usd
+            if stats["buyers_10m"] < self.settings.pons_min_buyers or buy_usd < self.settings.pons_min_buy_usd:
+                continue
+            launches_24h = index.launches_since(launcher, head - DAY_BLOCKS_PONS)
+            reasons = junk_reasons(stats, launches_24h)
+            self.pons_seen.add(token)
+            features = {**stats, "buy_usd_10m": round(buy_usd, 2), "age_min": round(age_min, 1),
+                        "launches_24h": launches_24h, "findings": reasons}
+            self.outcomes.record(token, "pons_junk" if reasons else "pons", features=features, pair=None)
+            log.info("Pons signal %s (%s): %s", token, ",".join(reasons) or "clean", features)
+
+    def pons_price(self, token: str) -> float | None:
+        """USD price of a coin still on its Pons curve (last trade), for outcome sampling."""
+        curve = self.analyzer.launches.curve_of(token) if self.analyzer.launches else None
+        price = self.pons.price(curve) if curve else None
+        return price * self.eth_usd if price and self.eth_usd else None
+
+    async def refresh_eth_usd(self):
+        if time.time() - self.eth_usd_at < 600 or not self.analyzer.dexscreener:
+            return
+        weth = self.settings.weth.lower()
+        pairs = [p for p in await self.analyzer.dexscreener.tokens([weth])
+                 if (p.get("baseToken") or {}).get("address", "").lower() == weth and p.get("priceUsd")]
+        if pairs:
+            best = max(pairs, key=lambda p: (p.get("liquidity") or {}).get("usd") or 0)
+            self.eth_usd, self.eth_usd_at = float(best["priceUsd"]), time.time()
+
     def _is_shadow(self, stats: dict) -> bool:
         """A lower bar than alerts: the baseline group for measuring the filters."""
         return stats["buyers"] >= max(3, self.min_buyers // 2) and stats["buy_usd"] >= self.min_buy_usd / 5
@@ -176,7 +225,9 @@ class ScannerApp:
         while True:
             try:
                 if self.analyzer.dexscreener:
-                    written = await self.outcomes.tick(self.analyzer.dexscreener, self.shadow_momentum)
+                    await self.refresh_eth_usd()
+                    written = await self.outcomes.tick(self.analyzer.dexscreener, self.shadow_momentum,
+                                                       price_fn=self.pons_price)
                     if written:
                         log.debug("outcome samples written: %d", written)
             except asyncio.CancelledError:
@@ -368,11 +419,14 @@ class ScannerApp:
             return
         hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 24.0
         results = self.outcomes.results(hours)
-        by_kind = {k: [r for r in results if r["kind"] == k] for k in ("alert", "filtered", "shadow")}
+        by_kind = {k: [r for r in results if r["kind"] == k]
+                   for k in ("alert", "filtered", "shadow", "pons", "pons_junk")}
         groups = [
             ("🔔 Bildirim gidenler", summarize(by_kind["alert"])),
             ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
             ("👤 Gölge grup", summarize(by_kind["shadow"])),
+            ("🐣 Pons erken (ön filtreden geçen)", summarize(by_kind["pons"])),
+            ("🗑️ Pons erken (çöp sayılan)", summarize(by_kind["pons_junk"])),
         ]
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
             groups.append((f"Momentum {bucket} (tüm gruplar)",
@@ -389,10 +443,13 @@ class ScannerApp:
     async def cmd_findings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
-        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 72.0
-        results = self.outcomes.results(hours)
-        analysed = [r for r in results if r["kind"] in ("alert", "filtered")]
-        await update.message.reply_html(format_findings(hours, summarize(analysed), finding_table(results)[:25]))
+        args = context.args or []
+        hours = float(args[0]) if args and args[0].replace(".", "", 1).isdigit() else 72.0
+        kinds = ("pons", "pons_junk") if "pons" in [a.lower() for a in args] else ("alert", "filtered")
+        results = [r for r in self.outcomes.results(hours) if r["kind"] in kinds]
+        await update.message.reply_html(
+            format_findings(hours, summarize(results), finding_table(results, kinds=kinds)[:25], pons="pons" in kinds)
+        )
 
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
@@ -487,6 +544,7 @@ class ScannerApp:
             f"Fomo'da izlenen coin (son 1 saat): {len(self.tracker.trades)}\n"
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
             f"Pons lansman indeksi: {self.analyzer.launches.count():,} coin\n"
+            f"Pons curve'ünde işlem gören (son {self.settings.pons_max_age_min:g} dk): {len(self.pons.trades)} coin\n"
             f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
             f"Min. momentum: {self.min_momentum} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
@@ -499,6 +557,9 @@ class ScannerApp:
             self.tasks.append(asyncio.create_task(watcher.run(self.on_fomo_trades)))
         if self.settings.enable_fomo_watcher:
             self.tasks.append(asyncio.create_task(REGISTRY.run(self.rpc, self.settings.v4_pool_manager)))
+        if self.settings.enable_pons_watcher and self.analyzer.launches:
+            watcher = PonsWatcher(self.rpc, self.settings, self.storage, self.pons)
+            self.tasks.append(asyncio.create_task(watcher.run(self.on_pons_trades)))
         if self.settings.enable_pool_watcher:
             watcher = PoolWatcher(self.rpc, self.settings, self.storage)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_pool)))

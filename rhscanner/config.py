@@ -67,6 +67,13 @@ class Settings:
     fomo_fee_pct: float = 0.5
     fomo_fee_min_usd: float = 0.95
     fomo_lookback_blocks: int = 6000
+    # Pons coins before graduation (bonding-curve trading); measured in /karne, not alerted.
+    enable_pons_watcher: bool = True
+    pons_poll_interval: float = 10.0
+    pons_lookback_blocks: int = 6000
+    pons_min_buyers: int = 8
+    pons_min_buy_usd: float = 300.0
+    pons_max_age_min: float = 120.0
     # Raw new-pool watcher: every new DEX pool, Fomo or not (very noisy).
     enable_pool_watcher: bool = False
 
@@ -105,6 +112,12 @@ class Settings:
             fomo_fee_pct=float(env("FOMO_FEE_PCT", "0.5")),
             fomo_fee_min_usd=float(env("FOMO_FEE_MIN_USD", "0.95")),
             fomo_lookback_blocks=int(env("FOMO_LOOKBACK_BLOCKS", "6000")),
+            enable_pons_watcher=_flag(env("ENABLE_PONS_WATCHER", "1")),
+            pons_poll_interval=float(env("PONS_POLL_INTERVAL", "10")),
+            pons_lookback_blocks=int(env("PONS_LOOKBACK_BLOCKS", "6000")),
+            pons_min_buyers=int(env("PONS_MIN_BUYERS", "8")),
+            pons_min_buy_usd=float(env("PONS_MIN_BUY_USD", "300")),
+            pons_max_age_min=float(env("PONS_MAX_AGE_MIN", "120")),
             enable_pool_watcher=_flag(env("ENABLE_POOL_WATCHER", "0")),
         )
 
