@@ -80,6 +80,19 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
             parts.append(f"Bundle: %{launch['bundle_pct']:.1f}")
         if parts:
             facts.append(" · ".join(parts))
+    deployer = report.get("deployer") or {}
+    prev = deployer.get("previous_launches")
+    if prev is not None and (prev or not deployer.get("partial")):
+        more = "+" if deployer.get("partial") else ""  # some history windows failed: a lower bound
+        text = f"Geliştirici: {prev}{more} önceki coin" if prev else "Geliştirici: ilk coini"
+        if prev and deployer.get("checked"):
+            text += f", son {deployer['checked']} coinden {deployer['alive']} tanesi yaşıyor"
+        if deployer.get("best_previous_fdv", 0) >= 100_000:
+            text += f" · en iyisi {_usd(deployer['best_previous_fdv'])} FDV"
+        facts.append(text)
+    wash = report.get("wash") or {}
+    if wash.get("transfers_5m"):
+        facts.append(f"Son 5 dk: {wash['transfers_5m']} transfer, {wash['wallets_5m']} cüzdan")
     if pool:
         launchpad = (report.get("liquidity") or {}).get("launchpad")
         pair = f" · {pool['quote_symbol']} paritesi" if pool.get("quote_symbol") else ""

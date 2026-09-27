@@ -7,11 +7,14 @@ from eth_utils import is_address, to_checksum_address
 
 from .checks import Finding
 from .checks.contract import check_contract
+from .checks.deployer import check_deployer
 from .checks.holders import check_holders, scan_transfers
 from .checks.launch import analyse_launch, launch_logs
 from .checks.honeypot import check_honeypot
 from .checks.liquidity import check_liquidity
+from .checks.wash import recent_flow, wash_findings
 from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
+from .launches import LaunchIndex
 from .rpc import RpcClient
 from .scoring import missing_checks, score
 from .sources import Blockscout, DexScreener
@@ -115,6 +118,7 @@ class Analyzer:
         self.blockscout = blockscout
         self.dexscreener = dexscreener
         self.storage = storage
+        self.launches = LaunchIndex(storage.db) if storage else None
 
     async def _metadata(self, token: str) -> dict:
         name = await self.rpc.try_call_fn(token, "name()", ["string"])
@@ -188,6 +192,16 @@ class Analyzer:
         report["launch"] = launch_data
         findings += launch_findings
 
+        try:
+            deployer_data, deployer_findings = await check_deployer(
+                self.rpc, self.dexscreener, token, launch_data.get("launch_block"),
+                self.launches if self.launches and self.launches.count() else None)
+        except Exception as exc:
+            log.warning("deployer history for %s failed: %s", token, exc)
+            deployer_data, deployer_findings = {}, []
+        report["deployer"] = deployer_data
+        findings += deployer_findings
+
         holder_data, holder_findings = await check_holders(
             self.rpc, token, meta["total_supply"], exclude,
             contract_data.get("creator") or launch_data.get("creator"),
@@ -199,6 +213,14 @@ class Analyzer:
         market = market_summary(pairs, pool["pool"] if pool else None)
         report["market"] = market
         findings += market_findings(market, "liquidity_eth" in (report.get("liquidity") or {}))
+
+        try:
+            flow = await recent_flow(self.rpc, token, exclude)
+        except Exception as exc:
+            log.warning("recent flow for %s failed: %s", token, exc)
+            flow = {}
+        report["wash"] = flow
+        findings += wash_findings(flow, None)  # Fomo churn needs the tracker: see ScannerApp.attach_momentum
 
         if fomo:
             findings += fomo_findings(fomo)

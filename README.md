@@ -44,12 +44,14 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 | **Uniswap V4 hook'u** | Hook'un son 3 günde kaç havuzda kullanıldığı (6 saatte bir yenilenir): yaygın launchpad hook'u mu, nadir mi, yükseltilebilir mi? |
 | **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
 | **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
+| **Geliştirici geçmişi** | Pons V2 lansmanlarından: coini çıkaran cüzdanın son ~3 haftada kaç coin daha çıkardığı, son 30'unun kaçının hâlâ yaşadığı (likidite ≥ $5k), en iyisinin FDV'si. Bot tüm Pons lansmanlarını yerel bir indekste tutar (ilk açılışta ~10 dk'da doldurur) |
+| **Sahte hacim (wash trading)** | Son 5 dk transferlerinde kaç farklı cüzdan var, en aktif cüzdanın payı; Fomo'da aynı coini tekrar tekrar alıp satan cüzdanların hacim payı |
 
 **İki ayrı skor:**
 - 🛡️ **Güven skoru** (rug/tuzak riski): kontrat, likidite, holder dağılımı, satılabilirlik, lansman (dev/bundle/sniper).
 - 🚀 **Momentum skoru** (vur-kaç için şu an gerçek alım hızlanıyor mu): son 5/10 dk Fomo alıcıları ve ivme,
   alım/satım oranı, alıcıların hâlâ tutma oranı, tek cüzdan ağırlığı, Fomo'nun toplam hacimdeki payı (organik akış),
-  coinin yaşı, son 1 saat/5 dk fiyat hareketi, Telegram/X/web sitesi, likidite derinliği.
+  coinin yaşı, son 1 saat/5 dk fiyat hareketi, Telegram/X/web sitesi, likidite derinliği; sahte hacim şüphesi puan düşürür.
   Ağırlıklar ilk tahmindir; `/karne` sonuçlarıyla kalibre edilecek.
 
 **Çıkış sinyalleri:** Bildirim giden her coin 5, 15 ve 30. dakikalarda kontrol edilir. Fiyat düşüşü tek başına
@@ -150,7 +152,8 @@ rhscanner/
   fomo.py           Fomo alım/satım akışını zincirden okur, coin bazında sayar
   discovery.py      yeni havuzları yakalar (V2/V3/V4 olayları, opsiyonel)
   analyzer.py       tüm kontrolleri çalıştırıp raporu oluşturur
-  checks/           contract, honeypot, liquidity, holders kontrolleri
+  checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
+  launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi için)
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı
   bot.py            Telegram botu + tarayıcı döngüsü
@@ -165,6 +168,6 @@ tests/              testler
 - [ ] Sunucuya kurulum ve canlı ayar (eşikler, gerçek verilerle kalibrasyon)
 - [ ] Pons / FomoPad launchpad'lerinden coin doğduğu anda yakalama
 - [ ] V3/V4 honeypot simülasyonu
-- [ ] Geliştirici geçmişi (aynı cüzdanın önceki token'ları rug oldu mu?)
-- [ ] Sniper / bundle tespiti, momentum takibi (token'ı 5–15 dk sonra yeniden kontrol)
+- [x] Geliştirici geçmişi (aynı cüzdanın önceki token'ları rug oldu mu?)
+- [x] Sniper / bundle tespiti, momentum takibi, çıkış sinyalleri, sahte hacim tespiti
 - [ ] Solana (ayrı proje)

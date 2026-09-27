@@ -95,6 +95,13 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None) -> tupl
         elif whale <= 0.25:
             add(4, "alım çok sayıda cüzdana yayılmış")
 
+    churn = fomo.get("churn_share_30m")
+    if churn is not None and churn >= 0.4:
+        add(-15, f"Fomo hacminin %{churn * 100:.0f}'i aynı cüzdanların al-sat döngüsü (sahte hacim şüphesi)")
+    transfers, wallets = fomo.get("transfers_5m", 0), fomo.get("wallets_5m", 0)
+    if (transfers >= 50 and wallets <= 8) or (transfers >= 30 and fomo.get("top_wallet_share_5m", 0) >= 0.4):
+        add(-15, f"hacim birkaç cüzdanda dönüyor: son 5 dk {transfers} transfer, {wallets} cüzdan")
+
     smart = fomo.get("smart_buyers_10m", 0)
     if smart >= 2:
         add(10, f"son 10 dk'da {smart} akıllı Fomo cüzdanı aldı")

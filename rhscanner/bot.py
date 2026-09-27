@@ -11,6 +11,7 @@ from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from .analyzer import Analyzer, market_summary
+from .checks.wash import fomo_churn
 from .config import Settings
 from .discovery import NewPool, PoolWatcher
 from .fomo import FomoTrade, FomoTracker, FomoWatcher
@@ -133,6 +134,8 @@ class ScannerApp:
     def attach_momentum(self, report: dict):
         features = fomo_features(self.tracker, report["token"])
         features["smart_buyers_10m"] = len(self.wallets.smart_buyers(self.tracker, report["token"]))
+        features["churn_share_30m"] = fomo_churn(self.tracker, report["token"])
+        features.update(report.get("wash") or {})
         report["fees"] = {
             "position": self.position_usd,
             "breakeven": breakeven_multiple(self.position_usd, self.settings.fomo_fee_pct, self.settings.fomo_fee_min_usd),
@@ -155,6 +158,8 @@ class ScannerApp:
             "fdv": (report.get("market") or {}).get("fdv"),
             "socials": (report.get("market") or {}).get("socials"),
             "findings": [f["code"] for f in report.get("findings", [])],
+            **{k: (report.get("deployer") or {}).get(k)
+               for k in ("previous_launches", "launches_24h", "checked", "alive", "best_previous_fdv")},
         }
         self.outcomes.record(
             report["token"], kind, trust=report["score"], momentum=(report.get("momentum") or {}).get("score"),
@@ -275,6 +280,19 @@ class ScannerApp:
             except Exception:
                 log.exception("smart wallet refresh failed")
             await asyncio.sleep(600)
+
+    async def launch_loop(self):
+        """Keeps the local Pons launch index (deployer history) current; backfills a little each round."""
+        index = self.analyzer.launches
+        while True:
+            try:
+                if await index.sync(self.rpc) > 1:
+                    log.info("Pons launch index: %d launches", index.count())
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("Pons launch index sync failed: %s", exc)
+            await asyncio.sleep(30)
 
     async def broadcast(self, text: str):
         for chat_id in self.settings.telegram_chat_ids:
@@ -437,6 +455,7 @@ class ScannerApp:
             f"RPC: {self.rpc.url.split('//')[-1]}\n"
             f"Fomo'da izlenen coin (son 1 saat): {len(self.tracker.trades)}\n"
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
+            f"Pons lansman indeksi: {self.analyzer.launches.count():,} coin\n"
             f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
@@ -453,6 +472,7 @@ class ScannerApp:
             self.tasks.append(asyncio.create_task(watcher.run(self.on_pool)))
         self.tasks.append(asyncio.create_task(self.outcome_loop()))
         self.tasks.append(asyncio.create_task(self.wallet_loop()))
+        self.tasks.append(asyncio.create_task(self.launch_loop()))
         for _ in range(self.settings.analysis_workers):
             self.tasks.append(asyncio.create_task(self.worker()))
 
