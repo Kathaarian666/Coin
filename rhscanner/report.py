@@ -380,30 +380,3 @@ def format_strategies(hours: float, position: float, rows: list[tuple[str, dict]
         blocks.append("Yeterli veri yok (en az 1 günlük bildirim gerekiyor).")
     blocks.append("\n<i>Geçmiş sonuç gelecek garantisi değildir; asıl karar yine kim satıyor sorusuna göre.</i>")
     return _chunks(blocks)
-
-
-def format_trades(hours: float, positions: list[dict], closed: dict, wallet_set: bool) -> str:
-    """/islemlerim: the user's own Fomo trades, from the chain."""
-    if not wallet_set:
-        return ("Önce Fomo cüzdan adresini ver: /cuzdan 0x...\n"
-                "Sonra Fomo'daki alım satımların otomatik kaydedilir, hiçbir şey yazman gerekmez.")
-    lines = [f"💼 <b>İşlemlerim — son {hours:g} saat</b>", ""]
-    if not positions:
-        return "\n".join(lines + ["Bu sürede kayıtlı işlem yok. Fomo'da alım yaptığında burada görünecek."])
-    if closed.get("n"):
-        sign = "+" if closed["pnl"] >= 0 else ""
-        lines += [f"<b>Kapanan {closed['n']} işlem: {sign}${closed['pnl']:.2f}</b> (${closed['invested']:.2f} yatırımla)",
-                  f"   kazanan %{closed['win_rate']} · en iyi {closed['best']:+.2f}$ · en kötü {closed['worst']:+.2f}$",
-                  f"   ortalama tutma süresi {closed['avg_hold_min']} dk"
-                  + (f" · bildirimden ortalama {closed['avg_delay_min']:.0f} dk sonra aldın"
-                     if closed.get("avg_delay_min") is not None else ""), ""]
-    for p in positions[-15:]:
-        name = escape(p.get("symbol") or p["token"][:10], quote=False)
-        delay = f" · bildirimden {p['delay_min']:.0f} dk sonra" if p.get("delay_min") is not None else ""
-        if p["closed"]:
-            result = f"{p['pnl']:+.2f}$" if not p["unpriced"] else "tutar bilinmiyor (ETH ile)"
-            lines.append(f"✔️ {name}: ${p['usd_in']:.2f} → ${p['usd_out']:.2f} ({result}){delay}")
-        else:
-            lines.append(f"⏳ {name}: ${p['usd_in']:.2f} girdin, %{p['held_share'] * 100:.0f}'i elinde"
-                         + (f", ${p['usd_out']:.2f} satıldı" if p["usd_out"] else "") + delay)
-    return "\n".join(lines)

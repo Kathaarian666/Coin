@@ -80,12 +80,6 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    30-60 dk önce sakin (alıcı < eşik/2) ve şimdi bildirim eşiğini geçen coin; v2 momentum + fiyat/ilk sinyal
    kaydedilir, `/karne`'de ayrı grup. İyi çıkarsa bildirim açılacak.
    E) `/strateji`: çıkış kuralları geçmiş bildirimlerin fiyat yolunda, komisyon dahil (`strategy.py`).
-   İlk `/strateji` (300 bildirim): $5'ta en sağlam "1 saat tut" (+$127, en iyi işlem olmasa +$34); 2x/3x'te satmak
-   zararlı; 2-4 saat tek büyük işleme bağlı. $20'da 1 saat tut +$2660 (en iyi hariç +$2216, kazanan %29): $0.95
-   minimum komisyon $5'ı yapısal olarak eziyor. Ama iyimser: tepki süresi, sığ havuz kayması ve "0 ÇIK eşleşti"
-   (başlangıç fiyatı olmayan bildirimler sonuçlardan düşüyor olabilir — teşhis bekleniyor). Pozisyon kararı
-   kullanıcının. Gerçek sonuç için `/cuzdan <Fomo adresi>` + `/islemlerim` (`journal.py`): kullanıcının Fomo
-   işlemleri zincirden otomatik kaydedilir (elle /aldim-/sattim denendi, kullanıcı istemedi, kaldırıldı).
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

@@ -138,30 +138,3 @@ async def test_second_wave_is_recorded_with_market_and_v2_momentum(tmp_path):
     assert kind == "wave2" and momentum is not None
     assert '"price_vs_first": 2.0' in features and '"first_kind": "alert"' in features and '"fdv": 15000' in features
     await app.rpc.close()
-
-
-async def test_my_wallet_trades_are_recorded_and_announced(tmp_path):
-    app = ScannerApp(Settings(db_path=str(tmp_path / "j.db"), fomo_min_buyers=99))
-    me = "0x" + "d" * 40
-    sent = []
-
-    async def fake_broadcast(text):
-        sent.append(text)
-
-    async def fake_symbol(token):
-        return "TKN"
-
-    app.broadcast, app.symbol = fake_broadcast, fake_symbol
-    trades = parse_fomo_logs(buy(me, 5, "0x1") + buy("0x" + "e" * 40, 5, "0x2"))
-    for t in trades:
-        t.timestamp = time.time()
-    await app.on_fomo_trades(trades)
-    assert sent == []  # no wallet set yet
-    app.storage.set_state("my_wallet", me)
-    await app.on_fomo_trades(trades)
-    assert len(sent) == 1 and "Alımın kaydedildi" in sent[0] and "$5.00" in sent[0]
-    await app.on_fomo_trades(trades)
-    assert len(sent) == 1  # the same trade again is not announced twice
-    [p] = app.journal.positions(24)
-    assert p["usd_in"] == 5.0
-    await app.rpc.close()
