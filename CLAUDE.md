@@ -52,6 +52,9 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    Kayıtlı özellikler (`outcomes.py` → `signals.features`): momentum özellikleri, dev/sniper/bundle payı,
    geliştirici geçmişi, sahte hacim, likidite, FDV, sosyal linkler, bulgu kodları. Fikirler: momentum eşiği ile
    bildirim filtreleme, piyasa rejimine göre değişen eşikler, geliştirici/wash bulgularının ağırlığını veriyle ayarlama.
+   İlk tur (72 saatlik veri): `/minmomentum` eklendi (sunucuda 45), `/karne` güven/momentum kırılımları ve
+   `/bulgular` eklendi. `liq_usd_low` high→low (bu coinler ortalamadan iyi), `v4_common_hook` low→medium
+   (rug %17). Birkaç gün sonra `/karne 72` + `/bulgular 72` ile tekrar bak.
 2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 3. **Mezuniyet öncesi Pons takibi** (opsiyonel): lansman indeksi hazır olduğu için yeni Pons coinlerini

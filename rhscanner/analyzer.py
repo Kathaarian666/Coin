@@ -84,7 +84,8 @@ def market_findings(market: dict, have_eth_liquidity: bool) -> list[Finding]:
     liquidity = market.get("liquidity_usd")
     if liquidity is not None and not have_eth_liquidity:
         if liquidity < 1000:
-            findings.append(Finding("high", "liq_usd_low", f"Likidite çok düşük: ${liquidity:,.0f}"))
+            # Low, not high: in the scorecard these early coins did better than average (2x 37% vs 20%, rug 8% vs 10%).
+            findings.append(Finding("low", "liq_usd_low", f"Likidite çok düşük: ${liquidity:,.0f}"))
         elif liquidity < 5000:
             findings.append(Finding("medium", "liq_usd_mid", f"Likidite düşük: ${liquidity:,.0f}"))
     buys, sells = market.get("buys_h1") or 0, market.get("sells_h1") or 0

@@ -42,7 +42,7 @@ async def test_named_launchpad_hook_is_not_penalised():
 
 async def test_widely_used_hook_is_only_a_low_note():
     data, findings = await check(HookRpc(COMMON_HOOK))
-    assert findings["v4_common_hook"].severity == "low" and "351" in findings["v4_common_hook"].message
+    assert findings["v4_common_hook"].severity == "medium" and "351" in findings["v4_common_hook"].message
 
 
 async def test_rare_hook_is_flagged_and_worse_when_upgradeable():

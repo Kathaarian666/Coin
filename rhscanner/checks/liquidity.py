@@ -33,8 +33,9 @@ async def _hook_finding(rpc: RpcClient, registry: HookRegistry, hook: str, data:
         return Finding("info", "v4_known_hook", f"Launchpad: {NAMED_HOOKS[hook]}{note}")
     if pools >= COMMON_MIN_POOLS:
         data["launchpad"] = f"yaygın launchpad hook'u ({pools} havuz)"
+        # Medium: in the scorecard these rugged more often than average (17% vs 10%).
         return Finding(
-            "low", "v4_common_hook", f"Yaygın launchpad hook'u: son 3 günde {pools} havuzda kullanılmış{note}"
+            "medium", "v4_common_hook", f"Yaygın launchpad hook'u: son 3 günde {pools} havuzda kullanılmış{note}"
         )
     return Finding(
         "high" if upgradeable else "medium", "v4_hooks",
