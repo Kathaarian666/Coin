@@ -331,7 +331,8 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
               + (f", rug riski &lt;{bars['max_rug']}" if bars.get("max_rug", 101) <= 100 else "") + "</i>\n"]
     for i, w in enumerate(winners[:20], 1):
         lines = [f"{i}. <b>{escape(w['symbol'], quote=False)}</b> {_x(w['multiple'])} · "
-                 f"{w['hours_to_peak']:.0f} saatte zirve · zirvede FDV {_usd(w.get('peak_fdv'))}"]
+                 f"{w['hours_to_peak']:.0f} saatte zirve · zirvede FDV {_usd(w.get('peak_fdv'))}",
+                 f"   <code>/sinyal {w['token']}</code>"]
         by_kind: dict[str, dict] = {}
         for s in w["signals"]:
             by_kind.setdefault(s["kind"], s)

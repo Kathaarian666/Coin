@@ -61,6 +61,7 @@ async def test_winners_are_matched_with_signals():
     text = "\n".join(format_winners(7, 10, winners, checked, bars))
     assert "🚫 Filtreye takıldı (alıcı 12, güven 25, momentum 80)" in text and "eşiklerin hepsini geçiyor" in text
     assert "yakalanırdı: 1/1" in text and "erken (başlangıcın ≤2x'inde): 1" in text
+    assert f"<code>/sinyal {TOKEN}</code>" in text
     assert "liq_usd_low" in text and "gölgede 32 dk önce" in text and "başlangıcın 2.0x'i" in text
     strict = "\n".join(format_winners(7, 10, winners, checked, {**bars, "min_score": 30}))
     assert "bugün engelleyen: güven 25 (eşik 30)" in strict and "yakalanırdı: 0/1" in strict

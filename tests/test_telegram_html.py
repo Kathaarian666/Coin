@@ -33,7 +33,7 @@ def test_every_report_is_valid_telegram_html():
     assert_valid(format_findings(72, s, [("liq_usd_low", s)]))
     assert_valid(format_strategies(168, 100, [("2x'te sat (yoksa 1 saatte)", {"n": 1, "total": 5.0, "per_trade": 5.0,
                                                 "win_rate": 100.0, "best": 5.0, "without_best": 0.0, "exits": 0})]))
-    winner = {"symbol": "A<B", "multiple": 12.0, "hours_to_peak": 3, "peak_fdv": 50_000, "signals": [
+    winner = {"token": "0x" + "a" * 40, "symbol": "A<B", "multiple": 12.0, "hours_to_peak": 3, "peak_fdv": 50_000, "signals": [
         {**sig(), "kind": "shadow", "trust": None, "entry_vs_start": 1.3, "peak_after": 9.5, "before_peak": True}]}
     bars = {"min_score": 30, "min_momentum": 75, "min_buyers": 10, "min_buy_usd": 500, "max_rug": 60}
     assert_valid(format_winners(7, 10, [winner], 30, bars))
