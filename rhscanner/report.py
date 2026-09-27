@@ -300,7 +300,7 @@ def _entry(s: dict) -> str:
 
 
 def format_winners(days: float, min_multiple: float, winners: list[dict], checked: int,
-                   bars: dict) -> list[str]:
+                   bars: dict, candidates: int | None = None) -> list[str]:
     """/kazananlar: each coin that ran, what the bot saw of it, and which of today's bars would stop it.
 
     bars: min_score, min_momentum, min_buyers, min_buy_usd (today's settings)."""
@@ -318,8 +318,9 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
     caught = [s for w in winners if (s := first_passing(w))]
     early = sum(1 for s in caught if (s.get("entry_vs_start") or 99) <= 2)
     blocks = [f"🏆 <b>Kazanan otopsisi — son {days:g} gün, {min_multiple:g}x ve üstü</b>\n"
-              f"<i>(GeckoTerminal'de bu sürede açılan en işlek {checked} havuz; çarpan ilk işlem saatinin "
-              f"kapanışından en yüksek saatlik kapanışa)</i>\n"
+              f"<i>(GeckoTerminal'de bu sürede açılan en işlek {checked} havuz"
+              + (f" — süre sınırı yüzünden {candidates} adaydan {checked}'i tarandı" if candidates and checked < candidates else "")
+              + "; çarpan ilk işlem saatinin kapanışından en yüksek saatlik kapanışa)</i>\n"
               f"{len(winners)} kazanan: " + " · ".join(f"{icons[k]} {n}" for k, n in counts.items()) + "\n"
               f"<b>Bugünkü eşiklerle yakalanırdı: {len(caught)}/{len(winners)}</b> · erken (başlangıcın ≤2x'inde): {early}\n"
               f"<i>Eşikler: alıcı ≥{bars['min_buyers']}, 10 dk alım ≥${bars['min_buy_usd']:,.0f}, "

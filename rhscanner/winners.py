@@ -106,14 +106,23 @@ def entry_of(candles: list[list[float]], run: dict, signal_ts: float, p0: float 
 
 
 async def find_winners(gecko: GeckoTerminal, outcomes, days: float, min_multiple: float,
-                       now: float | None = None) -> tuple[list[dict], int]:
-    """Coins that ran at least `min_multiple` since launch within `days`; returns (winners, pools checked)."""
+                       now: float | None = None, budget_sec: float = 480) -> tuple[list[dict], int, int]:
+    """Coins that ran at least `min_multiple` since launch within `days`.
+
+    Returns (winners, pools checked, candidate pools): when GeckoTerminal throttles hard the search stops
+    after `budget_sec` and reports what it got through."""
     now = now or time.time()
+    started = time.monotonic()
     pools = [p for p in await gecko.pools()
              if p["created"] >= now - days * 86400 and p["volume_h24"] >= MIN_VOLUME_H24]
     pools = sorted(pools, key=lambda p: -p["volume_h24"])[:MAX_CANDIDATES]
     winners = []
+    checked = 0
     for pool in pools:
+        if time.monotonic() - started > budget_sec:
+            log.warning("winner search stopped after %d of %d pools (time budget)", checked, len(pools))
+            break
+        checked += 1
         candles = await gecko.hourly(pool["pool"])
         run = run_of(candles, pool.get("fdv"))
         if not run or run["multiple"] < min_multiple or (run["peak_fdv"] or 0) < MIN_PEAK_FDV:
@@ -123,4 +132,4 @@ async def find_winners(gecko: GeckoTerminal, outcomes, days: float, min_multiple
             s.update(entry_of(candles, run, s["ts"], s["p0"]))
         winners.append({**pool, **run, "signals": seen})
     winners.sort(key=lambda w: -w["multiple"])
-    return winners, len(pools)
+    return winners, checked, len(pools)

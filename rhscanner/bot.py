@@ -558,17 +558,22 @@ class ScannerApp:
         numbers = [float(a) for a in (context.args or []) if a.replace(".", "", 1).isdigit()]
         days = numbers[0] if numbers else 7.0
         multiple = numbers[1] if len(numbers) > 1 else 10.0
-        await update.message.reply_text(f"⏳ Son {days:g} günde {multiple:g}x yapan coinler aranıyor (GeckoTerminal yavaş, 5-10 dk sürer)...")
+        await update.message.reply_text(
+            f"⏳ Son {days:g} günde {multiple:g}x yapan coinler aranıyor (GeckoTerminal yavaş, en fazla ~8 dk)...")
         try:
-            winners, checked = await find_winners(GeckoTerminal(self.http), self.outcomes, days, multiple)
+            winners, checked, candidates = await find_winners(GeckoTerminal(self.http), self.outcomes, days, multiple)
         except Exception:
             log.exception("winner autopsy failed")
             await update.message.reply_text("Kazanan listesi alınamadı (GeckoTerminal), biraz sonra tekrar deneyin.")
             return
         bars = {"min_score": self.min_score, "min_momentum": self.min_momentum, "min_buyers": self.min_buyers,
                 "min_buy_usd": self.min_buy_usd, "max_rug": self.max_rug}
-        for text in format_winners(days, multiple, winners, checked, bars):
-            await update.message.reply_html(text)
+        try:
+            for text in format_winners(days, multiple, winners, checked, bars, candidates):
+                await update.message.reply_html(text)
+        except Exception as exc:
+            log.exception("winner report failed")
+            await update.message.reply_text(f"Kazanan raporu gönderilemedi ({exc.__class__.__name__}: {exc})"[:500])
 
     async def cmd_backtest(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):

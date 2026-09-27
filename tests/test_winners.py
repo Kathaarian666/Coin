@@ -50,7 +50,9 @@ async def test_winners_are_matched_with_signals():
     (sid,) = log.db.execute("SELECT id FROM signals WHERE kind = 'filtered'").fetchone()
     log.db.execute("INSERT INTO samples VALUES (?, 0, ?, 2.0, NULL)", (sid, T0 + 3700))
     gecko = FakeGecko({TOKEN: [1.0, 2.0, 50.0], other: [1.0, 1.5, 1.2]})  # FDV $557k now
-    winners, checked = await find_winners(gecko, log, days=3650, min_multiple=10)
+    winners, checked, candidates = await find_winners(gecko, log, days=3650, min_multiple=10)
+    assert candidates == 2
+    assert (await find_winners(gecko, log, days=3650, min_multiple=10, budget_sec=-1))[1:] == (0, 2)
     assert checked == 2 and [w["token"] for w in winners] == [TOKEN]
     kinds = [s["kind"] for s in winners[0]["signals"]]
     assert kinds == ["shadow", "filtered"] and winners[0]["signals"][1]["entry_vs_start"] == 2.0
@@ -63,3 +65,4 @@ async def test_winners_are_matched_with_signals():
     strict = "\n".join(format_winners(7, 10, winners, checked, {**bars, "min_score": 30}))
     assert "bugün engelleyen: güven 25 (eşik 30)" in strict and "yakalanırdı: 0/1" in strict
     assert "Bu sürede" in format_winners(7, 10, [], 0, bars)[0]
+    assert "40 adaydan 12'i tarandı" in format_winners(7, 10, [], 12, bars, 40)[0]
