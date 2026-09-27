@@ -136,6 +136,16 @@ class FomoTracker:
             "first_seen": self.first_seen.get(token.lower()),
         }
 
+    def last_price(self, token: str, max_age: float = 900, now: float | None = None) -> float | None:
+        """Dollars per raw token unit in the latest Fomo trade paid in USDG, if it is recent."""
+        now = now or time.time()
+        for t in reversed(self.trades.get(token.lower(), ())):
+            if t.timestamp < now - max_age:
+                return None
+            if t.usd and t.amount:
+                return t.usd / t.amount
+        return None
+
     def buyers_between(self, token: str, start_sec: float, end_sec: float, now: float | None = None) -> int:
         """Distinct buyers between `start_sec` and `end_sec` seconds ago."""
         now = now or time.time()

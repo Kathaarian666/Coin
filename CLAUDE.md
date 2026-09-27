@@ -85,6 +85,9 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    minimum komisyon $5'ı yapısal olarak eziyor. İyimser: tepki süresi, sığ havuz kayması, ve "0 ÇIK eşleşti"
    (başlangıç fiyatı olmayan bildirimler sonuçlardan düşüyor olabilir — teşhis gerekiyor).
    Kullanıcı kararı: şu an geliştirme aşaması; gerçek işlem takibi (journal) istenmedi, geri alındı. Deploy en son.
+   Veri kalitesi: DexScreener yeni coini listelemeden gelen sinyallerin başlangıç fiyatı yoktu → karne/analiz/
+   strateji'den sessizce düşüyordu (şüphe: "0 ÇIK eşleşti"). Artık yedek fiyat son Fomo işleminden (USDG ÷ miktar,
+   decimals rapordan, yoksa 18); `/karne` başında ölçülemeyen sinyal sayısı gösteriliyor.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

@@ -201,10 +201,18 @@ def _chunks(blocks: list[str], limit: int = TELEGRAM_CHUNK) -> list[str]:
     return messages + ([current] if current else [])
 
 
+KIND_NAMES = {"alert": "bildirim", "filtered": "filtre", "shadow": "gölge", "wave2": "ikinci dalga",
+              "exit": "ÇIK", "caution": "DİKKAT"}
+
+
 def format_scorecard(hours: float, groups: list[tuple[str, dict]],
-                     exits: list[tuple[str, dict]] | None = None) -> list[str]:
+                     exits: list[tuple[str, dict]] | None = None, unmeasured: dict[str, int] | None = None) -> list[str]:
     """/karne: how signals did, by kind and bucket; one or more Telegram messages."""
     blocks = [f"📊 <b>Sinyal karnesi — son {hours:g} saat</b>\n<i>(en az 1 saatlik sinyaller)</i>\n"]
+    missing = {k: n for k, n in (unmeasured or {}).items() if k in KIND_NAMES and n}
+    if missing:
+        blocks.append("⚠️ <i>Sinyal anında fiyatı alınamadığı için ölçülemeyen: "
+                      + ", ".join(f"{KIND_NAMES[k]} {n}" for k, n in missing.items()) + "</i>\n")
     for title, s in groups:
         if not s.get("n"):
             blocks.append(f"<b>{escape(title, quote=False)}</b>: veri yok")

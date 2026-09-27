@@ -157,3 +157,22 @@ def test_backtest_compares_v1_and_v2_selection():
     assert halves["Tümü"]["added"]["n"] == 10 and halves["Tümü"]["dropped"]["n"] == 10
     text = "\n".join(format_backtest(168, 30, 70, list(halves.items()), v2_on=False))
     assert "Yeni yarı" in text and "sadece v2 ekler (10)" in text and "Şu an kullanılan: v1" in text
+
+
+async def test_unmeasured_signals_are_counted_and_shown():
+    from rhscanner.report import format_scorecard
+
+    log = OutcomeLog(sqlite3.connect(":memory:"))
+    log.record(TOKEN, "alert", ts=T0)
+    log.record("0x" + "c" * 40, "alert", ts=T0)
+    dex = FakeDex()
+
+    class Partial(FakeDex):
+        async def tokens(self, addresses):
+            return [p for p in await super().tokens(addresses) if p["baseToken"]["address"] == TOKEN]
+
+    await log.tick(Partial(), now=T0)  # only one of the two is listed yet
+    assert log.unmeasured(24, now=T0 + 3600) == {"alert": 1}
+    await log.tick(dex, now=T0 + 3600, price_fn=None)
+    text = format_scorecard(24, [], None, {"alert": 1, "pons": 5})[0]
+    assert "ölçülemeyen: bildirim 1" in text and "pons" not in text

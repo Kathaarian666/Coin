@@ -118,6 +118,16 @@ class OutcomeLog:
             paths.append(([(m, p / priced[0][1]) for m, p in priced], exit_min))
         return paths
 
+    def unmeasured(self, hours: float, now: float | None = None) -> dict[str, int]:
+        """Signals at least an hour old, per kind, left out of /karne for want of a price at the signal."""
+        now = now or time.time()
+        rows = self.db.execute(
+            "SELECT s.kind, COUNT(*) FROM signals s LEFT JOIN samples m ON m.signal_id = s.id AND m.minute = 0 "
+            "WHERE s.ts >= ? AND s.ts <= ? AND (m.price IS NULL OR m.price <= 0) GROUP BY s.kind",
+            (now - hours * 3600, now - 3600),
+        ).fetchall()
+        return dict(rows)
+
     def signals_for(self, token: str, kinds: tuple[str, ...]) -> list[dict]:
         """A token's signals of the given kinds, oldest first, with the price at the signal (p0)."""
         marks = ",".join("?" * len(kinds))

@@ -76,3 +76,13 @@ def test_weth_legs_are_cash_not_tokens():
     logs = [leg(FOMO_ENTRY, USER_A, FOMO_EXECUTOR, DEFAULT_WETH, 10**15, "0x9"),
             leg(FOMO_EXECUTOR, FOMO_EXECUTOR, FOMO_EXECUTOR, USDG, 3 * 10**6, "0x9")]
     assert parse_fomo_logs(logs) == []
+
+
+def test_last_price_from_recent_usdg_trades():
+    import time as _time
+    tracker = FomoTracker()
+    [t] = parse_fomo_logs(buy(USER_A, 10, "0x1"))
+    t.timestamp = _time.time() - 60
+    tracker.add(t)
+    assert tracker.last_price(TOKEN) == 10 / (5 * 10**18)
+    assert tracker.last_price(TOKEN, max_age=30) is None

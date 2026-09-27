@@ -87,6 +87,7 @@ class ScannerApp:
         self.pons = PonsTracker(max_age=settings.pons_max_age_min * 60)
         self.pons_seen: set[tuple[str, str]] = {(row[0], row[1].removesuffix("_junk")) for row in self.storage.db.execute(
             "SELECT token, kind FROM signals WHERE kind LIKE 'pons%' AND ts >= ?", (time.time() - 86400,))}
+        self.decimals: dict[str, int] = {}  # from analysed reports; Fomo prices assume 18 otherwise
         self.waves_seen: set[str] = {row[0] for row in self.storage.db.execute(
             "SELECT token FROM signals WHERE kind = 'wave2'")}
         self.eth_usd: float | None = None
@@ -172,6 +173,13 @@ class ScannerApp:
         ):
             self.outcomes.record(token, kind, features=features, pair=None)
             log.info("Pons signal %s %s: %s", kind, token, features)
+
+    def fallback_price(self, token: str) -> float | None:
+        """USD price when DexScreener does not list the coin yet: its latest Fomo trade, else its Pons curve."""
+        per_unit = self.tracker.last_price(token)
+        if per_unit:
+            return per_unit * 10 ** self.decimals.get(token.lower(), 18)
+        return self.pons_price(token)
 
     def pons_price(self, token: str) -> float | None:
         """USD price of a coin still on its Pons curve (last trade), for outcome sampling."""
@@ -272,7 +280,7 @@ class ScannerApp:
                 if self.analyzer.dexscreener:
                     await self.refresh_eth_usd()
                     written = await self.outcomes.tick(self.analyzer.dexscreener, self.shadow_momentum,
-                                                       price_fn=self.pons_price)
+                                                       price_fn=self.fallback_price)
                     if written:
                         log.debug("outcome samples written: %d", written)
             except asyncio.CancelledError:
@@ -294,6 +302,7 @@ class ScannerApp:
                     await asyncio.sleep(job.delay)
                 report = await self.analyzer.analyze(job.token, job.pool, self.fomo_stats(job.token))
                 self.attach_momentum(report)
+                self.decimals[job.token.lower()] = report.get("decimals", 18)
                 self.storage.save_report(job.token, report["score"], report)
                 momentum = (report.get("momentum") or {}).get("score") or 0
                 sent = self.alerts_on and report["score"] >= self.min_score and momentum >= self.min_momentum
@@ -496,7 +505,7 @@ class ScannerApp:
             groups.append((f"Bildirim gidenler, momentum {bucket}",
                            summarize([r for r in by_kind["alert"] if momentum_bucket(r["momentum"]) == bucket])))
         exits = [("🔴 ÇIK", summarize_exits(by_kind["exit"])), ("🟠 DİKKAT", summarize_exits(by_kind["caution"]))]
-        for text in format_scorecard(hours, groups, exits):
+        for text in format_scorecard(hours, groups, exits, self.outcomes.unmeasured(hours)):
             await update.message.reply_html(text)
 
     async def cmd_findings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
