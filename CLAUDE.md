@@ -129,6 +129,8 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    → /tarama çelişkisi gürültü değilmiş, HOODS'u kaçırtan yaş hatasıymış. Erken A: 180 fazladan bildirim, kalıcı
    5x %7 (çok gürültülü); B: 4 sinyal. → A ve B artık gölge momentumu (v2) eşikleriyle (0/70/80/85/90) ölçülüyor;
    kalıcı 5x ~%20+ veren eşik bulunursa erken bildirim o koşulla açılacak.
+   `/tarama` kalıcı ile: ham-kalıcı farkı ~5-7 puan, sıralama aynı. 75/30 kalıcı %22.3 yakalama %89.5; 80/30 %25.0 /
+   %84.2. **75'te kalındı**: yaş düzeltmesiyle HOODS v2 ≈77 (80 onu yine kaçırırdı). Rug <60: 51/51 kalıcı 5x korunuyor.
    Adresler: HOODS 0x28b0ed2365c8c25b4542d06725acb7662bef6edf, BROBIN 0x1f97391be0ba667886f57273eace827d6e79cf17.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.

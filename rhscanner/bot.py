@@ -621,7 +621,7 @@ class ScannerApp:
             return
         hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
         results = [r for r in self.outcomes.results(hours) if r["kind"] in ("alert", "filtered")]
-        winners = sum(1 for r in results if (r.get("max_all") or 0) >= 5)
+        winners = sum(1 for r in results if (r.get("held_all") or 0) >= 5)
         rows = parameter_sweep(results)
         rug_rows = rug_filter_sweep(results, self.min_momentum, self.min_score)
         for text in format_sweep(hours, len(results), winners, rows, (self.min_momentum, self.min_score), rug_rows):
