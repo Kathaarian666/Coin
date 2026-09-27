@@ -483,3 +483,20 @@ def rug_filter_sweep(results: list[dict], min_momentum: int, min_score: int,
         caught = sum(1 for r in kept if (r.get("held_all") or 0) >= winner_multiple)
         out.append((name, {**summarize(kept), "kept_winners": caught, "winners": winners}))
     return out
+
+
+EARLY_RULE = "son 5 dk ≥5 alıcı, önceki 5 dk ≤1, alıcı başına ≥$100, tutma ≥0.9"
+
+
+def early_entry(f: dict) -> bool:
+    """Buying that starts from nothing with few, large, held buys (HOODS in its shadow signal, 18 minutes
+    before its alert): the research's strongest predictor, fast money through few trades."""
+    b5, prev = f.get("buyers_5m") or 0, f.get("buyers_prev_5m") or 0
+    buyers, usd, hold = f.get("buyers_10m") or 0, f.get("buy_usd_10m") or 0, f.get("hold_rate_30m")
+    return b5 >= 5 and prev <= 1 and buyers > 0 and usd / buyers >= 100 and hold is not None and hold >= 0.9
+
+
+def early_entry_candidates(results: list[dict], min_buyers: int) -> dict:
+    """Signals under the buyer bar (shadows) that the early-entry rule would have alerted on."""
+    return summarize([r for r in results if r["kind"] == "shadow" and early_entry(r.get("features") or {})
+                      and ((r.get("features") or {}).get("buyers_10m") or 0) < min_buyers])

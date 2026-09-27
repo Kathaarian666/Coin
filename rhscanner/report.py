@@ -5,7 +5,7 @@ from html import escape
 
 from .config import DEXSCREENER_CHAIN
 from .momentum import momentum_label
-from .outcomes import blocking_gates, momentum_v2_of, rug_risk_of
+from .outcomes import EARLY_RULE, blocking_gates, momentum_v2_of, rug_risk_of
 from .rugrisk import HIGH_RISK
 from .scoring import level
 
@@ -367,13 +367,14 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
 
 
 def format_backtest(hours: float, min_score: int, min_momentum: int, halves: list[tuple[str, dict]],
-                    v2_on: bool, lower: dict | None = None, min_buyers: int = 10) -> list[str]:
+                    v2_on: bool, lower: dict | None = None, min_buyers: int = 10,
+                    early: dict | None = None) -> list[str]:
     """/geritest: which past signals v1 and v2 momentum would have alerted on, and how those did."""
     def line(title: str, s: dict) -> str:
         if not s.get("n"):
             return f"   {title}: yok"
-        return (f"   {title} ({s['n']}): 2x %{s['x2_60']} · 5x %{s['x5_all']} · rug %{s['rugged']} · "
-                f"1s sonu {s['median_ret60']}x")
+        return (f"   {title} ({s['n']}): 2x %{s['x2_60']} · 5x %{s['x5_all']} (kalıcı %{s.get('x5_held', 0)}) · "
+                f"rug %{s['rugged']} · 1s sonu {s['median_ret60']}x")
 
     blocks = [f"🧪 <b>Geri test — son {hours:g} saat</b>\n"
               f"<i>Analiz edilen sinyaller; bildirim kuralı: güven ≥{min_score} ve momentum ≥{min_momentum}.\n"
@@ -393,6 +394,11 @@ def format_backtest(hours: float, min_score: int, min_momentum: int, halves: lis
             f"FDV &lt;$20k, v2 momentum ≥{min_momentum})",
             line("fazladan bildirilirdi", lower),
             "   <i>(gölgeler için FDV bu güncellemeden beri kaydediliyor; veri birikince dolar)</i>",
+        ]))
+    if early is not None:
+        blocks.append("\n".join([
+            f"<b>Erken giriş kuralı</b> ({escape(EARLY_RULE, quote=False)}; alıcı eşiğinin altında kalan gölgeler)",
+            line("fazladan bildirilirdi", early),
         ]))
     blocks.append("\n<i>v2, \"Yeni yarı\"da da v1'den iyiyse (daha yüksek 2x/5x, rug benzer) /momentumv2 ac ile açılabilir.</i>")
     return _chunks(blocks)

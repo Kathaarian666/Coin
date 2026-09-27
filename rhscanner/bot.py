@@ -20,7 +20,7 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, backtest, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
 from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup,
                      format_report, format_scorecard, format_signal, format_strategies, format_sweep,
@@ -598,8 +598,9 @@ class ScannerApp:
         halves = backtest(results, self.min_score, self.min_momentum)
         lower = lower_bar_candidates([r for r in everything if r["kind"] == "shadow"], self.min_buyers,
                                      self.min_momentum)
+        early = early_entry_candidates(everything, self.min_buyers)
         for text in format_backtest(hours, self.min_score, self.min_momentum, halves, self.momentum_v2,
-                                    lower, self.min_buyers):
+                                    lower, self.min_buyers, early):
             await update.message.reply_html(text)
 
     async def cmd_momentum_v2(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -226,3 +226,15 @@ async def test_held_multiple_ignores_one_sample_spikes():
     [r] = log.results(hours=24, now=T0 + 3600)
     assert r["max_all"] == 9.0 and r["held_all"] == 5.5  # the 9x print was one trade; 5.5x held twice
     assert summarize([r])["x5_held"] == 100.0
+
+
+def test_early_entry_rule_matches_hoods_shadow():
+    from rhscanner.outcomes import early_entry, early_entry_candidates
+    hoods = {"buyers_5m": 5, "buyers_prev_5m": 0, "buyers_10m": 5, "buy_usd_10m": 1054, "hold_rate_30m": 1.0}
+    assert early_entry(hoods)
+    assert not early_entry({**hoods, "buyers_prev_5m": 4})  # already buying: not a fresh start
+    assert not early_entry({**hoods, "buy_usd_10m": 300})  # $60 a buyer: small tickets
+    assert not early_entry({**hoods, "hold_rate_30m": 0.7})
+    shadow = {"kind": "shadow", "max_60": 7.7, "max_all": 116.0, "held_all": 45.0, "ret_60": 7.7, "rugged": False,
+              "features": hoods}
+    assert early_entry_candidates([shadow, {**shadow, "kind": "alert"}], min_buyers=10)["n"] == 1

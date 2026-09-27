@@ -157,11 +157,13 @@ def momentum_score(fomo: dict, market: dict, launch: dict | None = None,
         if share < 0.05 and volume_h1 > 20_000:
             add(-6, "hacmin neredeyse tamamı Fomo dışından (bot/sniper olabilir)")
 
-    age = launch.get("age_min")
-    if age is None and market.get("pair_created_at"):
-        age = (time.time() - market["pair_created_at"] / 1000) / 60
-    if age is not None:
-        features["age_min"] = round(age, 1)
+    # Age of the market being traded: a coin that graduated from its launchpad (or moved pools) starts a new
+    # life with its pool, so the younger of launch and pool age counts (HOODS: launched 48 h, pool 3 h old).
+    ages = [a for a in (launch.get("age_min"),
+                        (time.time() - market["pair_created_at"] / 1000) / 60 if market.get("pair_created_at") else None)
+            if a is not None]
+    if ages:
+        features["age_min"] = round(min(ages), 1)
 
     tuned = {**fomo, **features, "liquidity_usd": market.get("liquidity_usd"), "fdv": market.get("fdv")}
     for delta, why in tuned_points(tuned, v2):

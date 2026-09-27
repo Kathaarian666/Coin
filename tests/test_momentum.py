@@ -64,3 +64,13 @@ def test_v2_rewards_small_young_fomo_coins_and_penalises_late_big_ones():
     f = {**fomo, "fomo_share_h1": 1.0, "age_min": 30, "liquidity_usd": 2500, "fdv": 12_000}
     assert sum(d for d, _ in tuned_points(f, False)) == 12 + 6 + 8 - 10
     assert sum(d for d, _ in tuned_points(f, True)) == 4 + 6 + 10 + 15
+
+
+def test_age_is_the_younger_of_launch_and_pool():
+    import time as _time
+    fomo = {"buyers_10m": 10}
+    market = {"pair_created_at": (_time.time() - 3 * 3600) * 1000}
+    _, _, extra = momentum_score(fomo, market, {"age_min": 2900})
+    assert 170 <= extra["age_min"] <= 190  # HOODS: launched two days before, its USDG pool three hours
+    _, _, extra = momentum_score(fomo, {}, {"age_min": 2900})
+    assert extra["age_min"] == 2900
