@@ -103,9 +103,11 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/trend` | Şu an Fomo'da en çok alınan 10 coin (son 15 dk) |
 | `/pozisyon 5` | İşlem tutarınız; bildirimlerde komisyonla başa baş çarpanı buna göre yazılır |
 | `/akilli` | Kazanma oranı yüksek Fomo cüzdanları (son 7 gün) |
-| `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge, momentum aralıkları) |
+| `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge, momentum ve güven aralıkları) |
+| `/bulgular 72` | Analiz edilen sinyallerin sonuçları, güven bulgusu koduna göre (varsayılan 72 saat) |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
+| `/minmomentum 45` | Momentumu 45'in altındakiler için bildirim gönderme (0 = kapalı, varsayılan) |
 | `/minalici 15` | Bildirim için 10 dakikada gereken farklı Fomo alıcısı sayısı |
 | `/durdur` / `/devam` | Otomatik bildirimleri kapat / aç |
 | `/durum` | Son taranan blok, görülen token sayısı, kuyruk |

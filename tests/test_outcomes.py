@@ -61,3 +61,25 @@ async def test_rug_detection_and_shadow_momentum():
 
 def test_summary_of_nothing():
     assert summarize([]) == {"n": 0}
+
+
+async def test_findings_are_returned_and_tabulated():
+    from rhscanner.outcomes import finding_table, trust_bucket
+    from rhscanner.report import format_findings
+
+    log, dex = OutcomeLog(sqlite3.connect(":memory:")), FakeDex()
+    for i in range(6):
+        log.record(f"0x{i:040x}", "filtered" if i % 2 else "alert", trust=40 + i * 10,
+                   features={"findings": ["DEV_HEAVY", "DEV_HEAVY"] if i < 5 else []}, ts=T0)
+    log.record(f"0x{9:040x}", "shadow", features={"findings": ["DEV_HEAVY"]}, ts=T0)
+    await run_to(log, dex, 0, 1.0)
+    await run_to(log, dex, 60, 2.0)
+    results = log.results(hours=24, now=T0 + 3600)
+    assert sorted(len(r["findings"]) for r in results) == [0, 1, 2, 2, 2, 2, 2]
+    [(code, s)] = finding_table(results)
+    assert (code, s["n"], s["x2_60"]) == ("DEV_HEAVY", 5, 100.0)  # shadow ignored, duplicates counted once
+    assert finding_table(results, min_n=6) == []
+    assert [trust_bucket(t) for t in (None, 29, 30, 50, 70)] == ["?", "⛔ <30", "🔸 30-49", "⚠️ 50-69", "✅ 70+"]
+    text = format_findings(72, summarize(results), [(code, s)])
+    assert "<code>DEV_HEAVY</code> (5)" in text and "Hepsi</b> (7)" in text
+    assert "Veri yok" in format_findings(72, {"n": 0}, [])

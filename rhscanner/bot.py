@@ -18,8 +18,8 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, momentum_bucket, summarize
-from .report import format_exit, format_followup, format_report, format_scorecard
+from .outcomes import OutcomeLog, finding_table, momentum_bucket, summarize, trust_bucket
+from .report import format_exit, format_findings, format_followup, format_report, format_scorecard
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
@@ -34,12 +34,14 @@ HELP = (
     "/trend — şu an Fomo'da en çok alınan coinler\n"
     "/check &lt;adres&gt; — bir token'ı hemen analiz et\n"
     "/minskor &lt;0-100&gt; — bu skorun altındakiler için bildirim gönderme\n"
+    "/minmomentum &lt;0-100&gt; — momentumu bunun altındakiler için bildirim gönderme (0 = kapalı)\n"
     "/minalici &lt;sayı&gt; — bildirim için gereken farklı Fomo alıcısı sayısı\n"
     "/minhacim &lt;$&gt; — bildirim için gereken en az Fomo alım hacmi\n"
     "/durdur — otomatik bildirimleri durdur\n"
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
     "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
+    "/bulgular [saat] — güven bulgularına göre sonuçlar\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -79,6 +81,10 @@ class ScannerApp:
     @property
     def min_score(self) -> int:
         return int(self.storage.get_state("min_score", str(self.settings.min_score_alert)))
+
+    @property
+    def min_momentum(self) -> int:
+        return int(self.storage.get_state("min_momentum", "0"))
 
     @property
     def min_buyers(self) -> int:
@@ -193,7 +199,8 @@ class ScannerApp:
                 report = await self.analyzer.analyze(job.token, job.pool, self.fomo_stats(job.token))
                 self.attach_momentum(report)
                 self.storage.save_report(job.token, report["score"], report)
-                sent = self.alerts_on and report["score"] >= self.min_score
+                momentum = (report.get("momentum") or {}).get("score") or 0
+                sent = self.alerts_on and report["score"] >= self.min_score and momentum >= self.min_momentum
                 self.record_outcome(report, "alert" if sent else "filtered")
                 if sent:
                     header = "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz"
@@ -370,7 +377,22 @@ class ScannerApp:
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
             groups.append((f"Momentum {bucket} (tüm gruplar)",
                            summarize([r for r in results if momentum_bucket(r["momentum"]) == bucket])))
+        analysed = by_kind["alert"] + by_kind["filtered"]
+        for bucket in ("✅ 70+", "⚠️ 50-69", "🔸 30-49", "⛔ <30"):
+            groups.append((f"Güven {bucket} (analiz edilenler)",
+                           summarize([r for r in analysed if trust_bucket(r["trust"]) == bucket])))
+        for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
+            groups.append((f"Bildirim gidenler, momentum {bucket}",
+                           summarize([r for r in by_kind["alert"] if momentum_bucket(r["momentum"]) == bucket])))
         await update.message.reply_html(format_scorecard(hours, groups))
+
+    async def cmd_findings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 72.0
+        results = self.outcomes.results(hours)
+        analysed = [r for r in results if r["kind"] in ("alert", "filtered")]
+        await update.message.reply_html(format_findings(hours, summarize(analysed), finding_table(results)[:25]))
 
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
@@ -412,6 +434,15 @@ class ScannerApp:
             return
         self.storage.set_state("min_score", context.args[0])
         await update.message.reply_text(f"✅ Artık sadece skoru {context.args[0]} ve üstü olanlar bildirilecek.")
+
+    async def cmd_min_momentum(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        if not context.args or not context.args[0].isdigit() or not 0 <= int(context.args[0]) <= 100:
+            await update.message.reply_text(f"Kullanım: /minmomentum 0-100 (şu an: {self.min_momentum}, 0 = kapalı)")
+            return
+        self.storage.set_state("min_momentum", context.args[0])
+        await update.message.reply_text(f"✅ Artık sadece momentumu {context.args[0]} ve üstü olanlar bildirilecek.")
 
     async def cmd_min_buyers(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
@@ -457,6 +488,7 @@ class ScannerApp:
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
             f"Pons lansman indeksi: {self.analyzer.launches.count():,} coin\n"
             f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
+            f"Min. momentum: {self.min_momentum} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
 
@@ -501,6 +533,8 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("pozisyon", self.cmd_position))
         self.app.add_handler(CommandHandler("akilli", self.cmd_smart))
         self.app.add_handler(CommandHandler("minskor", self.cmd_min_score))
+        self.app.add_handler(CommandHandler("minmomentum", self.cmd_min_momentum))
+        self.app.add_handler(CommandHandler("bulgular", self.cmd_findings))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

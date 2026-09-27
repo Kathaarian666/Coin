@@ -2,7 +2,7 @@
 
 Three kinds of signals are tracked, each at most once per token:
   alert     analysed and sent to Telegram
-  filtered  analysed but held back (trust score below the minimum)
+  filtered  analysed but held back (trust or momentum score below the minimum)
   shadow    crossed a lower bar of Fomo buying and was never analysed: the
             baseline the alerts have to beat
 
@@ -122,11 +122,11 @@ class OutcomeLog:
         """Per-signal outcome metrics for signals at least an hour old, from the last `hours`."""
         now = now or time.time()
         rows = self.db.execute(
-            "SELECT id, token, ts, kind, trust, momentum FROM signals WHERE ts >= ? AND ts <= ?",
+            "SELECT id, token, ts, kind, trust, momentum, features FROM signals WHERE ts >= ? AND ts <= ?",
             (now - hours * 3600, now - 3600),
         ).fetchall()
         out = []
-        for signal_id, token, ts, kind, trust, momentum in rows:
+        for signal_id, token, ts, kind, trust, momentum, features in rows:
             samples = self.db.execute(
                 "SELECT minute, price, liquidity FROM samples WHERE signal_id = ? ORDER BY minute", (signal_id,)
             ).fetchall()
@@ -146,6 +146,7 @@ class OutcomeLog:
                 "ret_60": at60,
                 "last_min": last_m,
                 "rugged": bool(rugged),
+                "findings": json.loads(features or "{}").get("findings") or [],
             })
         return out
 
@@ -175,3 +176,20 @@ def momentum_bucket(score: int | None) -> str:
     if score is None:
         return "?"
     return "🚀 70+" if score >= 70 else "🟡 45-69" if score >= 45 else "🧊 <45"
+
+
+def trust_bucket(score: int | None) -> str:
+    if score is None:
+        return "?"
+    return "✅ 70+" if score >= 70 else "⚠️ 50-69" if score >= 50 else "🔸 30-49" if score >= 30 else "⛔ <30"
+
+
+def finding_table(results: list[dict], min_n: int = 5) -> list[tuple[str, dict]]:
+    """Hit rates of analysed signals (alert + filtered) that carried each finding code, most common first."""
+    by_code: dict[str, list[dict]] = defaultdict(list)
+    for r in results:
+        if r["kind"] in ("alert", "filtered"):
+            for code in set(r.get("findings") or []):
+                by_code[code].append(r)
+    rows = [(code, summarize(rs)) for code, rs in by_code.items() if len(rs) >= min_n]
+    return sorted(rows, key=lambda row: -row[1]["n"])

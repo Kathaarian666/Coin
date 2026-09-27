@@ -201,3 +201,20 @@ def format_scorecard(hours: float, groups: list[tuple[str, dict]]) -> str:
         )
     lines += ["", "<i>Gölge = eşiğin yarısını geçen, analiz edilmemiş coinler (karşılaştırma grubu).</i>"]
     return "\n".join(lines)
+
+
+def format_findings(hours: float, overall: dict, rows: list[tuple[str, dict]]) -> str:
+    """/bulgular: how analysed signals did, split by the findings that lowered their trust score."""
+    lines = [f"🔎 <b>Bulgulara göre sonuçlar — son {hours:g} saat</b>",
+             "<i>(analiz edilen sinyaller: bildirim + filtre)</i>", ""]
+    if not overall.get("n"):
+        return "\n".join(lines + ["Veri yok."])
+    lines.append(f"<b>Hepsi</b> ({overall['n']}): 1s 2x %{overall['x2_60']} · rug %{overall['rugged']} · "
+                 f"1s sonu {overall['median_ret60']}x")
+    for code, s in rows:
+        lines.append(f"<code>{escape(code, quote=False)}</code> ({s['n']}): 1s 2x %{s['x2_60']} · "
+                     f"rug %{s['rugged']} · 1s sonu {s['median_ret60']}x")
+    if not rows:
+        lines.append("En az 5 sinyalde görülen bulgu yok.")
+    lines += ["", "<i>Bir bulgu \"Hepsi\"nden iyi sonuç veriyorsa güven skorunu gereksiz düşürüyor olabilir.</i>"]
+    return "\n".join(lines)
