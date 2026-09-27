@@ -43,19 +43,18 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 ## Yapılanlar (özet)
 Fomo akışı izleme ve bildirim · güven skoru (kontrat, likidite, V2 honeypot simülasyonu, V4 hook tanıma,
 holder dağılımı, lansman: dev/sniper/bundle) · momentum skoru · çıkış sinyalleri (ÇIK/DİKKAT, 5/15/30 dk) ·
-akıllı Fomo cüzdanları · komisyon/başa baş · sonuç kaydı ve `/karne` · geliştirici geçmişi · sahte hacim tespiti.
+akıllı Fomo cüzdanları · komisyon/başa baş · sonuç kaydı ve `/karne` · geliştirici geçmişi · sahte hacim tespiti ·
+Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
 
 ## Sıradaki işler
-1. **Son güncellemeyi doğrula:** sunucuda `install.sh` sonrası ~10 dk bekle, `/durum` → "Pons lansman indeksi"
-   yüz binler civarında olmalı. Sıfırsa log'a bak (`launch index sync failed`).
-2. **Karne incelemesi ve kalibrasyon** (birkaç gün veri birikince): `/karne 24`, `/karne 72` çıktılarını
+1. **Karne incelemesi ve kalibrasyon** (birkaç gün veri birikince): `/karne 24`, `/karne 72` çıktılarını
    kullanıcıyla incele. Momentum ağırlıkları ve eşikler (min skor, min alıcı, min hacim) buna göre ayarlanacak.
    Kayıtlı özellikler (`outcomes.py` → `signals.features`): momentum özellikleri, dev/sniper/bundle payı,
    geliştirici geçmişi, sahte hacim, likidite, FDV, sosyal linkler, bulgu kodları. Fikirler: momentum eşiği ile
    bildirim filtreleme, piyasa rejimine göre değişen eşikler, geliştirici/wash bulgularının ağırlığını veriyle ayarlama.
-3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
+2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
-4. **Mezuniyet öncesi Pons takibi** (opsiyonel): lansman indeksi hazır olduğu için yeni Pons coinlerini
+3. **Mezuniyet öncesi Pons takibi** (opsiyonel): lansman indeksi hazır olduğu için yeni Pons coinlerini
    doğduğu anda (Fomo'da hacim gelmeden) izleme.
-5. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
-6. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.
+4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
+5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.
