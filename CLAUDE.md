@@ -57,11 +57,14 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    bildirim filtreleme, piyasa rejimine göre değişen eşikler, geliştirici/wash bulgularının ağırlığını veriyle ayarlama.
    İlk tur (72 saatlik veri): `/minmomentum` eklendi (sunucuda 45), `/karne` güven/momentum kırılımları ve
    `/bulgular` eklendi. `liq_usd_low` high→low (bu coinler ortalamadan iyi), `v4_common_hook` low→medium
-   (rug %17). Birkaç gün sonra `/karne 72` + `/bulgular 72` ile tekrar bak.
+   (rug %17). İlk 24 saatte bildirimlerin 1s 2x oranı %27'ye çıktı. 30 Eylül'de `/karne 72` +
+   `/bulgular 72` ile tekrar bak; momentum eşiği 70'e çıksın mı karar ver (70+ %29, 45-69 %17, n=18).
 2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 3. **Mezuniyet öncesi Pons takibi**: ölçüm modunda kuruldu (kind `pons` / `pons_junk`, bildirim yok).
    Karne kontrolünde `/karne 72` Pons grupları ve `/bulgular 72 pons` ile bak: ön filtre çöpü ayırıyor mu,
    filtreden geçenler iyi mi? İyiyse bildirim (ör. `/pons ac` komutu) eklenecek; eşikler `config.py` `pons_*`.
+   İlk 24 saat: ön filtre dump'ları ayırıyor (1s yarıya düşen %6.5 vs %31) ama geçenler de medyan 1s sonu 0.74x,
+   medyan zirve 1.0x → sinyal geç geliyor. Seçenek: daha erken/az alıcıyla sinyal ya da bu yolu bırakmak.
 4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
 5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.
