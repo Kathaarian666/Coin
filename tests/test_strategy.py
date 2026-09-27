@@ -23,7 +23,7 @@ def test_rules_on_paths():
     assert rows["24 saat tut, sat"]["n"] == 2 and rows["24 saat tut, sat"]["best"] > 25
     assert rows["🔴 ÇIK gelince sat (yoksa 24 saatte)"]["win_rate"] == 50.0  # the rug is sold at 0.5x on ÇIK
     text = "\n".join(format_strategies(168, 5.0, list(rows.items())))
-    assert text.count("toplam") == len(rows) and "1." in text
+    assert text.count("o olmasa toplam") == len(rows) and "1 tanesinde 🔴 ÇIK" in text
 
 
 def test_alert_paths_from_the_log():

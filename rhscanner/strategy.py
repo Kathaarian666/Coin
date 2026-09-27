@@ -38,14 +38,27 @@ def take_profit(target: float, else_minutes: int, share: float = 1.0) -> Rule:
     return rule
 
 
+def let_winner_run(check_minutes: int, keep_above: float, else_minutes: int) -> Rule:
+    """At `check_minutes`: sell unless it is at `keep_above`x or more; winners are held to `else_minutes`."""
+    def rule(path, exit_min):
+        at_check = _at(path, check_minutes)
+        return [(1.0, at_check if at_check < keep_above else _at(path, else_minutes))]
+    return rule
+
+
 def until_exit(else_minutes: int) -> Rule:
     """Hold until the bot's 🔴 ÇIK (at its price), else sell at `else_minutes`."""
     return lambda path, exit_min: [(1.0, _at(path, exit_min if exit_min is not None else else_minutes))]
 
 
 RULES: list[tuple[str, Rule]] = [
+    ("30 dk tut, sat", hold(30)),
     ("1 saat tut, sat", hold(60)),
+    ("2 saat tut, sat", hold(120)),
+    ("4 saat tut, sat", hold(240)),
     ("24 saat tut, sat", hold(1440)),
+    ("1 saatte 1.5x+ ise 4 saate kadar tut, değilse 1 saatte sat", let_winner_run(60, 1.5, 240)),
+    ("2x'te yarısı, kalanı 1 saatte", take_profit(2.0, 60, share=0.5)),
     ("2x'te sat (yoksa 1 saatte)", take_profit(2.0, 60)),
     ("2x'te sat (yoksa 24 saatte)", take_profit(2.0, 1440)),
     ("3x'te sat (yoksa 24 saatte)", take_profit(3.0, 1440)),
@@ -74,6 +87,8 @@ def simulate(paths: list[tuple[list[tuple[int, float]], int | None]], position: 
             out.append((name, {"n": 0}))
             continue
         out.append((name, {
+            "without_best": round(sum(pnls) - max(pnls), 2),
+            "exits": sum(1 for path, exit_min in paths if path and exit_min is not None),
             "n": len(pnls),
             "total": round(sum(pnls), 2),
             "per_trade": round(sum(pnls) / len(pnls), 2),
