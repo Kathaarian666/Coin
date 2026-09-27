@@ -61,12 +61,18 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    `/bulgular 72` ile tekrar bak. ÇIK sinyalleri isabetli (10 sinyal: %50'si 1s sonra aşağıda, kaçırılan 1.5x yok).
    168 saatlik veriyle karar verildi: `/minmomentum 70` (70+ %20 vs 45-69 %11 1s 2x)
    ve `/minskor 30` (güven 30-49 en iyi grup: %42 1s 2x; rug her aralıkta %9-11, güven rug'ı ayırmıyor).
-2. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
+2. **Sinyal isabeti araştırması** (27 Eylül): `/analiz` (özellik dilimleri → hangi özellik kazandırıyor) ve
+   `/kazananlar` (GeckoTerminal'den 10x+ coinler, bot yakaladı mı) eklendi. GeckoTerminal ücretsiz ama yavaş
+   (~3-5 dk). Sonuçlara göre sıradaki: C) ikinci dalga bildirimi (coin başına tek bildirim, sonraki dalgalar
+   kaçıyor), D) yeni özellikler (alıcı başına alım $, holder artış hızı, Fomo dışı alıcı), E) çıkış stratejisi
+   simülasyonu, F) piyasa rejimi. Araştırma: en güçlü tahminci az işlemle hızlı biriken para (Pump.fun çalışması),
+   bot oranı negatif, Telegram varlığı ~9x mezuniyet, akıllı para etkisi karışık.
+3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
-3. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve
+4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve
    alım/satımlarını okuyup 8+ ve 4+ alıcı eşiğinde sinyal + bariz çöp filtresi uyguluyordu; `pons-backfill` ile
    3 günlük veri (~9k sinyal): filtreden geçenler bile medyan 1s sonu 0.70–0.78x, 5x %1.5–1.9 (Fomo bildirimleri
    %14.7). Erken eşik daha iyi değil → sorun zamanlama değil, coinlerin çoğu satmak için çıkarılıyor. Fomo'da hacim
    gelmesi zaten güçlü bir eleme. Kod duruyor, `ENABLE_PONS_WATCHER=1` ile açılır (RPC yükü getirir).
-4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
-5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.
+5. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
+6. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.

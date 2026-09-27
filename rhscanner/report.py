@@ -249,3 +249,88 @@ def format_findings(hours: float, overall: dict, rows: list[tuple[str, dict]], p
             "Bir bulgu \"Hepsi\"nden iyi sonuç veriyorsa güven skorunu gereksiz düşürüyor olabilir.")
     lines += ["", f"<i>{hint}</i>"]
     return "\n".join(lines)
+
+
+def format_analysis(hours: float, n: int, table: list[tuple[str, list[tuple[str, dict]]]]) -> list[str]:
+    """/analiz: each feature split into thirds, with how each third did."""
+    blocks = [f"🔬 <b>Özellik analizi — son {hours:g} saat</b>\n"
+              f"<i>({n} sinyal: bildirim + filtre + gölge; her özellik değerine göre üçe bölündü)\n"
+              f"Her dilim: 1 saatte 2x % · 24s içinde 5x % · rug % · (sinyal sayısı)</i>\n"]
+    for label, parts in table:
+        rows = [f"<b>{escape(label, quote=False)}</b>"]
+        for tag, s in parts:
+            rows.append(f"   {escape(tag, quote=False)}: 2x %{s['x2_60']} · 5x %{s['x5_all']} · rug %{s['rugged']} ({s['n']})")
+        blocks.append("\n".join(rows))
+    if not table:
+        blocks.append("Yeterli veri yok (özellik başına en az 30 sinyal gerekiyor).")
+    blocks.append("\n<i>Dilimler arasında büyük fark olan özellikler sinyali gerçekten ayırıyor; "
+                  "fark yoksa o özelliğin puana etkisi azaltılabilir.</i>")
+    return _chunks(blocks)
+
+
+def _x(value: float | None) -> str:
+    if value is None:
+        return "?"
+    return f"{value:.1f}x" if value < 10 else f"{value:.0f}x"
+
+
+def _usd(value: float | None) -> str:
+    if not value:
+        return "?"
+    return f"${value / 1e6:.1f}M" if value >= 1e6 else f"${value / 1e3:.0f}k"
+
+
+def _entry(s: dict) -> str:
+    if not s.get("entry_vs_start"):
+        return "giriş fiyatı yok"
+    text = f"giriş fiyatı başlangıcın {_x(s['entry_vs_start'])}'i"
+    if s.get("peak_after") is not None:
+        text += f", sonrası en fazla {_x(s['peak_after'])}"
+    if s.get("before_peak") is False:
+        text += " (zirveden sonra)"
+    return text
+
+
+def format_winners(days: float, min_multiple: float, winners: list[dict], checked: int,
+                   min_score: int, min_momentum: int, min_buyers: int) -> list[str]:
+    """/kazananlar: each coin that ran, and what the bot did with it."""
+    def status(w: dict) -> str:
+        kinds = {s["kind"] for s in w["signals"]}
+        return "alert" if "alert" in kinds else "filtered" if "filtered" in kinds else "shadow" if kinds else "none"
+
+    icons = {"alert": "✅ bildirim", "filtered": "🚫 filtre", "shadow": "👤 sadece gölge", "none": "❓ görülmedi"}
+    counts = {k: sum(1 for w in winners if status(w) == k) for k in icons}
+    blocks = [f"🏆 <b>Kazanan otopsisi — son {days:g} gün, {min_multiple:g}x ve üstü</b>\n"
+              f"<i>(GeckoTerminal'de bu sürede açılan en işlek {checked} havuz; çarpan ilk işlem saatinin kapanışından en yüksek saatlik kapanışa)</i>\n"
+              f"{len(winners)} kazanan: " + " · ".join(f"{icons[k]} {n}" for k, n in counts.items()) + "\n"]
+    for i, w in enumerate(winners[:20], 1):
+        lines = [f"{i}. <b>{escape(w['symbol'], quote=False)}</b> {_x(w['multiple'])} · "
+                 f"{w['hours_to_peak']:.0f} saatte zirve · zirvede FDV {_usd(w.get('peak_fdv'))}"]
+        by_kind = {}
+        for s in w["signals"]:
+            by_kind.setdefault(s["kind"], s)
+        st = status(w)
+        if st == "alert":
+            s = by_kind["alert"]
+            lines.append(f"   ✅ Bildirim gitti (güven {s['trust']}, momentum {s['momentum']}) — {_entry(s)}")
+        elif st == "filtered":
+            s = by_kind["filtered"]
+            passes = (s["trust"] or 0) >= min_score and (s["momentum"] or 0) >= min_momentum
+            codes = ", ".join((s["features"].get("findings") or [])[:4])
+            lines.append(f"   🚫 Filtreye takıldı (güven {s['trust']}, momentum {s['momentum']}) — {_entry(s)}\n"
+                         f"      bugünkü eşiklerle (skor ≥{min_score}, momentum ≥{min_momentum}) "
+                         f"{'GÖNDERİLİRDİ' if passes else 'yine elenirdi'}" + (f" · bulgular: {escape(codes)}" if codes else ""))
+        elif st == "shadow":
+            s = by_kind["shadow"]
+            buyers = s["features"].get("buyers_10m")
+            lines.append(f"   👤 Sadece gölge grupta: Fomo'da 10 dk'da {buyers} alıcı "
+                         f"(bildirim eşiği {min_buyers}) — {_entry(s)}")
+        else:
+            lines.append("   ❓ Hiç görülmedi: Fomo'da alım eşiğin yarısına bile ulaşmadı (ya da bot o sırada kapalıydı)")
+        shadow = by_kind.get("shadow")
+        if st in ("alert", "filtered") and shadow and shadow["ts"] < by_kind[st]["ts"]:
+            lines.append(f"      (gölgede {(by_kind[st]['ts'] - shadow['ts']) / 60:.0f} dk önce görülmüştü, {_entry(shadow)})")
+        blocks.append("\n".join(lines))
+    if not winners:
+        blocks.append(f"Bu sürede {min_multiple:g}x yapan coin bulunamadı.")
+    return _chunks(blocks)

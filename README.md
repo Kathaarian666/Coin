@@ -106,6 +106,8 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/akilli` | Kazanma oranı yüksek Fomo cüzdanları (son 7 gün) |
 | `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge / Pons, momentum ve güven aralıkları, ÇIK/DİKKAT sinyallerinin isabeti); uzunsa birkaç mesaja bölünür |
 | `/bulgular 72` | Analiz edilen sinyallerin sonuçları, güven bulgusu koduna göre (varsayılan 72 saat) |
+| `/analiz 168` | Her özellik (alıcı sayısı, hızlanma, tutma oranı, akıllı cüzdan, FDV, likidite…) değerine göre üçe bölünür, her dilimin sonucu gösterilir: hangi özellik gerçekten kazandırıyor |
+| `/kazananlar 3 10` | Son 3 günde 10x+ yapan coinler (GeckoTerminal, ücretsiz) ve bot onları yakaladı mı: bildirim / filtre / gölge / hiç görülmedi, hangi fiyattan |
 | `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
@@ -160,6 +162,7 @@ rhscanner/
   checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   pons.py           mezuniyet öncesi Pons curve alım/satımları ve bariz çöp filtresi
+  winners.py        10x+ yapan coinleri GeckoTerminal'den bulup sinyal kayıtlarıyla eşleştirir (/kazananlar)
   pons_backfill.py  aynı Pons sinyallerini geçmiş günlerin zincir verisinden yeniden üretir
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı

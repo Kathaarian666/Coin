@@ -19,13 +19,15 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import format_exit, format_findings, format_followup, format_report, format_scorecard
+from .report import (format_analysis, format_exit, format_findings, format_followup, format_report,
+                     format_scorecard, format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
 from .wallets import WalletBook
+from .winners import GeckoTerminal, find_winners
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +46,8 @@ HELP = (
     "/durum — tarayıcı durumu\n"
     "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
     "/bulgular [saat] [pons|erken] — güven bulgularına (veya Pons çöp nedenlerine) göre sonuçlar\n"
+    "/analiz [saat] — hangi özellik kazandırıyor (varsayılan son 7 gün)\n"
+    "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı (varsayılan 3 gün, 10x)\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -449,6 +453,31 @@ class ScannerApp:
                             pons=kinds[0].startswith("pons"))
         )
 
+    async def cmd_analysis(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        results = [r for r in self.outcomes.results(hours) if r["kind"] in ("alert", "filtered", "shadow")]
+        for text in format_analysis(hours, len(results), feature_table(results)):
+            await update.message.reply_html(text)
+
+    async def cmd_winners(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        numbers = [float(a) for a in (context.args or []) if a.replace(".", "", 1).isdigit()]
+        days = numbers[0] if numbers else 3.0
+        multiple = numbers[1] if len(numbers) > 1 else 10.0
+        await update.message.reply_text(f"⏳ Son {days:g} günde {multiple:g}x yapan coinler aranıyor (GeckoTerminal yavaş, 3-5 dk sürer)...")
+        try:
+            winners, checked = await find_winners(GeckoTerminal(self.http), self.outcomes, days, multiple)
+        except Exception:
+            log.exception("winner autopsy failed")
+            await update.message.reply_text("Kazanan listesi alınamadı (GeckoTerminal), biraz sonra tekrar deneyin.")
+            return
+        for text in format_winners(days, multiple, winners, checked, self.min_score, self.min_momentum,
+                                   self.min_buyers):
+            await update.message.reply_html(text)
+
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -595,6 +624,8 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("minskor", self.cmd_min_score))
         self.app.add_handler(CommandHandler("minmomentum", self.cmd_min_momentum))
         self.app.add_handler(CommandHandler("bulgular", self.cmd_findings))
+        self.app.add_handler(CommandHandler("analiz", self.cmd_analysis))
+        self.app.add_handler(CommandHandler("kazananlar", self.cmd_winners, block=False))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

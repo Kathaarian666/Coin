@@ -97,6 +97,18 @@ class OutcomeLog:
         self.db.commit()
         return True
 
+    def signals_for(self, token: str, kinds: tuple[str, ...]) -> list[dict]:
+        """A token's signals of the given kinds, oldest first, with the price at the signal (p0)."""
+        marks = ",".join("?" * len(kinds))
+        rows = self.db.execute(
+            f"SELECT s.id, s.ts, s.kind, s.trust, s.momentum, s.features, m.price FROM signals s "
+            f"LEFT JOIN samples m ON m.signal_id = s.id AND m.minute = 0 "
+            f"WHERE s.token = ? AND s.kind IN ({marks}) ORDER BY s.ts", (token.lower(), *kinds),
+        ).fetchall()
+        return [{"ts": ts, "kind": kind, "trust": trust, "momentum": momentum, "p0": price,
+                 "features": json.loads(features or "{}")}
+                for _, ts, kind, trust, momentum, features, price in rows]
+
     def due(self, now: float) -> list[tuple]:
         rows = self.db.execute(
             "SELECT id, token, ts, next_idx, pair, momentum, features FROM signals WHERE done = 0"
@@ -173,7 +185,10 @@ class OutcomeLog:
                 "ret_60": at60,
                 "last_min": last_m,
                 "rugged": bool(rugged),
-                "findings": json.loads(features or "{}").get("findings") or [],
+                "findings": (feats := json.loads(features or "{}")).get("findings") or [],
+                "features": feats,
+                "p0": p0,
+                "ts": ts,
             })
         return out
 
@@ -239,3 +254,78 @@ def finding_table(results: list[dict], min_n: int = 5,
                 by_code[code].append(r)
     rows = [(code, summarize(rs)) for code, rs in by_code.items() if len(rs) >= min_n]
     return sorted(rows, key=lambda row: -row[1]["n"])
+
+
+# Numeric signal features worth splitting into low / mid / high thirds for /analiz, with Turkish labels.
+ANALYSIS_FEATURES = {
+    "trust": "güven skoru",
+    "momentum": "momentum skoru",
+    "buyers_10m": "10 dk alıcı",
+    "accel_5m": "hızlanma (son 5 dk / önceki 5 dk alıcı)",
+    "buy_usd_10m": "10 dk Fomo alımı ($)",
+    "avg_buy_usd": "alıcı başına alım ($)",
+    "buy_ratio_10m": "alım oranı (alım / toplam)",
+    "hold_rate_30m": "tutma oranı (30 dk)",
+    "whale_share_10m": "en büyük alıcının payı",
+    "smart_buyers_10m": "akıllı cüzdan sayısı",
+    "churn_share_30m": "al-sat döngüsü payı",
+    "fomo_share_h1": "Fomo'nun hacim payı",
+    "age_min": "yaş (dk)",
+    "liquidity_usd": "likidite ($)",
+    "fdv": "FDV ($)",
+    "top10_pct": "ilk 10 cüzdan payı (%)",
+    "dev_pct": "dev payı (%)",
+    "sniper_pct": "sniper payı (%)",
+    "bundle_pct": "bundle payı (%)",
+    "previous_launches": "dev'in önceki coin sayısı",
+}
+
+
+def feature_value(r: dict, name: str) -> float | None:
+    f = r.get("features") or {}
+    if name in ("trust", "momentum"):
+        value = r.get(name)
+    elif name == "accel_5m":
+        b5, prev = f.get("buyers_5m"), f.get("buyers_prev_5m")
+        value = b5 / max(prev, 1) if b5 is not None and prev is not None else None
+    elif name == "avg_buy_usd":
+        usd, buyers = f.get("buy_usd_10m"), f.get("buyers_10m")
+        value = usd / buyers if usd is not None and buyers else None
+    else:
+        value = f.get(name)
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def feature_table(results: list[dict], min_n: int = 30) -> list[tuple[str, list[tuple[str, dict]]]]:
+    """For each feature: the signals split into thirds by its value, and how each third did."""
+    table = []
+    for name, label in ANALYSIS_FEATURES.items():
+        valued = sorted(((v, r) for r in results if (v := feature_value(r, name)) is not None), key=lambda x: x[0])
+        if len(valued) < min_n:
+            continue
+        cut1, cut2 = valued[len(valued) // 3][0], valued[2 * len(valued) // 3][0]
+        if cut1 == cut2:  # too few distinct values for thirds (e.g. mostly 0): split at that value
+            groups = [[x for x in valued if x[0] <= cut1], [x for x in valued if x[0] > cut1]]
+        else:
+            groups = [[x for x in valued if x[0] < cut1], [x for x in valued if cut1 <= x[0] < cut2],
+                      [x for x in valued if x[0] >= cut2]]
+        groups = [g for g in groups if g]
+        if len(groups) < 2:
+            continue
+        parts = [(_range(g[0][0], g[-1][0]), [r for _, r in g]) for g in groups]
+        table.append((label, [(tag, summarize(rs)) for tag, rs in parts]))
+    return table
+
+
+def _range(lo: float, hi: float) -> str:
+    return _short(lo) if lo == hi else f"{_short(lo)}–{_short(hi)}"
+
+
+def _short(value: float) -> str:
+    if abs(value) >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if abs(value) >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    if abs(value) >= 10 or value == int(value):
+        return f"{value:.0f}"
+    return f"{value:.2f}"

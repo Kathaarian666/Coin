@@ -115,3 +115,25 @@ def test_exit_summary_and_scorecard_splitting():
     assert len(messages) > 1 and all(len(m) <= 3500 for m in messages)
     assert messages[0].startswith("📊") and "Grup 29" in messages[-1] and "DİKKAT</b>: veri yok" in messages[-1]
     assert len(format_scorecard(24, [("Tek", group)])) == 1
+
+
+def test_feature_table_splits_into_thirds():
+    from rhscanner.outcomes import feature_table, feature_value
+    from rhscanner.report import format_analysis
+
+    def result(buyers, smart, x2):
+        return {"kind": "alert", "trust": 60, "momentum": 70, "max_60": 2.0 if x2 else 1.0, "max_all": 1.0,
+                "ret_60": 1.0, "rugged": False,
+                "features": {"buyers_10m": buyers, "buy_usd_10m": buyers * 20.0, "smart_buyers_10m": smart,
+                             "buyers_5m": 4, "buyers_prev_5m": 0}}
+
+    results = [result(b, 0 if b < 40 else 2, b >= 40) for b in range(10, 70)]
+    assert feature_value(results[0], "avg_buy_usd") == 20.0 and feature_value(results[0], "accel_5m") == 4.0
+    table = dict(feature_table(results))
+    thirds = table["10 dk alıcı"]
+    assert [t for t, _ in thirds] == ["10–29", "30–49", "50–69"]
+    assert [s["x2_60"] for _, s in thirds] == [0.0, 50.0, 100.0]
+    assert [t for t, _ in table["akıllı cüzdan sayısı"]] == ["0", "2"]  # two values: two parts
+    assert "güven skoru" not in table  # one value only: nothing to split
+    messages = format_analysis(168, len(results), list(table.items()))
+    assert "10 dk alıcı" in messages[0] and all(len(m) <= 3500 for m in messages)
