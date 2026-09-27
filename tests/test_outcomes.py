@@ -213,4 +213,4 @@ def test_parameter_sweep_trades_precision_for_recall():
     assert rows[(85, 0)]["x5_all"] == 100.0 and rows[(85, 0)]["recall"] == 66.7
     assert rows[(60, 20)]["recall"] == 100.0 and rows[(60, 0)]["x5_all"] == 42.9
     text = "\\n".join(format_sweep(168, 35, 15, list(rows.values()), (70, 30)))
-    assert "<b>85 / 0</b>" in text and "yakalanan %66.7" in text
+    assert "<b>60 / 20</b>" in text and "yakalanan %100.0" in text and "yakalanan %66.7" in text
