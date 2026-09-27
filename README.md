@@ -45,7 +45,7 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 | **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
 | **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
 | **Geliştirici geçmişi** | Pons V2 lansmanlarından: coini çıkaran cüzdanın son ~3 haftada kaç coin daha çıkardığı, son 30'unun kaçının hâlâ yaşadığı (likidite ≥ $5k), en iyisinin FDV'si. Bot tüm Pons lansmanlarını yerel bir indekste tutar (ilk açılışta ~10 dk'da doldurur) |
-| **Mezuniyet öncesi Pons** | Pons coinleri doğduğu curve kontratında işlem görürken (DexScreener'da yokken) izlenir: 10 dk'da ≥ 8 farklı alıcı ve ≥ $300 alım olan 2 saatten genç coinler kaydedilir. Bariz çöp ön filtresi: seri geliştirici (24 saatte ≥ 10 coin), geliştirici sattı / kendi aldı, tek cüzdan alımı, ilk saniyelerde küme alım, satış baskısı, aynı cüzdanların tekrar tekrar alması. Şimdilik bildirim yok, sonuçlar `/karne` ve `/bulgular 72 pons` ile ölçülür |
+| **Mezuniyet öncesi Pons** | Pons coinleri doğduğu curve kontratında işlem görürken (DexScreener'da yokken) izlenir: 10 dk'da ≥ 8 farklı alıcı ve ≥ $300 alım olan 2 saatten genç coinler kaydedilir (yanında daha erken bir eşik de ölçülür: ≥ 4 alıcı, ≥ $100). Bariz çöp ön filtresi: seri geliştirici (24 saatte ≥ 10 coin), geliştirici sattı / kendi aldı, tek cüzdan alımı, ilk saniyelerde küme alım, satış baskısı, aynı cüzdanların tekrar tekrar alması. Şimdilik bildirim yok, sonuçlar `/karne` ve `/bulgular 72 pons` ile ölçülür |
 | **Sahte hacim (wash trading)** | Son 5 dk transferlerinde kaç farklı cüzdan var, en aktif cüzdanın payı; Fomo'da aynı coini tekrar tekrar alıp satan cüzdanların hacim payı |
 
 **İki ayrı skor:**
@@ -104,9 +104,9 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/trend` | Şu an Fomo'da en çok alınan 10 coin (son 15 dk) |
 | `/pozisyon 5` | İşlem tutarınız; bildirimlerde komisyonla başa baş çarpanı buna göre yazılır |
 | `/akilli` | Kazanma oranı yüksek Fomo cüzdanları (son 7 gün) |
-| `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge, momentum ve güven aralıkları) |
+| `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge / Pons, momentum ve güven aralıkları, ÇIK/DİKKAT sinyallerinin isabeti); uzunsa birkaç mesaja bölünür |
 | `/bulgular 72` | Analiz edilen sinyallerin sonuçları, güven bulgusu koduna göre (varsayılan 72 saat) |
-| `/bulgular 72 pons` | Erken Pons sinyallerinin sonuçları, çöp nedenine göre |
+| `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
 | `/minmomentum 45` | Momentumu 45'in altındakiler için bildirim gönderme (0 = kapalı, varsayılan) |

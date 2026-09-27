@@ -74,6 +74,9 @@ class Settings:
     pons_min_buyers: int = 8
     pons_min_buy_usd: float = 300.0
     pons_max_age_min: float = 120.0
+    # A second, earlier bar measured alongside (the first one fired after most of the rise).
+    pons_early_min_buyers: int = 4
+    pons_early_min_buy_usd: float = 100.0
     # Raw new-pool watcher: every new DEX pool, Fomo or not (very noisy).
     enable_pool_watcher: bool = False
 
@@ -118,6 +121,8 @@ class Settings:
             pons_min_buyers=int(env("PONS_MIN_BUYERS", "8")),
             pons_min_buy_usd=float(env("PONS_MIN_BUY_USD", "300")),
             pons_max_age_min=float(env("PONS_MAX_AGE_MIN", "120")),
+            pons_early_min_buyers=int(env("PONS_EARLY_MIN_BUYERS", "4")),
+            pons_early_min_buy_usd=float(env("PONS_EARLY_MIN_BUY_USD", "100")),
             enable_pool_watcher=_flag(env("ENABLE_POOL_WATCHER", "0")),
         )
 

@@ -98,3 +98,20 @@ async def test_unlisted_coins_are_priced_by_price_fn():
     await log.tick(NoPairs(), now=T0 + 3600, price_fn=lambda token: prices[60])
     [r] = log.results(hours=24, now=T0 + 3600)
     assert (r["kind"], r["max_60"], r["rugged"]) == ("pons", 3.0, False)
+
+
+def test_exit_summary_and_scorecard_splitting():
+    from rhscanner.outcomes import summarize_exits
+    from rhscanner.report import format_scorecard
+
+    right = {"ret_60": 0.5, "max_60": 1.0, "max_all": 1.0, "rugged": False}
+    early = {"ret_60": 1.8, "max_60": 2.1, "max_all": 2.5, "rugged": False}
+    s = summarize_exits([right, early])
+    assert (s["n"], s["lower_60"], s["down20_60"], s["up50_60"], s["x2_all"]) == (2, 50.0, 50.0, 50.0, 50.0)
+    assert summarize_exits([]) == {"n": 0}
+
+    group = summarize([{"max_60": 2.0, "max_all": 2.0, "ret_60": 1.0, "rugged": False}])
+    messages = format_scorecard(24, [(f"Grup {i}", group) for i in range(30)], [("🔴 ÇIK", s), ("🟠 DİKKAT", {"n": 0})])
+    assert len(messages) > 1 and all(len(m) <= 3500 for m in messages)
+    assert messages[0].startswith("📊") and "Grup 29" in messages[-1] and "DİKKAT</b>: veri yok" in messages[-1]
+    assert len(format_scorecard(24, [("Tek", group)])) == 1

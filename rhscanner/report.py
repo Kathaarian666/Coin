@@ -186,21 +186,49 @@ def format_exit(report: dict, reasons: list, level: str, market: dict, minutes: 
     return "\n".join(lines)
 
 
-def format_scorecard(hours: float, groups: list[tuple[str, dict]]) -> str:
-    """/karne: how signals did, by kind and by momentum bucket."""
-    lines = [f"📊 <b>Sinyal karnesi — son {hours:g} saat</b>", "<i>(en az 1 saatlik sinyaller)</i>", ""]
+TELEGRAM_CHUNK = 3500  # Telegram refuses messages over 4096 characters
+
+
+def _chunks(blocks: list[str], limit: int = TELEGRAM_CHUNK) -> list[str]:
+    """Join blocks into as few messages as fit under the limit, never splitting a block."""
+    messages, current = [], ""
+    for block in blocks:
+        if current and len(current) + 1 + len(block) > limit:
+            messages.append(current)
+            current = block
+        else:
+            current = f"{current}\n{block}" if current else block
+    return messages + ([current] if current else [])
+
+
+def format_scorecard(hours: float, groups: list[tuple[str, dict]],
+                     exits: list[tuple[str, dict]] | None = None) -> list[str]:
+    """/karne: how signals did, by kind and bucket; one or more Telegram messages."""
+    blocks = [f"📊 <b>Sinyal karnesi — son {hours:g} saat</b>\n<i>(en az 1 saatlik sinyaller)</i>\n"]
     for title, s in groups:
         if not s.get("n"):
-            lines.append(f"<b>{escape(title, quote=False)}</b>: veri yok")
+            blocks.append(f"<b>{escape(title, quote=False)}</b>: veri yok")
             continue
-        lines.append(
+        blocks.append(
             f"<b>{escape(title, quote=False)}</b> ({s['n']} sinyal)\n"
             f"   1 saatte 2x: %{s['x2_60']} · 1.5x: %{s['up50_60']} · 24s içinde 2x: %{s['x2_all']} · 5x: %{s['x5_all']}\n"
             f"   1 saatte yarıya düşen: %{s['down50_60']} · rug: %{s['rugged']}\n"
             f"   medyan 1s zirvesi: {s['median_max60']}x · medyan 1s sonu: {s['median_ret60']}x"
         )
-    lines += ["", "<i>Gölge = eşiğin yarısını geçen, analiz edilmemiş coinler (karşılaştırma grubu).</i>"]
-    return "\n".join(lines)
+    if exits:
+        blocks.append("\n🚪 <b>Çıkış sinyalleri</b> <i>(fiyat sinyalin gönderildiği andan itibaren)</i>")
+        for title, s in exits:
+            if not s.get("n"):
+                blocks.append(f"<b>{escape(title, quote=False)}</b>: veri yok")
+                continue
+            blocks.append(
+                f"<b>{escape(title, quote=False)}</b> ({s['n']} sinyal)\n"
+                f"   ✅ 1 saat sonra daha aşağıda: %{s['lower_60']} · %20+ düşen: %{s['down20_60']} · rug: %{s['rugged']}\n"
+                f"   ❌ sonra 1.5x olan (kaçırılan): %{s['up50_60']} · 24s içinde 2x: %{s['x2_all']}\n"
+                f"   medyan 1s sonu: {s['median_ret60']}x"
+            )
+    blocks.append("\n<i>Gölge = eşiğin yarısını geçen, analiz edilmemiş coinler (karşılaştırma grubu).</i>")
+    return _chunks(blocks)
 
 
 def format_findings(hours: float, overall: dict, rows: list[tuple[str, dict]], pons: bool = False) -> str:

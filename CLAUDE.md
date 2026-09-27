@@ -65,6 +65,8 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    Karne kontrolünde `/karne 72` Pons grupları ve `/bulgular 72 pons` ile bak: ön filtre çöpü ayırıyor mu,
    filtreden geçenler iyi mi? İyiyse bildirim (ör. `/pons ac` komutu) eklenecek; eşikler `config.py` `pons_*`.
    İlk 24 saat: ön filtre dump'ları ayırıyor (1s yarıya düşen %6.5 vs %31) ama geçenler de medyan 1s sonu 0.74x,
-   medyan zirve 1.0x → sinyal geç geliyor. Seçenek: daha erken/az alıcıyla sinyal ya da bu yolu bırakmak.
+   medyan zirve 1.0x → sinyal geç geliyor. Bu yüzden paralel ikinci eşik eklendi (`pons_early`: 4+ alıcı, $100+;
+   `/bulgular 72 erken`). 30 Eylül'de iki eşiği karşılaştır; ikisi de kötüyse bu yolu bırakmayı öner.
+   `/karne` artık ÇIK/DİKKAT isabetini de gösteriyor (sinyal sonrası 1 saatte daha aşağıda mı, kaçırılan 1.5x).
 4. **V3/V4 honeypot simülasyonu** (şu an sadece V2; Fomo'da başarılı satışlar honeypot olmadığını gösteriyor).
 5. **Solana** — ayrı proje olarak, Robinhood tarafı oturduktan sonra.

@@ -66,7 +66,8 @@ def test_launch_index_keeps_curves_and_migrates_old_tables():
 
 
 async def test_pons_signals_are_recorded_once_with_junk_reasons(tmp_path):
-    app = ScannerApp(Settings(db_path=str(tmp_path / "p.db"), pons_min_buyers=3, pons_min_buy_usd=100))
+    app = ScannerApp(Settings(db_path=str(tmp_path / "p.db"), pons_min_buyers=5, pons_min_buy_usd=100,
+                              pons_early_min_buyers=2, pons_early_min_buy_usd=50))
     app.eth_usd = 3000.0
     app.analyzer.launches._store([launch_log(TOKEN, CURVE, DEV, LAUNCH_BLOCK)])
 
@@ -78,16 +79,19 @@ async def test_pons_signals_are_recorded_once_with_junk_reasons(tmp_path):
         await app.on_pons_trades(trades, warmup)
 
     wallets = [f"0x{i:040x}" for i in range(1, 6)]
-    await feed(wallets[:2], LAUNCH_BLOCK + 600)
-    assert app.outcomes.db.execute("SELECT COUNT(*) FROM signals").fetchone()[0] == 0  # 2 buyers: too few
-    await feed(wallets[2:3], LAUNCH_BLOCK + 700, warmup=True)
-    assert app.outcomes.db.execute("SELECT COUNT(*) FROM signals").fetchone()[0] == 0  # warmup never signals
+    kinds = lambda: [k for (k,) in app.outcomes.db.execute("SELECT kind FROM signals ORDER BY id")]  # noqa: E731
+    await feed(wallets[:1], LAUNCH_BLOCK + 500)
+    assert kinds() == []  # 1 buyer: too few for either bar
+    await feed(wallets[1:2], LAUNCH_BLOCK + 600, warmup=True)
+    assert kinds() == []  # warmup never signals
+    await feed(wallets[2:3], LAUNCH_BLOCK + 650)
+    assert kinds() == ["pons_early"]  # 3 buyers, $180: the early bar only
     await feed(wallets[3:], LAUNCH_BLOCK + 800)
-    rows = app.outcomes.db.execute("SELECT token, kind, features FROM signals").fetchall()
-    assert [(r[0], r[1]) for r in rows] == [(TOKEN, "pons")]
-    assert '"buyers_10m": 5' in rows[0][2] and '"findings": []' in rows[0][2]
+    rows = app.outcomes.db.execute("SELECT token, kind, features FROM signals ORDER BY id").fetchall()
+    assert [(r[0], r[1]) for r in rows] == [(TOKEN, "pons_early"), (TOKEN, "pons")]
+    assert '"buyers_10m": 5' in rows[1][2] and '"findings": []' in rows[1][2]
     await feed(["0x" + "f" * 40], LAUNCH_BLOCK + 900)
-    assert app.outcomes.db.execute("SELECT COUNT(*) FROM signals").fetchone()[0] == 1  # once per coin
+    assert len(kinds()) == 2  # once per coin and bar
     assert app.pons_price(TOKEN) == 0.002 * 3000.0
     await app.rpc.close()
 

@@ -19,7 +19,7 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, finding_table, momentum_bucket, summarize, trust_bucket
+from .outcomes import OutcomeLog, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import BLOCKS_PER_MIN, DAY_BLOCKS_PONS, PonsTracker, PonsWatcher, junk_reasons
 from .report import format_exit, format_findings, format_followup, format_report, format_scorecard
 from .rpc import RpcClient
@@ -43,7 +43,7 @@ HELP = (
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
     "/karne [saat] — sinyallerin sonuçları (varsayılan son 24 saat)\n"
-    "/bulgular [saat] [pons] — güven bulgularına (veya Pons çöp nedenlerine) göre sonuçlar\n"
+    "/bulgular [saat] [pons|erken] — güven bulgularına (veya Pons çöp nedenlerine) göre sonuçlar\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
 )
@@ -74,8 +74,8 @@ class ScannerApp:
         self.outcomes = OutcomeLog(self.storage.db)
         self.wallets = WalletBook(self.storage.db)
         self.pons = PonsTracker(max_age=settings.pons_max_age_min * 60)
-        self.pons_seen: set[str] = {row[0] for row in self.storage.db.execute(
-            "SELECT token FROM signals WHERE kind IN ('pons', 'pons_junk') AND ts >= ?", (time.time() - 86400,))}
+        self.pons_seen: set[tuple[str, str]] = {(row[0], row[1].removesuffix("_junk")) for row in self.storage.db.execute(
+            "SELECT token, kind FROM signals WHERE kind LIKE 'pons%' AND ts >= ?", (time.time() - 86400,))}
         self.eth_usd: float | None = None
         self.eth_usd_at = 0.0
         self.symbols: dict[str, str] = {}
@@ -140,6 +140,11 @@ class ScannerApp:
             # Give indexers a moment to see the token and its first holders.
             await self.queue.put(Job(pool.token, pool_dict, delay=self.settings.analysis_delay))
 
+    def pons_tiers(self) -> list[tuple[str, int, float]]:
+        """Signal bars measured side by side: (kind, min distinct buyers, min USD bought) in 10 minutes."""
+        return [("pons", self.settings.pons_min_buyers, self.settings.pons_min_buy_usd),
+                ("pons_early", self.settings.pons_early_min_buyers, self.settings.pons_early_min_buy_usd)]
+
     async def on_pons_trades(self, trades, warmup: bool = False):
         """A young Pons coin that enough wallets are buying on its curve: recorded for /karne (no alert)."""
         if warmup or not self.eth_usd:
@@ -147,24 +152,30 @@ class ScannerApp:
         index = self.analyzer.launches
         for curve in {t.curve for t in trades if t.side == "buy"}:
             launch = index.by_curve(curve)
-            if not launch or launch[0] in self.pons_seen:
-                continue  # not indexed yet (the index syncs every 30 s; later buys retry) or already recorded
+            if not launch:
+                continue  # not indexed yet (the index syncs every 30 s; later buys retry)
             token, launcher, launch_block = launch
+            tiers = [tier for tier in self.pons_tiers() if (token, tier[0]) not in self.pons_seen]
+            if not tiers:
+                continue
             head = max(t.block for t in trades)
             age_min = (head - launch_block) / BLOCKS_PER_MIN
             if age_min > self.settings.pons_max_age_min:
                 continue
             stats = self.pons.stats(curve, launcher, launch_block, self.fomo_window)
             buy_usd = stats["buy_eth_10m"] * self.eth_usd
-            if stats["buyers_10m"] < self.settings.pons_min_buyers or buy_usd < self.settings.pons_min_buy_usd:
-                continue
-            launches_24h = index.launches_since(launcher, head - DAY_BLOCKS_PONS)
-            reasons = junk_reasons(stats, launches_24h)
-            self.pons_seen.add(token)
-            features = {**stats, "buy_usd_10m": round(buy_usd, 2), "age_min": round(age_min, 1),
-                        "launches_24h": launches_24h, "findings": reasons}
-            self.outcomes.record(token, "pons_junk" if reasons else "pons", features=features, pair=None)
-            log.info("Pons signal %s (%s): %s", token, ",".join(reasons) or "clean", features)
+            launches_24h = None
+            for kind, min_buyers, min_usd in tiers:
+                if stats["buyers_10m"] < min_buyers or buy_usd < min_usd:
+                    continue
+                if launches_24h is None:
+                    launches_24h = index.launches_since(launcher, head - DAY_BLOCKS_PONS)
+                reasons = junk_reasons(stats, launches_24h)
+                self.pons_seen.add((token, kind))
+                features = {**stats, "buy_usd_10m": round(buy_usd, 2), "age_min": round(age_min, 1),
+                            "launches_24h": launches_24h, "findings": reasons}
+                self.outcomes.record(token, f"{kind}_junk" if reasons else kind, features=features, pair=None)
+                log.info("Pons signal %s %s (%s): %s", kind, token, ",".join(reasons) or "clean", features)
 
     def pons_price(self, token: str) -> float | None:
         """USD price of a coin still on its Pons curve (last trade), for outcome sampling."""
@@ -420,13 +431,18 @@ class ScannerApp:
         hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 24.0
         results = self.outcomes.results(hours)
         by_kind = {k: [r for r in results if r["kind"] == k]
-                   for k in ("alert", "filtered", "shadow", "pons", "pons_junk")}
+                   for k in ("alert", "filtered", "shadow", "pons", "pons_junk", "pons_early", "pons_early_junk",
+                             "exit", "caution")}
         groups = [
             ("🔔 Bildirim gidenler", summarize(by_kind["alert"])),
             ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
             ("👤 Gölge grup", summarize(by_kind["shadow"])),
-            ("🐣 Pons erken (ön filtreden geçen)", summarize(by_kind["pons"])),
-            ("🗑️ Pons erken (çöp sayılan)", summarize(by_kind["pons_junk"])),
+            (f"🐣 Pons {self.settings.pons_min_buyers}+ alıcı (ön filtreden geçen)", summarize(by_kind["pons"])),
+            (f"🗑️ Pons {self.settings.pons_min_buyers}+ alıcı (çöp sayılan)", summarize(by_kind["pons_junk"])),
+            (f"🐣 Pons {self.settings.pons_early_min_buyers}+ alıcı, erken (ön filtreden geçen)",
+             summarize(by_kind["pons_early"])),
+            (f"🗑️ Pons {self.settings.pons_early_min_buyers}+ alıcı, erken (çöp sayılan)",
+             summarize(by_kind["pons_early_junk"])),
         ]
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
             groups.append((f"Momentum {bucket} (tüm gruplar)",
@@ -438,17 +454,22 @@ class ScannerApp:
         for bucket in ("🚀 70+", "🟡 45-69", "🧊 <45"):
             groups.append((f"Bildirim gidenler, momentum {bucket}",
                            summarize([r for r in by_kind["alert"] if momentum_bucket(r["momentum"]) == bucket])))
-        await update.message.reply_html(format_scorecard(hours, groups))
+        exits = [("🔴 ÇIK", summarize_exits(by_kind["exit"])), ("🟠 DİKKAT", summarize_exits(by_kind["caution"]))]
+        for text in format_scorecard(hours, groups, exits):
+            await update.message.reply_html(text)
 
     async def cmd_findings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
         args = context.args or []
         hours = float(args[0]) if args and args[0].replace(".", "", 1).isdigit() else 72.0
-        kinds = ("pons", "pons_junk") if "pons" in [a.lower() for a in args] else ("alert", "filtered")
+        words = [a.lower() for a in args]
+        kinds = (("pons_early", "pons_early_junk") if "erken" in words else ("pons", "pons_junk") if "pons" in words
+                 else ("alert", "filtered"))
         results = [r for r in self.outcomes.results(hours) if r["kind"] in kinds]
         await update.message.reply_html(
-            format_findings(hours, summarize(results), finding_table(results, kinds=kinds)[:25], pons="pons" in kinds)
+            format_findings(hours, summarize(results), finding_table(results, kinds=kinds)[:25],
+                            pons=kinds[0].startswith("pons"))
         )
 
     async def cmd_position(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

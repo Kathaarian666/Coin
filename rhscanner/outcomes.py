@@ -7,6 +7,8 @@ The kinds of signals tracked, each at most once per token:
             baseline the alerts have to beat
   pons      a Pons coin buying up on its bonding curve before graduation
   pons_junk the same, dropped by the obvious-junk filter (pons.junk_reasons)
+  pons_early / pons_early_junk   the same at a lower (earlier) buying bar
+  exit / caution  a 🔴 ÇIK / 🟠 DİKKAT sent after an alert (priced from that moment)
 
 For each, price and liquidity are sampled from DexScreener at fixed minutes
 after the signal (0, 5, 10 ... 1440), in batches of up to 30 tokens per call.
@@ -173,6 +175,24 @@ def summarize(results: list[dict]) -> dict:
         "down50_60": rate(lambda r: r["ret_60"] is not None and r["ret_60"] <= 0.5),
         "rugged": rate(lambda r: r["rugged"]),
         "median_max60": round(statistics.median(max60), 2) if max60 else None,
+        "median_ret60": round(statistics.median(ret60), 2) if ret60 else None,
+    }
+
+
+def summarize_exits(results: list[dict]) -> dict:
+    """Whether exit signals were right: prices are relative to the moment the signal was sent."""
+    if not results:
+        return {"n": 0}
+    n = len(results)
+    rate = lambda cond: round(100.0 * sum(1 for r in results if cond(r)) / n, 1)  # noqa: E731
+    ret60 = [r["ret_60"] for r in results if r["ret_60"] is not None]
+    return {
+        "n": n,
+        "lower_60": rate(lambda r: r["ret_60"] is not None and r["ret_60"] < 1),
+        "down20_60": rate(lambda r: r["ret_60"] is not None and r["ret_60"] <= 0.8),
+        "up50_60": rate(lambda r: (r["max_60"] or 0) >= 1.5),
+        "x2_all": rate(lambda r: (r["max_all"] or 0) >= 2),
+        "rugged": rate(lambda r: r["rugged"]),
         "median_ret60": round(statistics.median(ret60), 2) if ret60 else None,
     }
 
