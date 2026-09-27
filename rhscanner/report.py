@@ -5,7 +5,7 @@ from html import escape
 
 from .config import DEXSCREENER_CHAIN
 from .momentum import momentum_label
-from .outcomes import EARLY_RULE, blocking_gates, momentum_v2_of, rug_risk_of
+from .outcomes import EARLY_RULES, blocking_gates, momentum_v2_of, rug_risk_of
 from .rugrisk import HIGH_RISK
 from .scoring import level
 
@@ -368,7 +368,7 @@ def format_winners(days: float, min_multiple: float, winners: list[dict], checke
 
 def format_backtest(hours: float, min_score: int, min_momentum: int, halves: list[tuple[str, dict]],
                     v2_on: bool, lower: dict | None = None, min_buyers: int = 10,
-                    early: dict | None = None) -> list[str]:
+                    early: dict[str, dict] | None = None) -> list[str]:
     """/geritest: which past signals v1 and v2 momentum would have alerted on, and how those did."""
     def line(title: str, s: dict) -> str:
         if not s.get("n"):
@@ -395,11 +395,11 @@ def format_backtest(hours: float, min_score: int, min_momentum: int, halves: lis
             line("fazladan bildirilirdi", lower),
             "   <i>(gölgeler için FDV bu güncellemeden beri kaydediliyor; veri birikince dolar)</i>",
         ]))
-    if early is not None:
-        blocks.append("\n".join([
-            f"<b>Erken giriş kuralı</b> ({escape(EARLY_RULE, quote=False)}; alıcı eşiğinin altında kalan gölgeler)",
-            line("fazladan bildirilirdi", early),
-        ]))
+    if early:
+        rows = ["<b>Erken giriş kuralları</b> (alıcı eşiğinin altında kalan gölgelere uygulansaydı)"]
+        for rule, s in early.items():
+            rows += [f"   {rule}) {escape(EARLY_RULES[rule], quote=False)}", line("   fazladan bildirilirdi", s)]
+        blocks.append("\n".join(rows))
     blocks.append("\n<i>v2, \"Yeni yarı\"da da v1'den iyiyse (daha yüksek 2x/5x, rug benzer) /momentumv2 ac ile açılabilir.</i>")
     return _chunks(blocks)
 

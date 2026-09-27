@@ -121,8 +121,10 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    `/sinyal` HOODS: bildirimde yaş 2900 dk sayılmış (token lansmanından; USDG havuzu 2-3 saatlikti) → v2'nin
    ">30 saat −15" cezası yanlışlıkla vurmuş. **Düzeltildi: yaş = lansman ile işlem gören havuzdan genç olanı.**
    HOODS gölgesi bildirimden 18 dk önce: son 5 dk 5 alıcı / önceki 0, alıcı başına $211, tutma 1.0, momentum 86
-   → sonra 116x (kalıcı 45x). "Erken giriş kuralı" (`outcomes.early_entry`: son 5 dk ≥5, önceki ≤1, alıcı başına
-   ≥$100, tutma ≥0.9) `/geritest` sonunda gölgeler üzerinde ölçülüyor; iyiyse alıcı eşiğini baypas eden bildirim.
+   → sonra 116x (kalıcı 45x). BROBIN gölgesi: 8/1 alıcı, alıcı başına $24, tutma 1.0 → 8.9x (kalıcı 5.2x).
+   İki erken giriş kuralı (`outcomes.early_entry`) `/geritest` sonunda gölgeler üzerinde ölçülüyor: A büyük
+   alıcılar (son 5 dk ≥5, önceki ≤1, alıcı başına ≥$100, tutma ≥0.9), B kalabalık (son 5 dk ≥8, önceki ≤1,
+   tutma ≥0.9). İyi çıkan alıcı eşiğini baypas eden bildirim olacak.
    Adresler: HOODS 0x28b0ed2365c8c25b4542d06725acb7662bef6edf, BROBIN 0x1f97391be0ba667886f57273eace827d6e79cf17.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.

@@ -485,18 +485,26 @@ def rug_filter_sweep(results: list[dict], min_momentum: int, min_score: int,
     return out
 
 
-EARLY_RULE = "son 5 dk ≥5 alıcı, önceki 5 dk ≤1, alıcı başına ≥$100, tutma ≥0.9"
+EARLY_RULES = {
+    "A": "büyük alıcılar: son 5 dk ≥5 alıcı, önceki 5 dk ≤1, alıcı başına ≥$100, tutma ≥0.9",
+    "B": "kalabalık: son 5 dk ≥8 alıcı, önceki 5 dk ≤1, tutma ≥0.9",
+}
 
 
-def early_entry(f: dict) -> bool:
-    """Buying that starts from nothing with few, large, held buys (HOODS in its shadow signal, 18 minutes
-    before its alert): the research's strongest predictor, fast money through few trades."""
+def early_entry(f: dict, rule: str = "A") -> bool:
+    """Buying that starts from nothing and is held. A: few large buys (HOODS in its shadow signal, 18 minutes
+    before its alert, then 116x) - the research's strongest predictor. B: a swarm of small buys (BROBIN in the
+    shadows: 8 buyers at $24 each, then 8.9x)."""
     b5, prev = f.get("buyers_5m") or 0, f.get("buyers_prev_5m") or 0
     buyers, usd, hold = f.get("buyers_10m") or 0, f.get("buy_usd_10m") or 0, f.get("hold_rate_30m")
-    return b5 >= 5 and prev <= 1 and buyers > 0 and usd / buyers >= 100 and hold is not None and hold >= 0.9
+    if prev > 1 or hold is None or hold < 0.9:
+        return False
+    if rule == "A":
+        return b5 >= 5 and buyers > 0 and usd / buyers >= 100
+    return b5 >= 8
 
 
-def early_entry_candidates(results: list[dict], min_buyers: int) -> dict:
-    """Signals under the buyer bar (shadows) that the early-entry rule would have alerted on."""
-    return summarize([r for r in results if r["kind"] == "shadow" and early_entry(r.get("features") or {})
+def early_entry_candidates(results: list[dict], min_buyers: int, rule: str = "A") -> dict:
+    """Signals under the buyer bar (shadows) that an early-entry rule would have alerted on."""
+    return summarize([r for r in results if r["kind"] == "shadow" and early_entry(r.get("features") or {}, rule)
                       and ((r.get("features") or {}).get("buyers_10m") or 0) < min_buyers])

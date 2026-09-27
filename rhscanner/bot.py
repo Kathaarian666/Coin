@@ -598,7 +598,7 @@ class ScannerApp:
         halves = backtest(results, self.min_score, self.min_momentum)
         lower = lower_bar_candidates([r for r in everything if r["kind"] == "shadow"], self.min_buyers,
                                      self.min_momentum)
-        early = early_entry_candidates(everything, self.min_buyers)
+        early = {rule: early_entry_candidates(everything, self.min_buyers, rule) for rule in ("A", "B")}
         for text in format_backtest(hours, self.min_score, self.min_momentum, halves, self.momentum_v2,
                                     lower, self.min_buyers, early):
             await update.message.reply_html(text)

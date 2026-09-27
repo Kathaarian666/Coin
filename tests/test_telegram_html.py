@@ -28,7 +28,7 @@ def test_every_report_is_valid_telegram_html():
     assert_valid(format_sweep(168, 10, 3, [{"min_momentum": 75, "min_score": 30, **s, "recall": 50.0}], (75, 30),
                               rug_filter_sweep([sig()], 75, 30)))
     halves = [(n, {"v1": s, "v2": s, "added": s, "dropped": {"n": 0}, "all": s}) for n in ("Eski yarı", "Tümü")]
-    assert_valid(format_backtest(168, 30, 75, halves, True, s, 10, s))
+    assert_valid(format_backtest(168, 30, 75, halves, True, s, 10, {"A": s, "B": {"n": 0}}))
     assert_valid(format_analysis(168, 40, [("rug riski puanı", [("0–20", s), ("<5", s)])]))
     assert_valid(format_findings(72, s, [("liq_usd_low", s)]))
     assert_valid(format_strategies(168, 100, [("2x'te sat (yoksa 1 saatte)", {"n": 1, "total": 5.0, "per_trade": 5.0,
