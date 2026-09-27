@@ -19,10 +19,10 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import OutcomeLog, backtest, lower_bar_candidates, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import OutcomeLog, backtest, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_backtest, format_exit, format_strategies, format_findings, format_followup, format_report,
-                     format_scorecard, format_winners)
+from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup,
+                     format_report, format_scorecard, format_strategies, format_sweep, format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .storage import Storage
@@ -55,6 +55,7 @@ HELP = (
     "/kazananlar [gün] [kat] — 10x+ yapan coinleri yakaladık mı, ne engelledi (varsayılan 7 gün, 10x)\n"
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
+    "/tarama [saat] — min momentum × min güven kombinasyonlarının isabeti ve yakalaması\n"
     "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (sabit $100 test tutarı)\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
     "/akilli — kazanma oranı yüksek Fomo cüzdanları\n"
@@ -579,6 +580,16 @@ class ScannerApp:
         await update.message.reply_text(
             "✅ Yeni momentum puanı (v2) kullanılıyor." if arg != "kapat" else "✅ Eski momentum puanına (v1) dönüldü.")
 
+    async def cmd_sweep(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        results = [r for r in self.outcomes.results(hours) if r["kind"] in ("alert", "filtered")]
+        winners = sum(1 for r in results if (r.get("max_all") or 0) >= 5)
+        rows = parameter_sweep(results)
+        for text in format_sweep(hours, len(results), winners, rows, (self.min_momentum, self.min_score)):
+            await update.message.reply_html(text)
+
     async def cmd_strategies(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -738,6 +749,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("kazananlar", self.cmd_winners, block=False))
         self.app.add_handler(CommandHandler("geritest", self.cmd_backtest))
         self.app.add_handler(CommandHandler("strateji", self.cmd_strategies))
+        self.app.add_handler(CommandHandler("tarama", self.cmd_sweep))
         self.app.add_handler(CommandHandler("momentumv2", self.cmd_momentum_v2))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))

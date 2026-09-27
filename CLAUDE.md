@@ -98,8 +98,9 @@ Pons lansman indeksi (sunucuda doğrulandı: ~329 bin coin).
    `market_buyers_1h` (1 saatte tüm Fomo alıcıları), `/analiz`'de dilimli.
    `/kazananlar` artık ana zamanlama testi: varsayılan 7 gün, her kazanan için bugünkü eşiklerden hangisinin
    engellediği ve değeri (`outcomes.blocking_gates`), "bugünkü eşiklerle yakalanırdı X/Y · erken (≤2x) Z".
-   `/strateji` sabit $100 test tutarıyla (pozisyon ayarından bağımsız). Sıradaki: parametre taraması
-   (min momentum/skor/alıcı ızgarası → isabet + kaç kazanan yakalanır).
+   `/strateji` sabit $100 test tutarıyla (pozisyon ayarından bağımsız). `/tarama`: min momentum (v2) ×
+   min güven ızgarası → bildirim sayısı, 2x/5x/rug, 5x'lerin yakalanan payı (`outcomes.parameter_sweep`).
+   Min alıcı taraması gölgelerde FDV biriktikçe `/geritest` sonundaki bölümle.
 3. **Twitter/X verisi** (opsiyonel): sadece karne verisi olduktan sonra ve ucuz bir 3. parti API ile
    (~$20/ay civarı); kullanıcıya fiyatla sorulacak.
 4. ~~Mezuniyet öncesi Pons takibi~~ — **denendi, işe yaramadı, kapatıldı** (27 Eylül). `pons.py` curve

@@ -431,3 +431,24 @@ def blocking_gates(signal: dict, min_score: int, min_momentum: int, min_buyers: 
     if momentum is not None and momentum < min_momentum:
         out.append(f"momentum {momentum} (eşik {min_momentum})")
     return out
+
+
+SWEEP_MOMENTUM = (55, 60, 65, 70, 75, 80, 85)
+SWEEP_SCORE = (0, 20, 30, 40, 50)
+
+
+def parameter_sweep(results: list[dict], winner_multiple: float = 5.0, min_n: int = 15) -> list[dict]:
+    """Every (min momentum v2, min trust) pair on the analysed signals: how many would alert, how they did, and
+    what share of the signals that went on to `winner_multiple`x within a day each pair would have caught."""
+    rows = [r for r in results if r.get("trust") is not None and momentum_v2_of(r) is not None]
+    winners = [r for r in rows if (r.get("max_all") or 0) >= winner_multiple]
+    out = []
+    for min_momentum in SWEEP_MOMENTUM:
+        for min_score in SWEEP_SCORE:
+            picked = [r for r in rows if r["trust"] >= min_score and momentum_v2_of(r) >= min_momentum]
+            if len(picked) < min_n:
+                continue
+            caught = sum(1 for r in picked if (r.get("max_all") or 0) >= winner_multiple)
+            out.append({"min_momentum": min_momentum, "min_score": min_score, **summarize(picked),
+                        "recall": round(100.0 * caught / len(winners), 1) if winners else None})
+    return out

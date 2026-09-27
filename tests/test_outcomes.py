@@ -197,3 +197,20 @@ def test_blocking_gates_name_the_bar_and_value():
     assert blocking_gates(signal, 30, 70, 10, 500) == [
         "alıcı 8 (eşik 10)", "10 dk alım $300 (eşik $500)", "güven 25 (eşik 30)", "momentum 64 (eşik 70)"]
     assert blocking_gates(signal, 20, 60, 8, 300) == []
+
+
+def test_parameter_sweep_trades_precision_for_recall():
+    from rhscanner.outcomes import parameter_sweep
+    from rhscanner.report import format_sweep
+
+    def sig(momentum, trust, big):
+        return {"trust": trust, "momentum": momentum, "max_60": 1.0, "max_all": 6.0 if big else 1.0,
+                "ret_60": 1.0, "rugged": False, "features": {"momentum_v2": momentum}}
+
+    results = [sig(90, 60, True) for _ in range(10)] + [sig(65, 60, True) for _ in range(5)] + \
+              [sig(65, 10, False) for _ in range(20)]
+    rows = {(r["min_momentum"], r["min_score"]): r for r in parameter_sweep(results, min_n=5)}
+    assert rows[(85, 0)]["x5_all"] == 100.0 and rows[(85, 0)]["recall"] == 66.7
+    assert rows[(60, 20)]["recall"] == 100.0 and rows[(60, 0)]["x5_all"] == 42.9
+    text = "\\n".join(format_sweep(168, 35, 15, list(rows.values()), (70, 30)))
+    assert "<b>85 / 0</b>" in text and "yakalanan %66.7" in text

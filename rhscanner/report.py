@@ -406,3 +406,21 @@ def format_strategies(hours: float, position: float, rows: list[tuple[str, dict]
         blocks.append("Yeterli veri yok (en az 1 günlük bildirim gerekiyor).")
     blocks.append("\n<i>Geçmiş sonuç gelecek garantisi değildir; asıl karar yine kim satıyor sorusuna göre.</i>")
     return _chunks(blocks)
+
+
+def format_sweep(hours: float, total: int, winners: int, rows: list[dict], current: tuple[int, int]) -> list[str]:
+    """/tarama: alert bars side by side; sorted by the share of 5x signals caught, then by precision."""
+    blocks = [f"🎛 <b>Parametre taraması — son {hours:g} saat</b>\n"
+              f"<i>{total} analiz edilen sinyal, {winners} tanesi 24 saat içinde 5x yaptı.\n"
+              f"Her satır: min momentum (v2) / min güven → bildirim sayısı · 1s 2x % · 5x % · rug % · "
+              f"5x'lerin yakalanan payı</i>\n"]
+    ranked = sorted(rows, key=lambda r: (-(r["x5_all"] * (r["recall"] or 0)), -r["x5_all"]))
+    for r in ranked[:20]:
+        mark = " ◀ şu an" if (r["min_momentum"], r["min_score"]) == current else ""
+        blocks.append(f"<b>{r['min_momentum']} / {r['min_score']}</b>: {r['n']} bildirim · 2x %{r['x2_60']} · "
+                      f"5x %{r['x5_all']} · rug %{r['rugged']} · yakalanan %{r['recall']}{mark}")
+    if not rows:
+        blocks.append("Yeterli veri yok.")
+    blocks.append("\n<i>Sıralama: isabet (5x %) × yakalama (5x'lerin payı). Az bildirim + yüksek isabet ile "
+                  "çok bildirim + yüksek yakalama arasında denge ara. Aynı veriden seçildiği için biraz iyimserdir.</i>")
+    return _chunks(blocks)
