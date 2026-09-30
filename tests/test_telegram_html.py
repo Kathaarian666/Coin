@@ -3,8 +3,8 @@ command then answers nothing. Only <b>, <i>, <code> and <a href> are used."""
 
 import re
 
-from rhscanner.outcomes import rug_filter_sweep, summarize
-from rhscanner.report import (format_analysis, format_backtest, format_findings, format_scorecard, format_strategies,
+from rhscanner.outcomes import lateness_table, rug_filter_sweep, summarize
+from rhscanner.report import (format_analysis, format_backtest, format_findings, format_lateness, format_scorecard, format_strategies,
                               format_sweep, format_winners)
 
 ALLOWED = re.compile(r"</?(b|i|code)>|<a href=\"[^\"]*\">|</a>")
@@ -31,6 +31,8 @@ def test_every_report_is_valid_telegram_html():
     assert_valid(format_backtest(168, 30, 75, halves, True, s, 10, {("A", 0): s, ("A", 80): s, ("B", 0): {"n": 0}}))
     assert_valid(format_analysis(168, 40, [("rug riski puanı", [("0–20", s), ("<5", s)])]))
     assert_valid(format_findings(72, s, [("liq_usd_low", s)]))
+    assert_valid(format_lateness(168, lateness_table([sig(runup_first=2.0, since_first_min=12, change_h1=600,
+                                                          change_m5=-5), sig()])))
     assert_valid(format_strategies(168, 100, [("2x'te sat (yoksa 1 saatte)", {"n": 1, "total": 5.0, "per_trade": 5.0,
                                                 "win_rate": 100.0, "best": 5.0, "without_best": 0.0, "exits": 0})]))
     winner = {"token": "0x" + "a" * 40, "symbol": "A<B", "multiple": 12.0, "hours_to_peak": 3, "peak_fdv": 50_000, "signals": [

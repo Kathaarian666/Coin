@@ -20,9 +20,9 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, lateness_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_backtest, format_exit, format_findings, format_followup,
+from .report import (format_analysis, format_backtest, format_lateness, format_exit, format_findings, format_followup,
                      format_report, format_scorecard, format_signal, format_strategies, format_sweep,
                      format_winners)
 from .rpc import RpcClient
@@ -61,6 +61,7 @@ HELP = (
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
     "/sinyal &lt;adres&gt; — bir coin için kaydedilen sinyallerin tüm özellikleri ve sonucu\n"
+    "/gec [saat] — bildirimler ne kadar geç geldi (ilk görülmeden bu yana fiyat artışı) ve sonuçları\n"
     "/tarama [saat] — min momentum × min güven kombinasyonlarının isabeti ve yakalaması\n"
     "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (sabit $100 test tutarı)\n"
     "/pozisyon &lt;$&gt; — işlem tutarınız (komisyonla başa baş hesabı için)\n"
@@ -296,6 +297,7 @@ class ScannerApp:
         return (v2 if self.momentum_v2 else v1), {
             **extra, "liquidity_usd": market.get("liquidity_usd"), "fdv": market.get("fdv"),
             "socials": market.get("socials"), "momentum_v1": v1, "momentum_v2": v2,
+            "change_m5": market.get("change_m5"), "change_h1": market.get("change_h1"),
         }
 
     def record_outcome(self, report: dict, kind: str):
@@ -308,6 +310,8 @@ class ScannerApp:
             "liquidity_usd": (report.get("market") or {}).get("liquidity_usd"),
             "fdv": (report.get("market") or {}).get("fdv"),
             "socials": (report.get("market") or {}).get("socials"),
+            "change_m5": (report.get("market") or {}).get("change_m5"),
+            "change_h1": (report.get("market") or {}).get("change_h1"),
             "findings": [f["code"] for f in report.get("findings", [])],
             "early": bool(report.get("early")),
             **{k: (report.get("deployer") or {}).get(k)
@@ -621,6 +625,14 @@ class ScannerApp:
         outcome = {r["kind"]: r for r in self.outcomes.results(24 * 30) if r["token"] == token}
         await update.message.reply_html(format_signal(await self.symbol(to_checksum_address(token)), signals, outcome))
 
+    async def cmd_lateness(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        alerts = [r for r in self.outcomes.results(hours) if r["kind"] == "alert"]
+        for text in format_lateness(hours, lateness_table(alerts)):
+            await update.message.reply_html(text)
+
     async def cmd_backtest(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -851,6 +863,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("analiz", self.cmd_analysis))
         self.app.add_handler(CommandHandler("kazananlar", self.cmd_winners, block=False))
         self.app.add_handler(CommandHandler("geritest", self.cmd_backtest))
+        self.app.add_handler(CommandHandler("gec", self.cmd_lateness))
         self.app.add_handler(CommandHandler("strateji", self.cmd_strategies))
         self.app.add_handler(CommandHandler("tarama", self.cmd_sweep))
         self.app.add_handler(CommandHandler("sinyal", self.cmd_signal))

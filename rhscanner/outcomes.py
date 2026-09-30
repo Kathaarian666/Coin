@@ -28,6 +28,7 @@ log = logging.getLogger(__name__)
 
 CHECKPOINTS_MIN = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 360, 720, 1440]
 BATCH = 30
+LATE_WINDOW = 86400  # a first sighting older than this belongs to an earlier wave
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS signals (
@@ -231,7 +232,26 @@ class OutcomeLog:
                 "p0": p0,
                 "ts": ts,
             })
+        self._attach_lateness(out, now - hours * 3600 - LATE_WINDOW)
         return out
+
+    def _attach_lateness(self, results: list[dict], since: float):
+        """How late each analysed signal came: its price against the coin's first sighting (the shadow signal at
+        half the buyer bar, or itself) within the day before. Kept in features as runup_first / since_first_min."""
+        first: dict[str, tuple[float, float]] = {}
+        for token, ts, price in self.db.execute(
+            "SELECT s.token, s.ts, m.price FROM signals s JOIN samples m ON m.signal_id = s.id AND m.minute = 0 "
+            "WHERE s.kind IN ('shadow', 'filtered', 'alert') AND m.price > 0 AND s.ts >= ? ORDER BY s.ts", (since,)
+        ):
+            first.setdefault(token, (ts, price))
+        for r in results:
+            if r["kind"] not in ("alert", "filtered"):
+                continue
+            first_ts, first_price = first.get(r["token"], (r["ts"], r["p0"]))
+            if r["ts"] - first_ts > LATE_WINDOW:  # seen in an earlier wave: no fair starting point
+                continue
+            r["features"] = {**r["features"], "runup_first": round(r["p0"] / first_price, 3),
+                             "since_first_min": round(max(0.0, r["ts"] - first_ts) / 60, 1)}
 
 
 def summarize(results: list[dict]) -> dict:
@@ -322,6 +342,10 @@ ANALYSIS_FEATURES = {
     "sniper_pct": "sniper payı (%)",
     "bundle_pct": "bundle payı (%)",
     "previous_launches": "dev'in önceki coin sayısı",
+    "runup_first": "ilk görülmeden bu yana fiyat (x)",
+    "since_first_min": "ilk görülmeden bu yana geçen dk",
+    "change_m5": "son 5 dk fiyat değişimi (%)",
+    "change_h1": "son 1 saat fiyat değişimi (%)",
 }
 
 
@@ -520,3 +544,43 @@ def early_entry_candidates(results: list[dict], min_buyers: int, rule: str = "A"
 
 
 EARLY_MOMENTUM_STEPS = (0, 70, 80, 85, 90)
+
+
+RUNUP_LIMITS = (1.5, 2.0, 3.0, 5.0)
+
+
+def lateness_table(alerts: list[dict]) -> dict:
+    """/gec: alerts split by how late they came (price rise and minutes since the coin's first sighting, and the
+    market's own 5 min / 1 h price change at the alert), and what a cap on the rise would keep."""
+    def value(r, name):
+        return (r.get("features") or {}).get(name)
+
+    def split(rows, name, edges, labels):
+        valued = [(value(r, name), r) for r in rows if value(r, name) is not None]
+        out = []
+        for i, label in enumerate(labels):
+            lo = edges[i - 1] if i else None
+            hi = edges[i] if i < len(edges) else None
+            part = [r for v, r in valued if (lo is None or v >= lo) and (hi is None or v < hi)]
+            out.append((label, summarize(part)))
+        return out
+
+    measured = [r for r in alerts if value(r, "runup_first") is not None]
+    at_once = [r for r in measured if not value(r, "since_first_min")]
+    later = [r for r in measured if value(r, "since_first_min")]
+    held = [r for r in alerts if (r.get("held_all") or 0) >= 5]
+    sweep = []
+    for limit in (*RUNUP_LIMITS, None):
+        kept = [r for r in alerts if limit is None or value(r, "runup_first") is None or value(r, "runup_first") < limit]
+        s = summarize(kept)
+        s["kept_held"] = sum(1 for r in kept if (r.get("held_all") or 0) >= 5)
+        sweep.append((limit, s))
+    return {
+        "n": len(alerts), "measured": len(measured), "held": len(held),
+        "first": [("ilk görüldüğü an bildirildi", summarize(at_once)), ("daha önce gölgede görülmüştü", summarize(later))],
+        "runup": split(later, "runup_first", [1.0, 1.5, 3.0], ["düşmüş (<1x)", "1–1.5x", "1.5–3x", "3x+"]),
+        "since": split(later, "since_first_min", [15, 60], ["<15 dk", "15–60 dk", "60+ dk"]),
+        "change_h1": split(alerts, "change_h1", [100, 500], ["<%100", "%100–500", "%500+"]),
+        "change_m5": split(alerts, "change_m5", [0, 50], ["düşüşte (<%0)", "%0–50", "%50+"]),
+        "sweep": sweep,
+    }

@@ -59,7 +59,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~113 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~114 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`, `pons-backfill <gün>`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -89,7 +89,8 @@ sayısı) · `/analiz [saat]` (her özellik üç dilim: 2x/5x/kalıcı/rug) · `
 `/tarama [saat]` (min momentum × min güven ızgarası + rug filtresi, kalıcı 5x yakalama) · `/geritest [saat]` (v1 vs
 v2 eski/yeni yarı; küçük coin alıcı eşiği 8; erken kural A/B × momentum 0-90) · `/kazananlar [gün] [kat]`
 (GeckoTerminal 10x+ coinler; bot yakaladı mı, hangi eşik engelledi, her birinin `/sinyal` komutu; ~8 dk sınırı) ·
-`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100).
+`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
+bildirim anı 5 dk/1 s fiyat değişimi, artış sınırı taraması).
 Diğer: `/check <adres>`, `/trend`, `/akilli`.
 
 ## Yapılanlar ve bulgular (kronolojik özet)
@@ -146,6 +147,9 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     Güven 30→0: +8 bildirim, +2 5x (az; güven skoru satılabilirlik riskini de tuttuğu için 30 kaldı). Momentum
     75-79 dilimi (46 bildirim) kalıcı 5x ~%9 ≈ gölge seviyesi, 80'e çıkmak yakalamayı %79→%73 düşürür → 75 kaldı;
     bu dilim risk aşamasında küçük pozisyon adayı. Rug <40 7 kalıcı 5x kaybettirir → `/maxrug 60` kaldı.
+14. **Kullanıcı hedefi (30 Eylül): "daha az ama isabetli bildirim, kalıcı 5x %30+"** (şu an ~%16). Hipotez: sorun
+    zamanlama. `/gec` eklendi: bildirim fiyatı ÷ coinin ilk görüldüğü (gölge) fiyat (`runup_first`, geçmiş veriden
+    hesaplanıyor), geçen dk; `change_m5`/`change_h1` artık her sinyalde kaydediliyor. Bunlar `/analiz`'de de var.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
@@ -165,7 +169,8 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 1. **Canlı doğrulama (30 Eylül hatırlatması bu eski sohbete gelir; yeni sohbette kullanıcıdan çıktıları iste)**:
    `/karne 72` (⚡ Erken bildirimler grubu: kalıcı 5x ~%45 tutuyor mu; bildirim gidenler kalıcı 5x ~%22+),
    `/geritest`, `/kazananlar`. Erken kural canlıda kötüyse `/erken 90` veya kapat; iyiyse 80'i dene.
-1b. **ÇIK sinyalini düzeltmek**: hangi ÇIK nedeni (dev/balina/kim satıyor) tutuyor, `/karne`'de nedene göre kırılım.
+0. **Geç kalma (`/gec 168`)**: çıktıya göre artış sınırı filtresi / momentum cezası; hedef kalıcı 5x %30+.
+1b. **ÇIK sinyalini düzeltmek** (kullanıcı: öncelikli değil): hangi ÇIK nedeni (dev/balina/kim satıyor) tutuyor, `/karne`'de nedene göre kırılım.
 2. **İkinci dalga bildirimi**: wave2 grubu karnede iyi çıkarsa (momentum kırılımıyla) bildirimi aç (ROBINPEPE gibi
    saatler içinde büyüyenler için).
 3. **Erken kural B ve alıcı eşiği**: veri birikince `/geritest` sonundaki B ve "alıcı eşiği 8" bölümleri.

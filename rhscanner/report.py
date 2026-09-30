@@ -285,6 +285,40 @@ def format_analysis(hours: float, n: int, table: list[tuple[str, list[tuple[str,
     return _chunks(blocks)
 
 
+def format_lateness(hours: float, t: dict) -> list[str]:
+    """/gec: whether alerts that came after the price had already run did worse."""
+    def line(title: str, s: dict) -> str:
+        if not s.get("n"):
+            return f"   {escape(title, quote=False)}: yok"
+        return (f"   {escape(title, quote=False)} ({s['n']}): 5x %{s['x5_all']} (kalıcı %{s['x5_held']}) · "
+                f"1s 2x %{s['x2_60']} · rug %{s['rugged']} · 1s sonu {s['median_ret60']}x")
+
+    blocks = [f"⏱ <b>Geç kalma analizi — son {hours:g} saat</b>\n"
+              f"<i>{t['n']} bildirim ({t['measured']} tanesinde ilk görülme fiyatı var; ilk görülme = eşiğin "
+              f"yarısını geçtiği gölge sinyali, 24 saat içinde). Kalıcı 5x yapan: {t['held']}</i>\n"]
+    sections = [("Bildirimden önce görülmüş mü", t["first"]),
+                ("İlk görülmeden bildirime fiyat artışı", t["runup"]),
+                ("İlk görülmeden bildirime geçen süre", t["since"]),
+                ("Bildirim anında son 1 saat fiyat değişimi", t["change_h1"]),
+                ("Bildirim anında son 5 dk fiyat değişimi", t["change_m5"])]
+    for title, rows in sections:
+        if any(s.get("n") for _, s in rows):
+            blocks.append("\n".join([f"<b>{title}</b>", *(line(label, s) for label, s in rows)]))
+        else:
+            blocks.append(f"<b>{title}</b>: veri yok (bu güncellemeden sonra kaydediliyor)")
+    rows = ["<b>Artış sınırı olsaydı</b> (ilk görülmeden bu yana bu kattan fazla yükselmişse bildirme)"]
+    for limit, s in t["sweep"]:
+        title = f"&lt;{limit:g}x" if limit else "sınır yok"
+        if not s.get("n"):
+            rows.append(f"   {title}: yok")
+            continue
+        rows.append(f"   {title}: {s['n']} bildirim · 5x %{s['x5_all']} (kalıcı %{s['x5_held']}) · rug %{s['rugged']} · "
+                    f"1s sonu {s['median_ret60']}x · kalıcı 5x'lerden kalan {s['kept_held']}/{t['held']}")
+    blocks.append("\n".join(rows))
+    blocks.append("\n<i>Hedef: kalıcı 5x %30+. Geç gelen dilimler belirgin kötüyse artış sınırı filtresi eklenir.</i>")
+    return _chunks(blocks)
+
+
 def _x(value: float | None) -> str:
     if value is None:
         return "?"
