@@ -78,7 +78,7 @@ iki örnekte tutulan — "kalıcı"; sığ havuz sıçramalarını eler, esas ö
 
 ## Güncel canlı ayarlar (sunucuda, 27 Eylül)
 güven (`/minskor`) ≥30 · momentum **v2** (`/momentumv2 ac`) ≥75 (`/minmomentum`) · `/maxrug 60` ·
-alıcı ≥10 (`/minalici`) · 10 dk Fomo alımı ≥$500 (`/minhacim`) · **`/erken 85`** · Pons takibi kapalı.
+alıcı ≥10 (`/minalici`) · 10 dk Fomo alımı ≥$500 (`/minhacim`) · **`/erken 90`** (30 Eylül'de 85→90 önerildi) · Pons takibi kapalı (`.env`'de satır yok).
 Geçmiş veride bu set: bildirimlerin kalıcı 5x ~%22, 5x yapanları yakalama ~%90, rug ~%10.
 
 ## Telegram komutları (hepsi bot.py HELP'te)
@@ -141,7 +141,11 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     eşik sorunu değil, **zamanlama/kapsam sorunu**: büyük koşu Fomo hacmi gelmeden bitiyor. Eşik düşürmek çözmez.
     `/kazananlar 7 5`: 8 kazanan — 4'ü Fomo'da hiç görülmedi (PRIORS, LIQCAT, HOODIE, NFLOAT), 3'ü geç görüldü,
     1'i doğru anda yakalandı (VRAX 0xc608…: başlangıcın 0.4x'inde bildirim, alıcı 56, mom 100 → sonra 13x).
-    Açık soru: kapsamı Fomo dışı zincir alımlarına (V4 swap) genişletmek — kullanıcıya soruldu.
+    Kapsamı Fomo dışı alımlara (V4 swap) genişletmek: kullanıcı **sonraya bıraktı** (ucuz ölçüm fikri: GeckoTerminal'de
+    erken yükselip Fomo'da görünmeyenleri bildirimsiz kaydetmek). `/tarama 72` (540 sinyal, 68 5x): ayar değişmedi.
+    Güven 30→0: +8 bildirim, +2 5x (az; güven skoru satılabilirlik riskini de tuttuğu için 30 kaldı). Momentum
+    75-79 dilimi (46 bildirim) kalıcı 5x ~%9 ≈ gölge seviyesi, 80'e çıkmak yakalamayı %79→%73 düşürür → 75 kaldı;
+    bu dilim risk aşamasında küçük pozisyon adayı. Rug <40 7 kalıcı 5x kaybettirir → `/maxrug 60` kaldı.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
