@@ -139,6 +139,9 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     bildirilmiş (232x'te; v2 artık engelliyor, doğru), HLCAT/VRAX gölgede ama bot ilk gördüğünde zaten 25x/14x
     olmuşlardı (sonrası en fazla 1.9x/1.4x), PRIORS 282x/2s ve LIQCAT 47x Fomo'da hiç görülmedi. → Kaçırılanlar
     eşik sorunu değil, **zamanlama/kapsam sorunu**: büyük koşu Fomo hacmi gelmeden bitiyor. Eşik düşürmek çözmez.
+    `/kazananlar 7 5`: 8 kazanan — 4'ü Fomo'da hiç görülmedi (PRIORS, LIQCAT, HOODIE, NFLOAT), 3'ü geç görüldü,
+    1'i doğru anda yakalandı (VRAX 0xc608…: başlangıcın 0.4x'inde bildirim, alıcı 56, mom 100 → sonra 13x).
+    Açık soru: kapsamı Fomo dışı zincir alımlarına (V4 swap) genişletmek — kullanıcıya soruldu.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
