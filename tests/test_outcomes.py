@@ -256,7 +256,9 @@ async def test_lateness_compares_alert_price_with_first_sighting():
     from rhscanner.outcomes import lateness_table
     from rhscanner.report import format_lateness
     log, dex = OutcomeLog(sqlite3.connect(":memory:")), FakeDex()
-    late, fresh = TOKEN, "0x" + "b" * 40
+    late, fresh, old = TOKEN, "0x" + "b" * 40, "0x" + "c" * 40
+    log.record(old, "shadow", ts=T0 - 2 * 86400)
+    log.record(old, "alert", trust=50, momentum=80, ts=T0 + 1200)
     log.record(late, "shadow", ts=T0)
     await run_to(log, dex, 0, 1.0)
     log.record(late, "alert", trust=50, momentum=80, ts=T0 + 1200)  # 20 min later, price tripled
@@ -266,10 +268,16 @@ async def test_lateness_compares_alert_price_with_first_sighting():
     assert by_token[late]["features"]["runup_first"] == 3.0
     assert by_token[late]["features"]["since_first_min"] == 20.0
     assert by_token[fresh]["features"]["runup_first"] == 1.0 and by_token[fresh]["features"]["since_first_min"] == 0
-    t = lateness_table(list(by_token.values()))
-    assert dict(t["first"])["ilk görüldüğü an bildirildi"]["n"] == 1
+    t = lateness_table([by_token[late], by_token[fresh]])
+    assert dict(t["first"])["önceden hiç görülmemiş (ilk görülme = bildirim)"]["n"] == 1
+    assert by_token[late]["features"]["first_seen"] == "shadow" and by_token[fresh]["features"]["first_seen"] == "self"
+    assert dict(t["runup_strong"])["3x+"]["n"] == 0  # momentum 80 is below the strong bar
     assert dict(t["runup"])["3x+"]["n"] == 1
     assert dict(t["sweep"])[3.0]["n"] == 1 and dict(t["sweep"])[None]["n"] == 2
     assert dict(t["change_h1"])["<%100"]["n"] == 1
     text = "\n".join(format_lateness(24, t))
     assert "&lt;3x: 1 bildirim" in text and "3x+ (1)" in text
+
+    # a shadow from an earlier wave (over a day old) gives no starting point
+    [r] = [r for r in log.results(hours=24, now=T0 + 7200) if r["token"] == old and r["kind"] == "alert"]
+    assert r["features"]["first_seen"] == "old" and "runup_first" not in r["features"]

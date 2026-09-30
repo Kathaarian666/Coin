@@ -232,26 +232,36 @@ class OutcomeLog:
                 "p0": p0,
                 "ts": ts,
             })
-        self._attach_lateness(out, now - hours * 3600 - LATE_WINDOW)
+        self._attach_lateness(out)
         return out
 
-    def _attach_lateness(self, results: list[dict], since: float):
+    def _attach_lateness(self, results: list[dict]):
         """How late each analysed signal came: its price against the coin's first sighting (the shadow signal at
-        half the buyer bar, or itself) within the day before. Kept in features as runup_first / since_first_min."""
-        first: dict[str, tuple[float, float]] = {}
+        half the buyer bar) within the day before, kept in features as runup_first / since_first_min.
+        first_seen says where that starting point came from: "self" (no earlier signal: the alert was the first
+        sighting), "old" (the earlier sighting is over a day old: an earlier wave; one signal per token and kind),
+        "unpriced" (earlier sighting without a price) or "shadow" (measured)."""
+        first: dict[str, tuple[float, float | None]] = {}
         for token, ts, price in self.db.execute(
-            "SELECT s.token, s.ts, m.price FROM signals s JOIN samples m ON m.signal_id = s.id AND m.minute = 0 "
-            "WHERE s.kind IN ('shadow', 'filtered', 'alert') AND m.price > 0 AND s.ts >= ? ORDER BY s.ts", (since,)
+            "SELECT s.token, s.ts, m.price FROM signals s LEFT JOIN samples m ON m.signal_id = s.id AND m.minute = 0 "
+            "WHERE s.kind IN ('shadow', 'filtered', 'alert') ORDER BY s.ts"
         ):
             first.setdefault(token, (ts, price))
         for r in results:
             if r["kind"] not in ("alert", "filtered"):
                 continue
             first_ts, first_price = first.get(r["token"], (r["ts"], r["p0"]))
-            if r["ts"] - first_ts > LATE_WINDOW:  # seen in an earlier wave: no fair starting point
-                continue
-            r["features"] = {**r["features"], "runup_first": round(r["p0"] / first_price, 3),
-                             "since_first_min": round(max(0.0, r["ts"] - first_ts) / 60, 1)}
+            extra = {}
+            if first_ts >= r["ts"]:
+                extra = {"first_seen": "self", "runup_first": 1.0, "since_first_min": 0.0}
+            elif r["ts"] - first_ts > LATE_WINDOW:
+                extra = {"first_seen": "old"}
+            elif not first_price or first_price <= 0:
+                extra = {"first_seen": "unpriced"}
+            else:
+                extra = {"first_seen": "shadow", "runup_first": round(r["p0"] / first_price, 3),
+                         "since_first_min": round((r["ts"] - first_ts) / 60, 1)}
+            r["features"] = {**r["features"], **extra}
 
 
 def summarize(results: list[dict]) -> dict:
@@ -566,8 +576,9 @@ def lateness_table(alerts: list[dict]) -> dict:
         return out
 
     measured = [r for r in alerts if value(r, "runup_first") is not None]
-    at_once = [r for r in measured if not value(r, "since_first_min")]
-    later = [r for r in measured if value(r, "since_first_min")]
+    later = [r for r in alerts if value(r, "first_seen") == "shadow"]
+    by_first = {k: [r for r in alerts if value(r, "first_seen") == k] for k in ("self", "old", "unpriced", "shadow")}
+    strong = [r for r in later if (r.get("momentum") or 0) >= 85]
     held = [r for r in alerts if (r.get("held_all") or 0) >= 5]
     sweep = []
     for limit in (*RUNUP_LIMITS, None):
@@ -577,8 +588,12 @@ def lateness_table(alerts: list[dict]) -> dict:
         sweep.append((limit, s))
     return {
         "n": len(alerts), "measured": len(measured), "held": len(held),
-        "first": [("ilk görüldüğü an bildirildi", summarize(at_once)), ("daha önce gölgede görülmüştü", summarize(later))],
+        "first": [("önceden hiç görülmemiş (ilk görülme = bildirim)", summarize(by_first["self"])),
+                  ("gölgesi 24 saatten eski (önceki dalga)", summarize(by_first["old"])),
+                  ("gölgesi var ama fiyatı yok", summarize(by_first["unpriced"])),
+                  ("24 saat içinde gölgede görülmüş (ölçülen)", summarize(by_first["shadow"]))],
         "runup": split(later, "runup_first", [1.0, 1.5, 3.0], ["düşmüş (<1x)", "1–1.5x", "1.5–3x", "3x+"]),
+        "runup_strong": split(strong, "runup_first", [1.0, 1.5, 3.0], ["düşmüş (<1x)", "1–1.5x", "1.5–3x", "3x+"]),
         "since": split(later, "since_first_min", [15, 60], ["<15 dk", "15–60 dk", "60+ dk"]),
         "change_h1": split(alerts, "change_h1", [100, 500], ["<%100", "%100–500", "%500+"]),
         "change_m5": split(alerts, "change_m5", [0, 50], ["düşüşte (<%0)", "%0–50", "%50+"]),

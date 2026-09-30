@@ -150,6 +150,11 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 14. **Kullanıcı hedefi (30 Eylül): "daha az ama isabetli bildirim, kalıcı 5x %30+"** (şu an ~%16). Hipotez: sorun
     zamanlama. `/gec` eklendi: bildirim fiyatı ÷ coinin ilk görüldüğü (gölge) fiyat (`runup_first`, geçmiş veriden
     hesaplanıyor), geçen dk; `change_m5`/`change_h1` artık her sinyalde kaydediliyor. Bunlar `/analiz`'de de var.
+    İlk `/gec 168` (681 bildirim, 89 kalıcı 5x): artış sınırı işe yaramıyor (<3x: kalıcı %13.1→13.6, 1 kazanan
+    kaybı; 3x+ dilimi 35 sinyal rug %37 ama küçük). En büyük zayıf dilim: gölgeden bildirime fiyat 1–1.5x (299,
+    kalıcı %8.7 ≈ gölge seviyesi); 1.5–3x %21.9. "Önceden görülmemiş" 64 bildirim %26.6 — ama `signals` token+tür
+    başına tek kayıt olduğundan bu grup eski dalgadan dönenleri de içeriyordu → `first_seen` (self/old/unpriced/
+    shadow) ayrımı ve momentum ≥85 kırılımı eklendi, yeniden çalıştırılacak.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan

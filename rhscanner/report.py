@@ -294,10 +294,11 @@ def format_lateness(hours: float, t: dict) -> list[str]:
                 f"1s 2x %{s['x2_60']} · rug %{s['rugged']} · 1s sonu {s['median_ret60']}x")
 
     blocks = [f"⏱ <b>Geç kalma analizi — son {hours:g} saat</b>\n"
-              f"<i>{t['n']} bildirim ({t['measured']} tanesinde ilk görülme fiyatı var; ilk görülme = eşiğin "
-              f"yarısını geçtiği gölge sinyali, 24 saat içinde). Kalıcı 5x yapan: {t['held']}</i>\n"]
+              f"<i>{t['n']} bildirim (ilk görülme = eşiğin yarısını geçtiği gölge sinyali, 24 saat içinde; "
+              f"{t['measured']} tanesinde ölçülebildi). Kalıcı 5x yapan: {t['held']}</i>\n"]
     sections = [("Bildirimden önce görülmüş mü", t["first"]),
-                ("İlk görülmeden bildirime fiyat artışı", t["runup"]),
+                ("İlk görülmeden bildirime fiyat artışı (gölgede görülmüşler)", t["runup"]),
+                ("Aynısı, sadece momentum ≥85", t["runup_strong"]),
                 ("İlk görülmeden bildirime geçen süre", t["since"]),
                 ("Bildirim anında son 1 saat fiyat değişimi", t["change_h1"]),
                 ("Bildirim anında son 5 dk fiyat değişimi", t["change_m5"])]
