@@ -135,7 +135,10 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     %12.4 → yine ters. **ÇIK tutmuyor**: 126 sinyal, 1s sonra aşağıda %42.9, kaçırılan 1.5x %22 (eski 10 sinyallik
     iyi sonuç tutmadı); DİKKAT 13 sinyal %61.5 aşağıda. Son 72 saatte ~700 Pons sinyali → sunucuda Pons izleyici
     açık olabilir (`.env` kontrolü istendi). `/geritest` hatası düzeltildi: v2 canlıyken "v1" sütunu v2 puanını
-    kullanıyordu (artık `features.momentum_v1`).
+    kullanıyordu (artık `features.momentum_v1`). `/kazananlar` (7g, 10x+): 5 kazanan — ROBINPEPE zirvede
+    bildirilmiş (232x'te; v2 artık engelliyor, doğru), HLCAT/VRAX gölgede ama bot ilk gördüğünde zaten 25x/14x
+    olmuşlardı (sonrası en fazla 1.9x/1.4x), PRIORS 282x/2s ve LIQCAT 47x Fomo'da hiç görülmedi. → Kaçırılanlar
+    eşik sorunu değil, **zamanlama/kapsam sorunu**: büyük koşu Fomo hacmi gelmeden bitiyor. Eşik düşürmek çözmez.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
