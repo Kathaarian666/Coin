@@ -126,6 +126,16 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 11. **İkinci dalga** (`wave2`, ölçüm): ilk sinyalden 1 saat-3 gün sonra, 30-60 dk önce sakin, şimdi bildirim
     eşiğini geçen coin kaydediliyor (HOODS 26 saat sonra kaydedildi). Bildirim yok.
 12. **Piyasa rejimi**: her sinyalde `market_buyers_1h`; `/analiz`'de dilimli (henüz yorumlanmadı).
+13. **30 Eylül canlı doğrulama** (`/karne 72`, `/geritest` 168s): bildirim 323 → kalıcı 5x %16.1 (beklenen ~%22
+    değil ama filtre %7.3 / gölge %8.1'in iki katı), rug %8.7, 1s sonu medyan 1.0x. ⚡ erken 25 → kalıcı 5x %24,
+    1s sonu medyan 1.61x, rug %4 (en iyi grup). Geritest erken A: mom ≥80 %25.5 (47), ≥85 %39.3 (28), ≥90 %55
+    (20) → 85-89 dilimi 8 sinyal 0 kalıcı 5x, 80-84 çok zayıf → **80'e inme; `/erken 90` önerildi** (geçemeyen
+    normal yola düşer). Kural B zayıf (10 sinyal, 1s sonu 0.75x). Alıcı eşiği 8: 2 sinyal ikisi de kalıcı 5x (az).
+    İkinci dalga mom 70+ kalıcı 5x %10.8 < bildirim → bildirim açılmadı. Güven <30 (14) %21.4, 30-49 %14.7, 70+
+    %12.4 → yine ters. **ÇIK tutmuyor**: 126 sinyal, 1s sonra aşağıda %42.9, kaçırılan 1.5x %22 (eski 10 sinyallik
+    iyi sonuç tutmadı); DİKKAT 13 sinyal %61.5 aşağıda. Son 72 saatte ~700 Pons sinyali → sunucuda Pons izleyici
+    açık olabilir (`.env` kontrolü istendi). `/geritest` hatası düzeltildi: v2 canlıyken "v1" sütunu v2 puanını
+    kullanıyordu (artık `features.momentum_v1`).
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
@@ -145,6 +155,7 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 1. **Canlı doğrulama (30 Eylül hatırlatması bu eski sohbete gelir; yeni sohbette kullanıcıdan çıktıları iste)**:
    `/karne 72` (⚡ Erken bildirimler grubu: kalıcı 5x ~%45 tutuyor mu; bildirim gidenler kalıcı 5x ~%22+),
    `/geritest`, `/kazananlar`. Erken kural canlıda kötüyse `/erken 90` veya kapat; iyiyse 80'i dene.
+1b. **ÇIK sinyalini düzeltmek**: hangi ÇIK nedeni (dev/balina/kim satıyor) tutuyor, `/karne`'de nedene göre kırılım.
 2. **İkinci dalga bildirimi**: wave2 grubu karnede iyi çıkarsa (momentum kırılımıyla) bildirimi aç (ROBINPEPE gibi
    saatler içinde büyüyenler için).
 3. **Erken kural B ve alıcı eşiği**: veri birikince `/geritest` sonundaki B ve "alıcı eşiği 8" bölümleri.

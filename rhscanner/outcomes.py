@@ -388,6 +388,13 @@ def momentum_v2_of(r: dict) -> int | None:
     return int(max(0, min(100, r["momentum"] + delta)))
 
 
+def momentum_v1_of(r: dict) -> int | None:
+    """The v1 momentum of a recorded signal: kept in its features since both are scored live (while v2 is on,
+    the signal's own momentum is the v2 score); older signals only have the v1 score itself."""
+    f = r.get("features") or {}
+    return f["momentum_v1"] if f.get("momentum_v1") is not None else r.get("momentum")
+
+
 def backtest(results: list[dict], min_score: int, min_momentum: int) -> list[tuple[str, dict]]:
     """Signals v1 and v2 momentum would each have alerted on, in the older and the newer half of the period.
 
@@ -397,7 +404,7 @@ def backtest(results: list[dict], min_score: int, min_momentum: int) -> list[tup
     halves = [("Eski yarı", rows[: len(rows) // 2]), ("Yeni yarı", rows[len(rows) // 2:]), ("Tümü", rows)]
     out = []
     for name, part in halves:
-        passes_v1 = [r for r in part if r["trust"] >= min_score and r["momentum"] >= min_momentum]
+        passes_v1 = [r for r in part if r["trust"] >= min_score and (momentum_v1_of(r) or 0) >= min_momentum]
         passes_v2 = [r for r in part if r["trust"] >= min_score and (momentum_v2_of(r) or 0) >= min_momentum]
         ids1, ids2 = {id(r) for r in passes_v1}, {id(r) for r in passes_v2}
         out.append((name, {

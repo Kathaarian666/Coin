@@ -153,6 +153,14 @@ def test_backtest_compares_v1_and_v2_selection():
     # v1 gave a 100-minute-old coin +3; v2 drops that and adds the FDV points
     assert momentum_v2_of(results[0]) == 62 - 3 + 15 and momentum_v2_of(results[-1]) == 75 - 3 - 10
     assert momentum_v2_of({"momentum": 50, "features": {"momentum_v2": 80}}) == 80  # recorded live
+    # while v2 is live the signal's own momentum is v2; v1 comes from the features
+    from rhscanner.outcomes import momentum_v1_of
+    assert momentum_v1_of({"momentum": 80, "features": {"momentum_v1": 60, "momentum_v2": 80}}) == 60
+    assert momentum_v1_of({"momentum": 62, "features": {}}) == 62
+    live = dict(backtest([{"ts": 1, "trust": 50, "momentum": 80, "features": {"momentum_v1": 60, "momentum_v2": 80},
+                           "max_60": 1.0, "max_all": 1.0, "held_all": 1.0, "ret_60": 1.0, "rugged": False}],
+                         min_score=30, min_momentum=70))
+    assert live["Tümü"]["v1"]["n"] == 0 and live["Tümü"]["v2"]["n"] == 1
     halves = dict(backtest(results, min_score=30, min_momentum=70))
     assert halves["Tümü"]["v1"]["x2_60"] == 0.0 and halves["Tümü"]["v2"]["x2_60"] == 100.0
     assert halves["Tümü"]["added"]["n"] == 10 and halves["Tümü"]["dropped"]["n"] == 10
