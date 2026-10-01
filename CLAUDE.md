@@ -101,11 +101,22 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   alıcılı ~300/gün: ilk alış fiyatına göre zirve ≥2x %62, ≥5x %26, ≥10x %13.5, ≥100x %0.8; 24 s sonra medyan 0.50x,
   son/zirve 0.23; satıcısız %4. 10x+ olanlar yavaş: zirveye medyan 3 saat (%25'i 44 dk, %25'i 24 s+). İlk 10 dk akışı
   10x olanları ayırmıyor (alıcı 9 vs 8) → karar anı ilk dakikalar olmayabilir.
+- **"Param 2x olur mu" araştırması (1 Ekim, `scripts/rise_build.py` + `rise_model.py`)**: her coinde dakikada en fazla 1
+  aday an (≥3 alıcı/5 dk), giriş +30 sn sonraki alım fiyatı, kayma (havuz derinliği son 15 dk alımlarından) + komisyon
+  dahil **net 2x** = fiyat ~2.11x (sığ havuzda 2.28x), 72 saat, iki ardışık alım. Coinin ilk aday anında alsaydık:
+  **%31 net 2x** (5 dk %7, 30 dk %19, 1 s %22, 6 s %28, 24 s %31) — 2x'lerin 2/3'ü ilk 30 dk'da. 2x yapanlar önce
+  neredeyse düşmüyor (dip medyan 0.98x, %25'i 0.78x altı); yapmayanlar 72 s sonunda medyan 0.30x. "2x'te sat yoksa
+  72 s tut" −$16/işlem; zarar-kes 0.8x ile −$3.6 (hâlâ eksi, 2x oranı %23'e iner). Gün gün örnek dışı (7 test günü,
+  etiketi kesinleşmiş geçmişle): gradient boosting en iyi %10 **−$1.5 [GA −7.9…+6.6]**, her gün geçmişte en iyi
+  sade kural (FDV≤$60k · yaş≤6 s · 0.8x stop) **+$0.7 [−0.7…+1.9]** ≈ başa baş. Dikkat: iki sızıntı bulundu ve
+  düzeltildi (havuz derinliği sinyal sonrası işlemlerden / coinin tüm ömründen hesaplanıyordu → sahte +$13-36).
+  **Sonuç: sadece Fomo akışıyla "2x olacak" coin seçmenin örnek dışı kârlı kuralı yok.** Dilimlerde en iyi: havuz
+  derinliği $9-34k (%45 2x, ~$0), FDV < $200k, büyük 10 dk hacmi; en kötü: sığ havuz < $9k (%28), FDV > $200k.
 
 ## Sıradaki işler
-1. **"2x'e eğilimli coin" araştırması (zincir verisi)**: her coin için her an (ör. dakikada bir) "bu fiyattan +30 sn
-   sonra girseydim, sonradan (süre sınırı yok / birkaç gün) en az 2x gördüm mü (art arda iki alım), önce ne kadar
-   düştü, ne kadar sürdü" etiketi + kayma. Hangi an/özelliklerde 2x olasılığı tabandan belirgin yüksek → sade kural,
-   kayan pencere (gün gün) doğrulama. Güven skoru zincirden hesaplanamaz; kural güven filtresiyle birlikte çalışacak.
+1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
+   aday coin için güven/lansman özelliklerini (geliştirici geçmişi, dev payı, sniper/bundle, holder, likidite, hook,
+   satılabilirlik) bildirim göndermeden kaydetsin; etiket zincirden (`rise_build` mantığı) → 1-2 hafta sonra güven +
+   akış özellikleriyle aynı gün gün test.
 2. Bulunan kural bota "hızlı bildirim" olarak (flow.py) + Fomo fiyatlarıyla canlı ölçüm (önce bildirimsiz kayıt).
 3. Sonraki aşama (kullanıcı onayıyla): pozisyon/risk, gerçek işlem takibi, Twitter/X (ücretli, önce fiyat sor), Solana.

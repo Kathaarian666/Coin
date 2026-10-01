@@ -4,7 +4,7 @@
 
 Candidates: each coin's first buy in a minute with at least 3 distinct buyers in the last 5 minutes.
 Entry: the first buy 30 s after the moment, at its price plus our own slippage. The pool's dollar depth R is
-estimated from the coin's back-to-back buys around the moment (price step ~ trade size / R).
+estimated from the coin's back-to-back buys in the 15 minutes before the moment (price step ~ trade size / R).
 Label `hit`: the money doubles after fees and slippage, i.e. two buys in a row at or above the needed price
 multiple, within 72 h (`t_hit` minutes; `low` = lowest buy price before that, as a multiple of the entry).
 If it never doubles, `final` is the price at the end of the 72 h (dead coins: half the last price) and
@@ -124,12 +124,14 @@ def depth_prefix(ts, px, usd):
     return ts[1:], np.r_[0, np.cumsum(x * y)], np.r_[0, np.cumsum(x * x)], np.r_[0, np.cumsum(ok)]
 
 
-def depth_at(pref, t, coin_depth):
+def depth_at(pref, t):
+    """Pool depth from the buys of the last 15 minutes, else of the coin's whole past, else a typical value."""
     pts, sxy, sxx, n = pref
-    lo, hi = bisect.bisect_left(pts, t - 900), bisect.bisect_right(pts, t + 300)
-    if n[hi] - n[lo] >= 5 and sxy[hi] - sxy[lo] > 0:
-        return float(np.clip((sxx[hi] - sxx[lo]) / (sxy[hi] - sxy[lo]), 1000, 1e6))
-    return coin_depth
+    hi = bisect.bisect_right(pts, t)
+    for lo in (bisect.bisect_left(pts, t - 900), 0):
+        if n[hi] - n[lo] >= 5 and sxy[hi] - sxy[lo] > 0:
+            return float(np.clip((sxx[hi] - sxx[lo]) / (sxy[hi] - sxy[lo]), 1000, 1e6)), True
+    return DEFAULT_DEPTH, False
 
 
 def main():
@@ -180,10 +182,6 @@ def main():
             continue
         bts, bpx, busd, _, hmax, pmin = series[coin]
         pref = depth_prefix(bts, bpx, busd)
-        whole = DEFAULT_DEPTH
-        pts, sxy, sxx, cnt = pref
-        if cnt[-1] >= 5 and sxy[-1] > 0:
-            whole = float(np.clip(sxx[-1] / sxy[-1], 1000, 1e6))
         ts = [r[0] for r in rows]
         side = [r[1] for r in rows]
         trader = [r[2] for r in rows]
@@ -212,7 +210,7 @@ def main():
             if j >= len(bts) - 2 or bts[j] > t + DELAY + 600:
                 continue
             t_in, p_in = bts[j], bpx[j]
-            depth = depth_at(pref, t, whole)
+            depth, depth_known = depth_at(pref, t)
             need = needed_multiple(depth)
             end = min(t_in + HORIZON, seg_end(t_in))
             last = bisect.bisect_right(bts, end) - 1
@@ -238,7 +236,7 @@ def main():
             f.update({
                 "coin": coin, "ts": t, "buyers_all": len(buyers_so_far), "sellers_all": len(sellers_so_far),
                 "usd_all": usd_so_far, "off_peak": (f["runup"] * first_price / hmax_so_far) if first_price and hmax_so_far else 1.0,
-                "depth": depth, "need": need, "hit": hit, "t_hit": t_hit, "low": low, "final": final, "pnl": pnl,
+                "depth": depth, "depth_known": depth_known, "need": need, "hit": hit, "t_hit": t_hit, "low": low, "final": final, "pnl": pnl,
                 "obs_h": (end - t_in) / 3600,
             })
             records.append(f)
