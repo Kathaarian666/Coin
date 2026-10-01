@@ -238,6 +238,19 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     ~84 dk, tutma 0.86. Kenar küçük ve kırılgan; 30 gün ile teyit şart.
     Hedef: canlıya analiz beklemeden saniyeler içinde giden saf Fomo kuralı + sonuçların Fomo fiyatlarıyla ölçümü.
 
+20. **Kayan pencere doğrulaması (1 Ekim, `scripts/research_robust.py <tablo>`)**: 18 gün veri, 643k an; 19 Eyl–1 Eki
+    her gün test, karar sadece önceki günlerle (model her gün yeniden eğitilir, sade kural 960'lık ızgaradan geçmişe göre
+    seçilir), GA gün bazlı bootstrap, kazanç 3x'te sınırlı, giriş +30 sn. Taban −$5.4 (0/13 artı gün); canlı A'nın Fomo
+    kısmı +$0.6. **Model en iyi %1: +$11.7 [GA +5.9…+17.7], 11/13 artı gün (~56/gün); %2: +$8.7 [+6.6…+11.0], 13/13;
+    %0.5: +$16.1** → kenar 13 günde tutarlı. Günlük seçilen sade kural 26 Eyl'den beri hep aynı: **akıllı≥10 · FDV≤$20k ·
+    balina payı≤0.3 · tutma≥0.8** (5 dk alıcı eşiği fark etmiyor; ≥3 yeter). Bu kural: ~17 sinyal/gün, 23 Eyl sonrası 148
+    sinyal +$14.5 (gün gün oynak: 29-30 Eyl eksi), sinyal anı medyan yaş 8 dk, FDV $13k, ilk fiyattan 1.6x. 2x hedefi
+    3x'ten kötü (+$1); 60 sn gecikme +$9. Not: "akıllı cüzdan" yaygın (anların %5'inde 30-60), ≥10 seçici değil; asıl
+    ayıran küçük FDV + düşük balina payı. **KAYMA**: sinyal anlarındaki ardışık alımlardan havuz USD derinliği medyan
+    ~$5.6k (%25 $3.7k) → $100 alışta ~%2, 3x satışta ~%3 kayma. Kayma uygulanınca kural +$14.5 → **+$7.0** (60 sn
+    gecikmeyle +$3), std hata ~$7-8 → **maliyetler sonrası kenar istatistiksel olarak belirsiz**. Model %1-2 için de
+    benzer düşüş beklenir (henüz kaymalı ölçülmedi). Gerçek parayla işlem önerilmez; daha fazla gün + kaymalı ölçüm şart.
+
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
   1s sonu 0.70–0.78x, 5x %1.5–1.9 (Fomo bildirimleri %14.7). Erken eşik (4+ alıcı) daha iyi değil → coinlerin çoğu
@@ -253,14 +266,13 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 - V3/V4 honeypot simülasyonu yapılmadı (Fomo'daki başarılı satışlar yeterli kanıt; karne sorun göstermiyor).
 
 ## Sıradaki işler (öncelik sırası, 1 Ekim sonu)
-1. **Araştırmaya MEVCUT veriyle devam** (yeni sohbet buradan başlar): `veri` dalından geri yükle →
-   `data_import.py` → `fomo_supply.py` (arz, `supply.parquet` zaten var; eksikler için) → `research_build.py`
-   (iki DB yoksa tek DB yeter; 1-3 Eylül + 17 Eylül-1 Ekim) → `research_model.py`. Bulgu: modelin en iyi %0.5-1'i
-   test'te +$8-14/işlem (GA alt ~+$1), hız yarışı değil, akıllı cüzdan sayısı + küçük FDV + geniş tabanlı alım öne
-   çıkıyor. Yapılacak: (a) daha sağlam doğrulama (kayan pencere / birden çok bölme), (b) modeli sade, okunur bir
-   kurala indirgemek (akıllı cüzdan ≥N, FDV ≤$X, 5 dk alıcı ≥M, balina payı ≤Y gibi) ve aynı testten geçirmek,
-   (c) çıkış kuralını da zincir verisiyle yeniden seçmek (2x/3x/5x, 30/60/120 dk), (d) iyi çıkarsa bota "hızlı
-   bildirim" (flow.py ile, analiz beklemeden) + sonuçların Fomo fiyatlarıyla canlı ölçümü.
+1. **Araştırma (madde 20'den devam)**: kenar kayma öncesi tutarlı, sonrası belirsiz. Sıradaki: (a) kaymayı
+   `research_build.py` sonuçlarına kalıcı ekle (her an için havuz derinliği tahmini) ve modeli kaymalı hedefle
+   yeniden eğit/doğrula, (b) yeni günler biriktikçe (`fomo_download.py` + `data_export.py`) `research_robust.py`'yi
+   tekrar çalıştır, (c) kaymalı da pozitif kalırsa bota sade kuralla "hızlı bildirim" (flow.py, analiz beklemeden;
+   akıllı cüzdan geçmişi zincirden) + Fomo fiyatlarıyla canlı ölçüm (önce sadece kayıt, bildirimsiz).
+   Yeniden kurulum: `veri` dalı → `data_import.py` → `fomo_supply.py` → `research_build.py` (~7 dk) →
+   `research_robust.py` (~2 dk).
 2. Botun eski ölçüm komutları (`/hedef`, `/erkenayar`, `/karne` vb.) DexScreener örneklerine dayanıyor ve ~2-3 kat
    iyimser; karar için kullanma.
 3. Sonraki aşama (kullanıcı onayıyla): pozisyon büyüklüğü/risk yönetimi, gerçek işlem takibi, Twitter/X (ücretli,
