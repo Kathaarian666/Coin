@@ -76,7 +76,8 @@ de kaydediliyor), `wave2` (ikinci dalga, ölçüm), `exit`/`caution` (ÇIK/DİKK
 fiyat örnekleri 0,5,10…1440. dk. Sonuç ölçüleri: `max_60`, `max_all` (24s tekil en yüksek), **`held_all` (art arda
 iki örnekte tutulan — "kalıcı"; sığ havuz sıçramalarını eler, esas ölçü bu)**, `ret_60`, `rugged`.
 
-## Güncel canlı ayarlar (sunucuda, 27 Eylül)
+## Güncel canlı ayarlar (sunucuda, 27 Eylül; 1 Ekim eklemeleri: `/erken 90`, erken kural A = 5/0/$50/0.8,
+`/mod erken` ve `/gecfiltre ac` önerildi — kullanıcı uyguladığını söyledi, `/durum` ile teyit et)
 güven (`/minskor`) ≥30 · momentum **v2** (`/momentumv2 ac`) ≥75 (`/minmomentum`) · `/maxrug 60` ·
 alıcı ≥10 (`/minalici`) · 10 dk Fomo alımı ≥$500 (`/minhacim`) · **`/erken 90`** (30 Eylül'de 85→90 önerildi) · Pons takibi kapalı (`.env`'de satır yok).
 Geçmiş veride bu set: bildirimlerin kalıcı 5x ~%22, 5x yapanları yakalama ~%90, rug ~%10.
@@ -228,7 +229,7 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     + 5/15 sn gecikme testi (hız yarışı mı?) sırada.
     **Eski dönem indirmesi çok yavaş** (eski aralıklar; ~%10/30 dk) → kullanıcı erteledi: `fomo_old.db` state start
     51644641 / done 53013127 / end 65374567 (1-2 Eylül indi, ~3-17 Eylül eksik; `veri` dalında 1-3 Eylül + 17 Eylül-1
-    Ekim). **2 Ekim 10:00 TR hatırlatması kuruldu** (trig_01S63zcrxzH5t4goZwCFjY1Y): kalan veriyi indir, 30 gün analizi.
+    Ekim). **Kullanıcı kararı: eksik aralık indirilmeyecek, araştırma mevcut veriyle sürecek** (hatırlatma iptal).
     15.6 günle (eğitim 21 gün aralığı içinde 1-2 Eylül + 17-26 Eylül, doğrulama 3.9 g, test 4.8 g) model:
     **en iyi %0.5-1 test'te de pozitif**: 3x-sınırlı ort +$8-14/işlem, %90 GA alt sınır ~+$0.5-3 (n 167-309, ~35-65
     sinyal/gün); en iyi %5 test +$4-7. **Gecikme 5→60 sn neredeyse fark etmiyor** (hız yarışı değil). Taban test −$4-6,
@@ -251,22 +252,17 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 - Rug'ı kazananları kaybetmeden düşürmek zor (rug ~%10 sabit); odak kazananları yakalamak.
 - V3/V4 honeypot simülasyonu yapılmadı (Fomo'daki başarılı satışlar yeterli kanıt; karne sorun göstermiyor).
 
-## Sıradaki işler (öncelik sırası)
-1. **Canlı doğrulama (30 Eylül hatırlatması bu eski sohbete gelir; yeni sohbette kullanıcıdan çıktıları iste)**:
-   `/karne 72` (⚡ Erken bildirimler grubu: kalıcı 5x ~%45 tutuyor mu; bildirim gidenler kalıcı 5x ~%22+),
-   `/geritest`, `/kazananlar`. Erken kural canlıda kötüyse `/erken 90` veya kapat; iyiyse 80'i dene.
-0. **⚡ Erken odak (1 Ekim)**: `/mod erken` + `/hedef 168` çıktısıyla en iyi çıkış kuralını seç; sonra erken kuralın
-   parametrelerini (son 5 dk alıcı, alıcı başına $, tutma, momentum) $ sonucuna göre optimize et — eski/yeni yarı
-   ayrımıyla, aşırı uydurmaya dikkat (canlı erken sinyal az). Gölge kural A sinyalleri veri büyütür.
-1b. **ÇIK sinyalini düzeltmek** (kullanıcı: öncelikli değil): hangi ÇIK nedeni (dev/balina/kim satıyor) tutuyor, `/karne`'de nedene göre kırılım.
-2. **İkinci dalga bildirimi**: wave2 grubu karnede iyi çıkarsa (momentum kırılımıyla) bildirimi aç (ROBINPEPE gibi
-   saatler içinde büyüyenler için).
-3. **Erken kural B ve alıcı eşiği**: veri birikince `/geritest` sonundaki B ve "alıcı eşiği 8" bölümleri.
-4. **Kazanan otopsisini büyütmek**: 8 kazanan az; `/kazananlar 7 5` (5x+) ile daha fazla örnek; "❓ görülmedi"
-   çoksa kapsam sorunu (Fomo dışı coinler).
-5. **Momentum v2 ağırlıklarını yeniden gözden geçirme** kalıcı 5x ile (`/analiz` + `/sinyal` ile kazananların ortak
-   özellikleri). Yaş düzeltmesi sonrası v2 dağılımı değişti; `/tarama`'yı birkaç gün sonra tekrar çalıştır.
-6. **Tepki süresi gerçekçiliği**: simülasyonlara "bildirimden 2-3 dk sonra giriş" varsayımı.
-7. **Piyasa rejimi**: `/analiz`'de `market_buyers_1h` dilimlerine bak; fark varsa eşikleri rejime göre değiştir.
-8. Sonraki aşama (kullanıcı onayıyla): pozisyon büyüklüğü/risk yönetimi (sinyal güvenine göre $20–$100),
-   gerçek işlem takibi, Twitter/X verisi (ücretli, önce fiyat sorulur), Solana (ayrı proje).
+## Sıradaki işler (öncelik sırası, 1 Ekim sonu)
+1. **Araştırmaya MEVCUT veriyle devam** (yeni sohbet buradan başlar): `veri` dalından geri yükle →
+   `data_import.py` → `fomo_supply.py` (arz, `supply.parquet` zaten var; eksikler için) → `research_build.py`
+   (iki DB yoksa tek DB yeter; 1-3 Eylül + 17 Eylül-1 Ekim) → `research_model.py`. Bulgu: modelin en iyi %0.5-1'i
+   test'te +$8-14/işlem (GA alt ~+$1), hız yarışı değil, akıllı cüzdan sayısı + küçük FDV + geniş tabanlı alım öne
+   çıkıyor. Yapılacak: (a) daha sağlam doğrulama (kayan pencere / birden çok bölme), (b) modeli sade, okunur bir
+   kurala indirgemek (akıllı cüzdan ≥N, FDV ≤$X, 5 dk alıcı ≥M, balina payı ≤Y gibi) ve aynı testten geçirmek,
+   (c) çıkış kuralını da zincir verisiyle yeniden seçmek (2x/3x/5x, 30/60/120 dk), (d) iyi çıkarsa bota "hızlı
+   bildirim" (flow.py ile, analiz beklemeden) + sonuçların Fomo fiyatlarıyla canlı ölçümü.
+2. Botun eski ölçüm komutları (`/hedef`, `/erkenayar`, `/karne` vb.) DexScreener örneklerine dayanıyor ve ~2-3 kat
+   iyimser; karar için kullanma.
+3. Sonraki aşama (kullanıcı onayıyla): pozisyon büyüklüğü/risk yönetimi, gerçek işlem takibi, Twitter/X (ücretli,
+   önce fiyat sor), Solana (ayrı proje). Bekleyen eski fikirler: ÇIK nedenleri kırılımı (öncelikli değil), Fomo dışı
+   kapsam (sonraya bırakıldı).
