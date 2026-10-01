@@ -49,24 +49,26 @@ def first_at_most(tab: Sparse, lo: int, x: float) -> int:
 
 def copy_result(c, t_buy, depth, seg_end, rule):
     """$ result of buying $100 at t_buy and exiting by `rule`. Nothing after t_buy is needed to enter: the entry
-    is the pool price left by the last buy before t_buy (its fill price marked up for its own impact)."""
+    is the pool price left by the last buys before t_buy (median of the last 3 fills, against single bad prints,
+    marked up for the last buy's own impact). A price that never held the target for two buys in a row is capped
+    at the target (a lone print above it is a data error or a spike nobody could sell into)."""
     bts, bpx, busd, hmax, pmin = c
     target, stop, minutes = rule
     e = bisect.bisect_right(bts, t_buy) - 1
-    p_in = bpx[e] * (1 + 1.5 * busd[e] / depth)
+    p_in = float(np.median(bpx[max(0, e - 2):e + 1])) * (1 + 1.5 * busd[e] / depth)
     end = min(t_buy + minutes * 60, seg_end)
     last = bisect.bisect_right(bts, end) - 1
     nxt = e + 1
-    k_hit = (hmax.first_at_least(nxt, needed(round(depth, -2), target) * p_in) + 1
-             if nxt < len(bts) - 1 else len(bts))
+    need = needed(round(depth, -2), target)
+    k_hit = hmax.first_at_least(nxt, need * p_in) + 1 if nxt < len(bts) - 1 else len(bts)
     k_stop = first_at_most(pmin, nxt, stop * p_in) if stop and nxt < len(bts) else len(bts)
     if k_hit <= last and k_hit < k_stop:
         return (target - 1) * POSITION
     if k_stop <= last:
         return value_after(stop * STOP_FILL, depth)
-    w = (bts >= end - 600) & (bts <= end) & (np.arange(len(bts)) > e)
-    final = float(np.median(bpx[w])) / p_in if w.any() else bpx[last] / p_in
-    return value_after(final, depth)
+    lo = max(bisect.bisect_left(bts, end - 600), nxt)
+    final = float(np.median(bpx[lo:last + 1])) / p_in if lo <= last else bpx[last] / p_in
+    return value_after(min(final, need), depth)
 
 
 def build(path):
