@@ -214,9 +214,13 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     <out.parquet> <db...>` (her coin için dakikada en fazla 1 aday an, ≥3 alıcı/5 dk; özellikler + "akıllı cüzdan"
     (geçmişte erken alıp 1 saatte 2x gören, sadece o saat bittikten sonra bilinir) + 30/60 sn gecikmeli 2x/3x/60dk
     sonuçları) · `scripts/research_model.py <parquet...>` (zaman bölmeli eğitim %60/doğrulama %20/test %20; coin başına
-    ilk eşleşme + 24 s dinlenme; gradient boosting puanı, okunur karar ağacı, tabanlar). **Veri Claude bulut
-    ortamında geçici** (yeni oturumda yok): yeniden üretmek için `fomo_download.py 14 fomo.db` ve
-    `fomo_download.py 30 fomo_old.db <14.1>` (~1.5 saat/14 gün, token harcamaz), sonra research_build + model.
+    ilk eşleşme + 24 s dinlenme; gradient boosting puanı, okunur karar ağacı, tabanlar). **Veri arşivi: GitHub
+    `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; README orada). Yeni oturumda: `git fetch origin veri
+    && git worktree add /tmp/veri origin/veri` → `python scripts/data_import.py /tmp/veri fomo.db` (dakikalar);
+    eksik yeni günler `fomo_download.py` ile indirilip `data_export.py fomo.db /tmp/veri` + commit/push ile eklenir.
+    `install.sh` artık `--single-branch` (sunucu veri dalını çekmez). FDV: `fomo_supply.py` (totalSupply ham).
+    Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir. İlk 14 gün modeli (FDV düzeltmesi öncesi):
+    saf Fomo akışıyla test döneminde kalıcı kenar YOK (eğitimde iyi görünenler test'te ~0/negatif).
     Hedef: canlıya analiz beklemeden saniyeler içinde giden saf Fomo kuralı + sonuçların Fomo fiyatlarıyla ölçümü.
 
 ## Denenip bırakılanlar / yapılamayanlar
