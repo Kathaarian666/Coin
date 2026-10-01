@@ -2,8 +2,9 @@
 
   python scripts/copy_study.py <trades.db or events.parquet> [<events out.parquet>] [<picks out.parquet>]
 
-Every wallet's first buy in each coin is an event. A copier buys $100 at the first Fomo buy 30 s later (price
-plus slippage from the pool depth of the last 15 minutes) and exits by each rule in EXITS (target = the money
+Every wallet's first buy in each coin is an event. A copier buys $100 30 s later at the pool price then (the last
+buy's price marked up for its impact, plus our slippage from the pool depth of the last 15 minutes; a coin
+nobody buys again is still bought) and exits by each rule in EXITS (target = the money
 multiplied by that much after fees and slippage, stop = price falls to that multiple of the entry, else sold
 at the time limit). The copy result of an event is known once its time limit has passed.
 
@@ -16,14 +17,13 @@ import bisect
 import itertools
 import sys
 import time
-from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rise_build import (DELAY, FEE, POSITION, Sparse, buy_series, depth_at, depth_prefix, load,  # noqa: E402
+from rise_build import (DELAY, POSITION, Sparse, buy_series, depth_at, depth_prefix, load, needed,  # noqa: E402
                         segments, value_after)
 
 # name: (target money multiple or None, stop price multiple or None, time limit in minutes)
@@ -39,17 +39,6 @@ STOP_FILL = 0.9
 RNG = np.random.default_rng(0)
 
 
-@lru_cache(maxsize=None)
-def needed(depth: float, target: float) -> float:
-    """Price multiple at which the money is multiplied by `target` after fees and slippage both ways."""
-    s_in = POSITION / depth
-    for m in np.arange(target * 0.95, target * 3, 0.01):
-        s_out = min(0.5, target * POSITION / (depth * np.sqrt(m)))
-        if (1 - FEE) ** 2 / (1 + s_in) * m * (1 - s_out) >= target:
-            return float(m)
-    return target * 3
-
-
 def first_at_most(tab: Sparse, lo: int, x: float) -> int:
     n, pos = len(tab.levels[0]), lo
     for lvl in range(len(tab.levels) - 1, -1, -1):
@@ -58,22 +47,25 @@ def first_at_most(tab: Sparse, lo: int, x: float) -> int:
     return pos
 
 
-def copy_result(c, j, depth, seg_end, rule):
-    """$ result of buying at buy index j of coin series c and exiting by `rule`."""
-    bts, bpx, hmax, pmin = c
+def copy_result(c, t_buy, depth, seg_end, rule):
+    """$ result of buying $100 at t_buy and exiting by `rule`. Nothing after t_buy is needed to enter: the entry
+    is the pool price left by the last buy before t_buy (its fill price marked up for its own impact)."""
+    bts, bpx, busd, hmax, pmin = c
     target, stop, minutes = rule
-    p_in, t_in = bpx[j], bts[j]
-    end = min(t_in + minutes * 60, seg_end)
+    e = bisect.bisect_right(bts, t_buy) - 1
+    p_in = bpx[e] * (1 + 1.5 * busd[e] / depth)
+    end = min(t_buy + minutes * 60, seg_end)
     last = bisect.bisect_right(bts, end) - 1
-    k_hit = (hmax.first_at_least(j + 1, needed(round(depth, -2), target) * p_in) + 1
-             if j + 1 < len(bts) - 1 else len(bts))
-    k_stop = first_at_most(pmin, j + 1, stop * p_in) if stop and j + 1 < len(bts) else len(bts)
+    nxt = e + 1
+    k_hit = (hmax.first_at_least(nxt, needed(round(depth, -2), target) * p_in) + 1
+             if nxt < len(bts) - 1 else len(bts))
+    k_stop = first_at_most(pmin, nxt, stop * p_in) if stop and nxt < len(bts) else len(bts)
     if k_hit <= last and k_hit < k_stop:
         return (target - 1) * POSITION
     if k_stop <= last:
         return value_after(stop * STOP_FILL, depth)
-    w = (bts >= end - 600) & (bts <= end)
-    final = float(np.median(bpx[w])) / p_in if w.any() else bpx[last] / p_in * (0.5 if end - bts[last] > 6 * 3600 else 1.0)
+    w = (bts >= end - 600) & (bts <= end) & (np.arange(len(bts)) > e)
+    final = float(np.median(bpx[w])) / p_in if w.any() else bpx[last] / p_in
     return value_after(final, depth)
 
 
@@ -87,7 +79,7 @@ def build(path):
         bts, bpx, busd, who = buy_series(rows)
         if len(bpx) < 3:
             continue
-        c = (bts, bpx, Sparse(np.minimum(bpx[:-1], bpx[1:]), np.maximum), Sparse(bpx, np.minimum))
+        c = (bts, bpx, busd, Sparse(np.minimum(bpx[:-1], bpx[1:]), np.maximum), Sparse(bpx, np.minimum))
         pref = depth_prefix(bts, bpx, busd)
         seen = set()
         for k, w in enumerate(who):
@@ -95,16 +87,13 @@ def build(path):
                 continue
             seen.add(w)
             t = bts[k]
-            j = bisect.bisect_left(bts, t + DELAY)
-            if j >= len(bts) - 2 or bts[j] > t + DELAY + 600:
-                continue
             seg_end = segs[bisect.bisect_right(seg_starts, t) - 1][1]
             depth, depth_known = depth_at(pref, t)
             row = {"wallet": w, "coin": coin, "ts": t, "rank": len(seen), "usd": busd[k], "depth": depth,
                    "depth_known": depth_known, "coin_buyers": len(set(who)),
-                   "obs_min": (seg_end - bts[j]) / 60}
+                   "obs_min": (seg_end - t - DELAY) / 60}
             for name, rule in EXITS.items():
-                row[name] = copy_result(c, j, depth, seg_end, rule)
+                row[name] = copy_result(c, t + DELAY, depth, seg_end, rule)
             events.append(row)
         if n % 5000 == 0:
             print(f"{n}/{len(coins)} coin · {len(events)} olay · {time.time() - t0:.0f} sn", flush=True)

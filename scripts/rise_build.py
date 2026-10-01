@@ -31,6 +31,7 @@ from rhscanner.flow import flow_features  # noqa: E402
 DELAY = 30
 HORIZON = 72 * 3600
 FEE = 0.005
+FEE_MIN = 0.95
 POSITION = 100.0
 DEFAULT_DEPTH = 5600.0
 GAP = 6 * 3600  # a pause this long in all trading = a hole in the data
@@ -61,25 +62,31 @@ class Sparse:
         return pos
 
 
+def money_back(final: float, depth: float) -> float:
+    """$ back from $100 bought at the pool price and sold at `final` x that price: Fomo's fee (0.5%, at least
+    $0.95) both ways and slippage both ways (price step ~ trade size / pool dollar depth)."""
+    fee_in = max(FEE_MIN, FEE * POSITION)
+    gross = (POSITION - fee_in) / (1 + POSITION / depth) * final
+    s_out = min(0.5, gross / (depth * np.sqrt(max(final, 0.05))))
+    proceeds = gross * (1 - s_out)
+    return proceeds - max(FEE_MIN, FEE * proceeds)
+
+
 @lru_cache(maxsize=None)
-def _needed(depth: float) -> float:
-    """Price multiple at which $100 in comes back as $200 after Fomo fees and slippage both ways."""
-    s_in = POSITION / depth
-    for m in np.arange(1.9, 6.0, 0.01):
-        s_out = min(0.5, 2 * POSITION / (depth * np.sqrt(m)))
-        if (1 - FEE) ** 2 / (1 + s_in) * m * (1 - s_out) >= 2:
+def needed(depth: float, target: float = 2.0) -> float:
+    """Price multiple at which $100 comes back as target x $100."""
+    for m in np.arange(target * 0.95, target * 4, 0.01):
+        if money_back(m, depth) >= target * POSITION:
             return float(m)
-    return 6.0
+    return target * 4
 
 
 def needed_multiple(depth: float) -> float:
-    return _needed(float(round(depth, -2)))
+    return needed(float(round(depth, -2)))
 
 
 def value_after(final: float, depth: float) -> float:
-    s_in = POSITION / depth
-    s_out = min(0.5, POSITION * final / (depth * np.sqrt(max(final, 0.05))))
-    return POSITION * (1 - FEE) ** 2 / (1 + s_in) * final * (1 - s_out) - POSITION
+    return money_back(final, depth) - POSITION
 
 
 def segments(all_ts: np.ndarray) -> list[tuple[float, float]]:
