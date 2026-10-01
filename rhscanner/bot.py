@@ -848,7 +848,7 @@ class ScannerApp:
             return
         self.storage.set_state("early_momentum", arg)
         await update.message.reply_text(
-            f"✅ Erken sinyaller açık: alım sıfırdan başlayıp alıcı başına ≥$100 ve tutuluyorsa, 10 alıcı beklemeden "
+            f"✅ Erken sinyaller açık: alım sıfırdan başlayıp (son 5 dk ≥5 alıcı, önceki 5 dk hiç) alıcı başına ≥$50 ve tutuluyorsa, 10 alıcı beklemeden "
             f"analiz edilir; momentum ≥{arg} ise ⚡ bildirim gider.")
 
     async def cmd_min_buyers(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

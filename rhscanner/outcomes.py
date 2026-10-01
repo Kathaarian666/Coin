@@ -536,7 +536,7 @@ def rug_filter_sweep(results: list[dict], min_momentum: int, min_score: int,
 
 
 EARLY_RULES = {
-    "A": "büyük alıcılar: son 5 dk ≥5 alıcı, önceki 5 dk ≤1, alıcı başına ≥$100, tutma ≥0.9",
+    "A": "büyük alıcılar: son 5 dk ≥5 alıcı, önceki 5 dk 0, alıcı başına ≥$50, tutma ≥0.8",
     "B": "kalabalık: son 5 dk ≥8 alıcı, önceki 5 dk ≤1, tutma ≥0.9",
 }
 
@@ -547,11 +547,13 @@ def early_entry(f: dict, rule: str = "A") -> bool:
     shadows: 8 buyers at $24 each, then 8.9x)."""
     b5, prev = f.get("buyers_5m") or 0, f.get("buyers_prev_5m") or 0
     buyers, usd, hold = f.get("buyers_10m") or 0, f.get("buy_usd_10m") or 0, f.get("hold_rate_30m")
-    if prev > 1 or hold is None or hold < 0.9:
+    if hold is None:
         return False
     if rule == "A":
-        return b5 >= 5 and buyers > 0 and usd / buyers >= 100
-    return b5 >= 8
+        # /erkenayar (2 Oct, 14 days, 3x-or-60-min exit): no buyer at all in the 5 minutes before, $50+ a buyer,
+        # 80% held - 46 shadows at momentum 90+, +$78 a trade on the newer half (was 1 / $100 / 0.9: 28, +$83)
+        return b5 >= 5 and prev == 0 and hold >= 0.8 and buyers > 0 and usd / buyers >= 50
+    return b5 >= 8 and prev <= 1 and hold >= 0.9
 
 
 def early_entry_candidates(results: list[dict], min_buyers: int, rule: str = "A", min_momentum: int = 0) -> dict:
@@ -681,7 +683,7 @@ def confirm_table(alerts: list[dict]) -> list[tuple[str, list[tuple[str, dict]]]
 
 EARLY_GRID = {"b5": (3, 4, 5, 6, 8), "prev": (0, 1, 2), "avg": (0, 50, 100, 150, 200), "hold": (0.8, 0.9, 1.0),
               "mom": (80, 85, 90, 95)}
-EARLY_LIVE = {"b5": 5, "prev": 1, "avg": 100, "hold": 0.9, "mom": 90}
+EARLY_LIVE = {"b5": 5, "prev": 0, "avg": 50, "hold": 0.8, "mom": 90}
 
 
 def early_grid(shadows: list[dict], min_buyers: int, position: float, fee_pct: float, fee_min: float,

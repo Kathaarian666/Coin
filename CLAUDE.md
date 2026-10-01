@@ -116,7 +116,7 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 8. **Erken giriş (⚡)**: HOODS gölgesi bildirimden 18 dk önce: son 5 dk 5 alıcı / önceki 0, alıcı başına $211,
    tutma 1.0, momentum 86 → 116x (kalıcı 45x). Kural A (son 5 dk ≥5, önceki ≤1, alıcı başına ≥$100, tutma ≥0.9)
    gölgelerde: şartsız 180 sinyal kalıcı 5x %7 (gürültü); **momentum ≥85: 11 sinyal kalıcı 5x %45.5, 1s sonu medyan
-   3.29x** → `/erken 85` açıldı (A'ya uyan coin 10 alıcı beklenmeden analiz edilir; geçemezse normal yola açık).
+   3.29x** → `/erken 85` açıldı (kural 2 Ekim'de değişti, bkz. 17) (A'ya uyan coin 10 alıcı beklenmeden analiz edilir; geçemezse normal yola açık).
    Kural B (kalabalık, BROBIN tipi: son 5 dk ≥8, önceki ≤1, tutma ≥0.9; alıcı başına $24) 4 sinyal → ölçümde.
 9. **`/strateji` (sabit $100)**: en sağlam çıkış "1 saat tut"; 2x/3x'te satmak zararlı (kazananları keser);
    24 saat tutmak kötü; 2-4 saat tek büyük işleme bağlı. $5'ta $0.95 min. komisyon yapısal olarak eziyor.
@@ -182,7 +182,10 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     60 dk'da çık"** (stop 0.7 tutarlı fark yok). Hız kritik: 5 dk gecikme kazancın 1/3–1/2'si.
 17. `/erkenayar [saat]` (varsayılan 336): erken kural ızgarası (son 5 dk alıcı 3-8 · önceki ≤0-2 · alıcı başı
     $0-200 · tutma 0.8-1.0 · mom 80-95; `outcomes.early_grid`) gölgelerde (alıcı eşiği altı), 3x/60dk $; eski
-    yarıya göre sıralı, yeni yarı sınav, 5 dk geç; her yarıda ≥8 sinyal. Canlı kural `EARLY_LIVE` = 5/1/$100/0.9/90.
+    yarıya göre sıralı, yeni yarı sınav, 5 dk geç; her yarıda ≥8 sinyal. İlk çıktı (1863 gölge): **momentum ≥90 asıl
+    belirleyici** (tüm üst sıralar); eski kural 5/≤1/$100/0.9: 28 sinyal, yeni yarı +$83, geç +$67. Yeni **canlı kural
+    A = son 5 dk ≥5 · önceki 5 dk 0 · alıcı başı ≥$50 · tutma ≥0.8** (+ `/erken 90`): 46 sinyal, eski +$134 (12),
+    yeni +$78 (34), geç +$64, kârlı %83 → aynı kalite, ~1.6x sinyal. (son 5 dk 3/4/5 fark etmiyor.)
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan

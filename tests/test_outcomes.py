@@ -241,7 +241,8 @@ def test_early_entry_rule_matches_hoods_shadow():
     hoods = {"buyers_5m": 5, "buyers_prev_5m": 0, "buyers_10m": 5, "buy_usd_10m": 1054, "hold_rate_30m": 1.0}
     assert early_entry(hoods)
     assert not early_entry({**hoods, "buyers_prev_5m": 4})  # already buying: not a fresh start
-    assert not early_entry({**hoods, "buy_usd_10m": 300})  # $60 a buyer: small tickets
+    assert not early_entry({**hoods, "buy_usd_10m": 200})  # $40 a buyer: small tickets
+    assert not early_entry({**hoods, "buyers_prev_5m": 1})  # someone was already buying
     assert not early_entry({**hoods, "hold_rate_30m": 0.7})
     shadow = {"kind": "shadow", "max_60": 7.7, "max_all": 116.0, "held_all": 45.0, "ret_60": 7.7, "rugged": False,
               "features": hoods}
