@@ -190,3 +190,47 @@ async def test_early_entry_is_analysed_before_the_buyer_bar_and_alerts_only_at_i
     (features,) = app.outcomes.db.execute("SELECT features FROM signals WHERE kind = 'alert'").fetchone()
     assert '"early": true' in features
     await app.rpc.close()
+
+
+async def test_late_filter_holds_back_coins_from_an_earlier_wave_or_already_up_3x(tmp_path):
+    from rhscanner.bot import Job
+    app = ScannerApp(Settings(db_path=str(tmp_path / "l.db"), use_dexscreener=False))
+    sent = []
+
+    async def fake_broadcast(text):
+        sent.append(text)
+
+    async def analyze(token, pool, fomo):
+        return {"token": token, "score": 60, "findings": [], "decimals": 18, "market": {"price_usd": "3.5"}}
+
+    def attach(report):
+        report["momentum"] = {"score": 90, "reasons": [], "features": {}}
+        report["rug_risk"] = {"score": 0, "reasons": []}
+
+    app.broadcast, app.analyzer.analyze, app.attach_momentum = fake_broadcast, analyze, attach
+    app.settings.followup_min, app.settings.exit_checks_min = 0, []
+    now = time.time()
+    old, up, fine = ("0x" + c * 40 for c in "123")
+    app.outcomes.record(old, "shadow", ts=now - 2 * 86400)
+    for token in (up, fine):
+        app.outcomes.record(token, "shadow", ts=now - 600)
+    for token, price in ((up, 1.0), (fine, 2.0)):
+        (sid,) = app.outcomes.db.execute("SELECT id FROM signals WHERE token = ?", (token,)).fetchone()
+        app.outcomes.db.execute("INSERT INTO samples VALUES (?, 0, ?, ?, NULL)", (sid, now - 600, price))
+
+    async def run(*tokens):
+        for token in tokens:
+            await app.queue.put(Job(token, from_fomo=True))
+        worker = asyncio.create_task(app.worker())
+        await app.queue.join()
+        worker.cancel()
+
+    app.storage.set_state("late_filter", "1")
+    await run(old, up, fine)  # 2 days old wave; 3.5x since first seen; 1.75x: only the last one alerts
+    assert len(sent) == 1
+    kinds = dict(app.outcomes.db.execute("SELECT token, kind FROM signals WHERE kind != 'shadow'").fetchall())
+    assert kinds == {old: "filtered", up: "filtered", fine: "alert"}
+    (features,) = app.outcomes.db.execute("SELECT features FROM signals WHERE token = ? AND kind = 'filtered'",
+                                          (up,)).fetchone()
+    assert '"runup_live": 3.5' in features and "3.5x" in features
+    await app.rpc.close()

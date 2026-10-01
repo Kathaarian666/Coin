@@ -32,7 +32,8 @@ def test_every_report_is_valid_telegram_html():
     assert_valid(format_analysis(168, 40, [("rug riski puanı", [("0–20", s), ("<5", s)])]))
     assert_valid(format_findings(72, s, [("liq_usd_low", s)]))
     assert_valid(format_lateness(168, lateness_table([sig(runup_first=2.0, since_first_min=12, change_h1=600,
-                                                          change_m5=-5), sig()])))
+                                                          change_m5=-5, first_seen="shadow"), {**sig(first_seen="shadow", runup_first=1.2),
+                                                          "path": [(0, 1.0), (5, 1.6)], "held_all": 1.0}])))
     assert_valid(format_strategies(168, 100, [("2x'te sat (yoksa 1 saatte)", {"n": 1, "total": 5.0, "per_trade": 5.0,
                                                 "win_rate": 100.0, "best": 5.0, "without_best": 0.0, "exits": 0})]))
     winner = {"token": "0x" + "a" * 40, "symbol": "A<B", "multiple": 12.0, "hours_to_peak": 3, "peak_fdv": 50_000, "signals": [

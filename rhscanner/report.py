@@ -316,7 +316,18 @@ def format_lateness(hours: float, t: dict) -> list[str]:
         rows.append(f"   {title}: {s['n']} bildirim · 5x %{s['x5_all']} (kalıcı %{s['x5_held']}) · rug %{s['rugged']} · "
                     f"1s sonu {s['median_ret60']}x · kalıcı 5x'lerden kalan {s['kept_held']}/{t['held']}")
     blocks.append("\n".join(rows))
-    blocks.append("\n<i>Hedef: kalıcı 5x %30+. Geç gelen dilimler belirgin kötüyse artış sınırı filtresi eklenir.</i>")
+    for title, rows in t.get("confirm") or []:
+        lines = [f"<b>Fiyat hareketini bekle — {escape(title, quote=False)}</b> "
+                 f"(bildirimden sonra 60 dk içinde fiyat bu kadar yükselirse o anki fiyattan gir; sonuç girişe göre)"]
+        for label, c in rows:
+            if not c["entered"]:
+                lines.append(f"   {label}: giriş yok")
+                continue
+            lines.append(f"   {label}: {c['entered']}/{c['n']} giriş · kalıcı 5x %{c['x5_held']} · 2x %{c['x2']} · "
+                         f"1s sonra medyan {c['median_ret60']}x · girişten kalıcı 5x yapan {c['kept']} "
+                         f"(bildirimden kalıcı 5x yapan {c['winners']})")
+        blocks.append("\n".join(lines))
+    blocks.append("\n<i>Hedef: kalıcı 5x %30+. Beklemek isabeti artırıp kazananları çok azaltmıyorsa canlı kural olur.</i>")
     return _chunks(blocks)
 
 

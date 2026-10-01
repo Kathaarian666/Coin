@@ -195,6 +195,14 @@ class OutcomeLog:
         self.db.commit()
         return written
 
+    def first_sighting(self, token: str) -> tuple[float, float | None] | None:
+        """When the coin was first seen (its earliest shadow / filtered / alert signal) and the price then."""
+        row = self.db.execute(
+            "SELECT s.ts, m.price FROM signals s LEFT JOIN samples m ON m.signal_id = s.id AND m.minute = 0 "
+            "WHERE s.token = ? AND s.kind IN ('shadow', 'filtered', 'alert') ORDER BY s.ts LIMIT 1", (token.lower(),)
+        ).fetchone()
+        return (row[0], row[1]) if row else None
+
     # --- evaluation ---
     def results(self, hours: float, now: float | None = None) -> list[dict]:
         """Per-signal outcome metrics for signals at least an hour old, from the last `hours`."""
@@ -231,6 +239,7 @@ class OutcomeLog:
                 "features": feats,
                 "p0": p0,
                 "ts": ts,
+                "path": [(m, p / p0) for m, p, _ in priced],
             })
         self._attach_lateness(out)
         return out
@@ -598,4 +607,73 @@ def lateness_table(alerts: list[dict]) -> dict:
         "change_h1": split(alerts, "change_h1", [100, 500], ["<%100", "%100–500", "%500+"]),
         "change_m5": split(alerts, "change_m5", [0, 50], ["düşüşte (<%0)", "%0–50", "%50+"]),
         "sweep": sweep,
+        "confirm": confirm_table(alerts),
     }
+
+
+MAX_RUNUP = 3.0  # /gecfiltre: no alert once the price is this many times its first-sighting price
+
+
+def late_block(first: tuple[float, float | None] | None, now: float, price: float | None,
+               max_runup: float = MAX_RUNUP) -> tuple[str | None, float | None, float | None]:
+    """/gecfiltre at alert time: (reason to hold the alert back or None, price ÷ first-sighting price, minutes
+    since the first sighting). /gec: coins first seen over a day ago (an earlier wave) and coins already up 3x+
+    since first seen rarely held 5x and often rugged."""
+    if not first:
+        return None, None, None
+    first_ts, first_price = first
+    age_min = round(max(0.0, now - first_ts) / 60, 1)
+    if now - first_ts > LATE_WINDOW:
+        return f"önceki dalga (ilk görülme {age_min / 60:.0f} saat önce)", None, age_min
+    runup = round(price / first_price, 2) if price and first_price else None
+    if runup is not None and runup >= max_runup:
+        return f"ilk görülmeden bu yana {runup:g}x yükselmiş", runup, age_min
+    return None, runup, age_min
+
+
+CONFIRM_STEPS = (1.2, 1.3, 1.5)
+CONFIRM_WAIT_MIN = 60
+
+
+def confirm_entry(r: dict, step: float, wait_min: int = CONFIRM_WAIT_MIN) -> dict | None:
+    """Waiting for the price to move before buying: the first sample within `wait_min` minutes at `step` times
+    the alert price is the entry. None: it never moved that much (no trade). Outcomes are relative to the entry."""
+    path = r.get("path") or []
+    hit = next((i for i, (m, x) in enumerate(path) if 0 < m <= wait_min and x >= step), None)
+    if hit is None:
+        return None
+    entry_min, entry = path[hit]
+    after = [x / entry for _, x in path[hit:]]
+    at60 = next((x / entry for m, x in path[hit:] if m >= entry_min + 60), None)
+    return {"entry_min": entry_min, "entry": entry, "held": max((min(a, b) for a, b in zip(after, after[1:])), default=0),
+            "max": max(after), "ret_60": at60}
+
+
+def confirm_table(alerts: list[dict]) -> list[tuple[str, list[tuple[str, dict]]]]:
+    """/gec: buying at the alert vs waiting for the price to rise 20/30/50% first (within an hour), for the flat
+    alerts (1–1.5x since first sighting) and for all of them."""
+    def stats(rows, step):
+        held5 = [r for r in rows if (r.get("held_all") or 0) >= 5]
+        if step is None:
+            ret = [r["ret_60"] for r in rows if r.get("ret_60") is not None]
+            return {"n": len(rows), "entered": len(rows),
+                    "x5_held": round(100.0 * len(held5) / len(rows), 1) if rows else 0,
+                    "x2": round(100.0 * sum(1 for r in rows if (r.get("max_all") or 0) >= 2) / len(rows), 1) if rows else 0,
+                    "median_ret60": round(statistics.median(ret), 2) if ret else None,
+                    "kept": len(held5), "winners": len(held5)}
+        entries = [(r, e) for r in rows if (e := confirm_entry(r, step))]
+        ret = [e["ret_60"] for _, e in entries if e["ret_60"] is not None]
+        n = len(entries)
+        return {"n": len(rows), "entered": n,
+                "x5_held": round(100.0 * sum(1 for _, e in entries if e["held"] >= 5) / n, 1) if n else 0,
+                "x2": round(100.0 * sum(1 for _, e in entries if e["max"] >= 2) / n, 1) if n else 0,
+                "median_ret60": round(statistics.median(ret), 2) if ret else None,
+                "kept": sum(1 for r, e in entries if e["held"] >= 5), "winners": len(held5)}
+
+    flat = [r for r in alerts if (r.get("features") or {}).get("first_seen") == "shadow"
+            and 1.0 <= (r["features"].get("runup_first") or 0) < 1.5]
+    out = []
+    for title, rows in (("Fiyatı yerinde sayanlar (ilk görülmeden 1–1.5x)", flat), ("Tüm bildirimler", alerts)):
+        out.append((title, [("hemen gir", stats(rows, None)),
+                            *((f"%{round((k - 1) * 100)} yükselince gir", stats(rows, k)) for k in CONFIRM_STEPS)]))
+    return out

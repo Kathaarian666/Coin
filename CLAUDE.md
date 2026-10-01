@@ -59,7 +59,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~114 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~116 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`, `pons-backfill <gün>`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -82,7 +82,7 @@ alıcı ≥10 (`/minalici`) · 10 dk Fomo alımı ≥$500 (`/minhacim`) · **`/e
 Geçmiş veride bu set: bildirimlerin kalıcı 5x ~%22, 5x yapanları yakalama ~%90, rug ~%10.
 
 ## Telegram komutları (hepsi bot.py HELP'te)
-Ayar: `/minskor` `/minmomentum` `/momentumv2 ac|kapat` `/maxrug N|kapat` `/erken N|kapat` `/minalici`
+Ayar: `/minskor` `/minmomentum` `/gecfiltre ac|kapat` `/momentumv2 ac|kapat` `/maxrug N|kapat` `/erken N|kapat` `/minalici`
 `/minhacim` `/pozisyon` `/durdur` `/devam` `/durum`
 Ölçüm: `/karne [saat]` (gruplar, momentum/güven/rug kırılımı, ⚡ erken, ikinci dalga, ÇIK isabeti, ölçülemeyen
 sayısı) · `/analiz [saat]` (her özellik üç dilim: 2x/5x/kalıcı/rug) · `/bulgular [saat]` (güven bulgusu bazında) ·
@@ -154,7 +154,13 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     kaybı; 3x+ dilimi 35 sinyal rug %37 ama küçük). En büyük zayıf dilim: gölgeden bildirime fiyat 1–1.5x (299,
     kalıcı %8.7 ≈ gölge seviyesi); 1.5–3x %21.9. "Önceden görülmemiş" 64 bildirim %26.6 — ama `signals` token+tür
     başına tek kayıt olduğundan bu grup eski dalgadan dönenleri de içeriyordu → `first_seen` (self/old/unpriced/
-    shadow) ayrımı ve momentum ≥85 kırılımı eklendi, yeniden çalıştırılacak.
+    shadow) ayrımı ve momentum ≥85 kırılımı eklendi. İkinci `/gec 168`: "önceden hiç görülmemiş" yok; önceki dalga
+    (gölge >24s) 26 bildirim kalıcı %3.8; gölge fiyatı yok (çok yeni coin) 62 → %25.8; mom ≥85 & 3x+ 24 → %0, rug
+    %46; mom ≥85 & 1–1.5x 138 → %12.3; mom ≥85 & <1x %23.6, 1.5–3x %25.
+15. **1 Ekim**: `/gecfiltre ac|kapat` (varsayılan kapalı; `late_filter`): önceki dalga (ilk görülme >24s) ve ilk
+    görülmeden 3x+ yükselmiş coinlere bildirim yok (`filtered` kaydedilir; `runup_live`/`first_age_min`/`late_block`
+    özelliklerde). `/gec`'e "fiyat hareketini bekle" simülasyonu: bildirimden 60 dk içinde %20/30/50 yükselince
+    gir (`confirm_entry`, örnek fiyatlarından), 1–1.5x dilimi ve tüm bildirimler için.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan

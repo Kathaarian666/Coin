@@ -281,3 +281,26 @@ async def test_lateness_compares_alert_price_with_first_sighting():
     # a shadow from an earlier wave (over a day old) gives no starting point
     [r] = [r for r in log.results(hours=24, now=T0 + 7200) if r["token"] == old and r["kind"] == "alert"]
     assert r["features"]["first_seen"] == "old" and "runup_first" not in r["features"]
+
+
+def test_late_block_and_waiting_for_the_price_to_move():
+    from rhscanner.outcomes import confirm_entry, confirm_table, late_block
+    assert late_block(None, T0, 1.0) == (None, None, None)
+    reason, runup, age = late_block((T0 - 2 * 86400, 1.0), T0, 1.0)
+    assert "önceki dalga" in reason and age == 2880
+    assert late_block((T0 - 600, 1.0), T0, 3.0)[0] and late_block((T0 - 600, 1.0), T0, 2.9) == (None, 2.9, 10.0)
+    assert late_block((T0 - 600, None), T0, 9.0)[0] is None  # no price at the first sighting
+
+    mover = {"path": [(0, 1.0), (5, 1.1), (10, 1.4), (15, 3.0), (30, 8.0), (45, 7.5), (90, 7.0)],
+             "held_all": 7.5, "max_all": 8.0, "ret_60": 7.0, "features": {"first_seen": "shadow", "runup_first": 1.2}}
+    flat = {"path": [(0, 1.0), (5, 1.05), (60, 0.8)], "held_all": 1.0, "max_all": 1.05, "ret_60": 0.8,
+            "features": {"first_seen": "shadow", "runup_first": 1.1}}
+    e = confirm_entry(mover, 1.3)
+    assert e["entry_min"] == 10 and e["entry"] == 1.4 and round(e["held"], 2) == round(7.5 / 1.4, 2)
+    assert e["ret_60"] == 7.0 / 1.4  # first sample at least an hour after entry
+    assert confirm_entry(flat, 1.2) is None
+    [(title, rows), _] = confirm_table([mover, flat])
+    rows = dict(rows)
+    assert rows["hemen gir"]["entered"] == 2 and rows["hemen gir"]["winners"] == 1
+    assert rows["%30 yükselince gir"]["entered"] == 1 and rows["%30 yükselince gir"]["kept"] == 1
+    assert rows["%50 yükselince gir"]["kept"] == 0  # entered at 3.0: 7.5 / 3 is not 5x
