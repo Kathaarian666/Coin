@@ -234,3 +234,34 @@ async def test_late_filter_holds_back_coins_from_an_earlier_wave_or_already_up_3
                                           (up,)).fetchone()
     assert '"runup_live": 3.5' in features and "3.5x" in features
     await app.rpc.close()
+
+
+async def test_early_only_mode_mutes_normal_alerts_but_records_them(tmp_path):
+    from rhscanner.bot import Job
+    app = ScannerApp(Settings(db_path=str(tmp_path / "m.db"), use_dexscreener=False))
+    sent = []
+
+    async def fake_broadcast(text):
+        sent.append(text)
+
+    async def analyze(token, pool, fomo):
+        return {"token": token, "score": 60, "findings": [], "decimals": 18}
+
+    def attach(report):
+        report["momentum"] = {"score": 95, "reasons": [], "features": {}}
+        report["rug_risk"] = {"score": 0, "reasons": []}
+
+    app.broadcast, app.analyzer.analyze, app.attach_momentum = fake_broadcast, analyze, attach
+    app.settings.followup_min, app.settings.exit_checks_min = 0, []
+    app.storage.set_state("alert_mode", "erken")
+    app.storage.set_state("early_momentum", "90")
+    normal, early = "0x" + "4" * 40, "0x" + "5" * 40
+    await app.queue.put(Job(normal, from_fomo=True))
+    await app.queue.put(Job(early, early=True))
+    worker = asyncio.create_task(app.worker())
+    await app.queue.join()
+    worker.cancel()
+    assert len(sent) == 1 and "Erken sinyal" in sent[0]
+    rows = {t: f for t, f in app.outcomes.db.execute("SELECT token, features FROM signals WHERE kind = 'alert'")}
+    assert '"muted": true' in rows[normal] and '"muted": false' in rows[early]
+    await app.rpc.close()

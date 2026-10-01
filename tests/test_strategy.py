@@ -33,3 +33,19 @@ def test_alert_paths_from_the_log():
     (sid,) = log.db.execute("SELECT id FROM signals WHERE kind = 'alert'").fetchone()
     log.db.executemany("INSERT INTO samples VALUES (?, ?, 0, ?, NULL)", [(sid, 0, 2.0), (sid, 60, 3.0)])
     assert log.alert_paths(hours=48, now=86400 + 1010) == [([(0, 1.0), (60, 1.5)], 30)]
+
+
+def test_target_exit_needs_two_samples_and_respects_stop_and_time():
+    from rhscanner.strategy import held_hit, rule_name, target_exit, target_table
+    spike = [(0, 1.0), (5, 2.5), (10, 1.1), (60, 0.9)]
+    held = [(0, 1.0), (5, 1.4), (10, 2.2), (15, 2.1), (60, 1.0)]
+    dump = [(0, 1.0), (5, 0.6), (10, 3.0), (15, 3.0)]
+    rule = target_exit(2.0, 60)
+    assert rule(spike, None) == [(1.0, 0.9)]  # a one-sample spike is not a sale
+    assert rule(held, None) == [(1.0, 2.0)]
+    assert target_exit(2.0, 60, 0.7)(dump, None) == [(1.0, 0.6)]  # cut before the rebound
+    assert held_hit(held, 2.0) and not held_hit(spike, 2.0)
+    [row] = target_table([("g", [spike, held, dump])], 100, 0.5, 0.95)
+    assert row["n"] == 3 and row["held2"] == round(200 / 3, 1)
+    assert row["reference"]["n"] == 3 and len(row["best"]) == 4
+    assert rule_name((2.0, 60, 0.7)) == "2x'te sat, yoksa 60 dk'da çık, 0.7x'e düşerse kes"

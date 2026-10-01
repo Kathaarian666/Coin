@@ -20,16 +20,16 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, late_block, lateness_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, momentum_v2_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, late_block, lateness_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_backtest, format_lateness, format_exit, format_findings, format_followup,
+from .report import (format_analysis, format_backtest, format_lateness, format_targets, format_exit, format_findings, format_followup,
                      format_report, format_scorecard, format_signal, format_strategies, format_sweep,
                      format_winners)
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
 from .rugrisk import rug_bucket, rug_risk
 from .storage import Storage
-from .strategy import simulate
+from .strategy import simulate, target_table
 from .wallets import WalletBook
 from .winners import GeckoTerminal, find_winners
 
@@ -48,6 +48,7 @@ HELP = (
     "/minskor &lt;0-100&gt; — bu skorun altındakiler için bildirim gönderme\n"
     "/minmomentum &lt;0-100&gt; — momentumu bunun altındakiler için bildirim gönderme (0 = kapalı)\n"
     "/erken &lt;momentum&gt;|kapat — alıcı eşiğinden önce ⚡ erken sinyal (büyük, tutulan, sıfırdan başlayan alımlar)\n"
+    "/mod erken|hepsi — sadece ⚡ erken sinyalleri gönder (diğerleri sessizce ölçülür) ya da hepsini\n"
     "/gecfiltre ac|kapat — önceki dalgadan dönen ya da ilk görülmeden bu yana 3x+ yükselmiş coinleri bildirme\n"
     "/maxrug &lt;1-100&gt;|kapat — rug riski bunun üstündekiler için bildirim gönderme\n"
     "/minalici &lt;sayı&gt; — bildirim için gereken farklı Fomo alıcısı sayısı\n"
@@ -62,6 +63,7 @@ HELP = (
     "/geritest [saat] — yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle karşılaştır\n"
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
     "/sinyal &lt;adres&gt; — bir coin için kaydedilen sinyallerin tüm özellikleri ve sonucu\n"
+    "/hedef [saat] — 2x'te sat stratejisi: grupların işlem başı $ sonucu ve en iyi çıkış kuralları\n"
     "/gec [saat] — bildirimler ne kadar geç geldi, fiyat hareketini beklemek ne kazandırırdı\n"
     "/tarama [saat] — min momentum × min güven kombinasyonlarının isabeti ve yakalaması\n"
     "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (sabit $100 test tutarı)\n"
@@ -128,6 +130,11 @@ class ScannerApp:
     def early_momentum(self) -> int:
         """Momentum an early-entry alert needs (0 = early alerts off)."""
         return int(self.storage.get_state("early_momentum", "0"))
+
+    @property
+    def early_only(self) -> bool:
+        """/mod erken: only ⚡ early alerts go to Telegram; the rest are recorded as muted alerts."""
+        return self.storage.get_state("alert_mode", "hepsi") == "erken"
 
     @property
     def late_filter(self) -> bool:
@@ -333,6 +340,7 @@ class ScannerApp:
             "change_h1": (report.get("market") or {}).get("change_h1"),
             "findings": [f["code"] for f in report.get("findings", [])],
             "early": bool(report.get("early")),
+            "muted": bool(report.get("muted")),
             **{k: (report.get("deployer") or {}).get(k)
                for k in ("previous_launches", "launches_24h", "checked", "alive", "best_previous_fdv")},
         }
@@ -375,14 +383,16 @@ class ScannerApp:
                 momentum = (report.get("momentum") or {}).get("score") or 0
                 risk = (report.get("rug_risk") or {}).get("score") or 0
                 bar = max(self.min_momentum, self.early_momentum) if job.early else self.min_momentum
-                sent = (self.alerts_on and report["score"] >= self.min_score and momentum >= bar
-                        and risk < self.max_rug and not (self.late_filter and late))
+                passes = (self.alerts_on and report["score"] >= self.min_score and momentum >= bar
+                          and risk < self.max_rug and not (self.late_filter and late))
+                sent = passes and (job.early or not self.early_only)
+                report["muted"] = passes and not sent
                 if job.early:
                     # an early check that fails leaves the coin to the normal buyer bar; one that passes claims it
                     if not sent or not self.storage.mark_alerted(job.token):
                         continue
                     report["early"] = True
-                self.record_outcome(report, "alert" if sent else "filtered")
+                self.record_outcome(report, "alert" if passes else "filtered")
                 if sent:
                     header = ("⚡ Erken sinyal (alım sıfırdan başladı, büyük ve tutulan alımlar)" if job.early
                               else "🔥 Fomo'da yükselen token" if job.from_fomo else "🆕 Yeni havuz")
@@ -558,6 +568,8 @@ class ScannerApp:
             ("🚫 Filtreye takılanlar", summarize(by_kind["filtered"])),
             ("👤 Gölge grup", summarize(by_kind["shadow"])),
             ("⚡ Erken bildirimler", summarize([r for r in by_kind["alert"] if (r.get("features") or {}).get("early")])),
+            ("🔕 Sessiz (erken modda gönderilmeyen, eşikleri geçen)",
+             summarize([r for r in by_kind["alert"] if (r.get("features") or {}).get("muted")])),
             ("🔁 İkinci dalga (ölçüm, bildirim yok)", summarize(by_kind["wave2"])),
         ]
         for bucket in ("🚀 70+", "🟡 45-69"):
@@ -765,6 +777,38 @@ class ScannerApp:
         self.storage.set_state("max_rug", arg)
         await update.message.reply_text(f"✅ Rug riski {arg} ve üstü olanlar artık bildirilmeyecek.")
 
+    async def cmd_mode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        arg = (context.args or [""])[0].lower()
+        if arg not in ("erken", "hepsi"):
+            await update.message.reply_text(
+                f"Kullanım: /mod erken | hepsi (şu an: {'erken' if self.early_only else 'hepsi'})\n"
+                "erken: sadece ⚡ erken sinyaller gönderilir; diğerleri gönderilmeden kaydedilir (karnede 🔕 Sessiz).")
+            return
+        self.storage.set_state("alert_mode", arg)
+        await update.message.reply_text("✅ Artık sadece ⚡ erken sinyaller gönderilecek." if arg == "erken"
+                                        else "✅ Artık eşikleri geçen tüm coinler bildirilecek.")
+
+    async def cmd_targets(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 168.0
+        cutoff = time.time() - 3 * 3600  # every exit rule (up to 2 hours) has played out
+        results = sorted((r for r in self.outcomes.results(hours) if r["ts"] <= cutoff), key=lambda r: r["ts"])
+        alerts = [r for r in results if r["kind"] == "alert"]
+        early = lambda r: (r.get("features") or {}).get("early")  # noqa: E731
+        rule_a = [r for r in results if r["kind"] == "shadow" and early_entry(r.get("features") or {}, "A")
+                  and ((r.get("features") or {}).get("buyers_10m") or 0) < self.min_buyers]
+        groups = [("⚡ Erken bildirimler", [r["path"] for r in alerts if early(r)]),
+                  ("Normal bildirimler (erken olmayan)", [r["path"] for r in alerts if not early(r)])]
+        for bar in (85, 90):
+            groups.append((f"Erken kural A, gölgeler, momentum ≥{bar}",
+                           [r["path"] for r in rule_a if (momentum_v2_of(r) or 0) >= bar]))
+        rows = target_table(groups, TEST_POSITION_USD, self.settings.fomo_fee_pct, self.settings.fomo_fee_min_usd)
+        for text in format_targets(hours, TEST_POSITION_USD, rows):
+            await update.message.reply_html(text)
+
     async def cmd_late_filter(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -845,6 +889,7 @@ class ScannerApp:
             f"Maks. rug riski: {'kapalı' if self.max_rug > 100 else self.max_rug} · "
             f"Erken sinyal: {('momentum ≥' + str(self.early_momentum)) if self.early_momentum else 'kapalı'} · "
             f"Geç kalma filtresi: {'açık' if self.late_filter else 'kapalı'} · "
+            f"Mod: {'sadece ⚡ erken' if self.early_only else 'hepsi'} · "
             f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
         )
 
@@ -905,6 +950,8 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("maxrug", self.cmd_max_rug))
         self.app.add_handler(CommandHandler("erken", self.cmd_early))
         self.app.add_handler(CommandHandler("gecfiltre", self.cmd_late_filter))
+        self.app.add_handler(CommandHandler("mod", self.cmd_mode))
+        self.app.add_handler(CommandHandler("hedef", self.cmd_targets))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

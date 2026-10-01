@@ -474,6 +474,36 @@ def format_strategies(hours: float, position: float, rows: list[tuple[str, dict]
     return _chunks(blocks)
 
 
+def format_targets(hours: float, position: float, rows: list[dict]) -> list[str]:
+    """/hedef: the 2x-and-out view of each signal group, with Fomo's fees on a fixed test size."""
+    from .strategy import rule_name
+
+    def money(r: dict) -> str:
+        halves = (f" (eski yarı {r['old']:+.2f}$ · yeni yarı {r['new']:+.2f}$)"
+                  if r.get("old") is not None and r.get("new") is not None else "")
+        return f"işlem başı {r['per_trade']:+.2f}$ · toplam {r['total']:+,.2f}$ · kârlı %{r['win_rate']}{halves}"
+
+    blocks = [f"🎯 <b>2x hedef raporu — son {hours:g} saat</b>\n"
+              f"<i>Her sinyale ${position:g} girilmiş gibi, Fomo komisyonu dahil. Hedef \"tutuldu\" = art arda iki "
+              f"fiyat ölçümünde hedefin üstünde (tek iğne sayılmaz). Fiyatlar 5-30 dk aralıklı ölçümlerden. "
+              f"Eski/yeni yarı: kural iki dönemde de kazandırıyorsa güvenilir.</i>\n"]
+    for row in rows:
+        lines = [f"<b>{escape(row['title'], quote=False)}</b> ({row['n']} sinyal)"]
+        if not row["n"]:
+            lines.append("   veri yok")
+            blocks.append("\n".join(lines))
+            continue
+        lines.append(f"   1 saatte tutulan 1.5x: %{row['held15']} · tutulan 2x: %{row['held2']}")
+        lines.append(f"   2x'te sat, yoksa 60 dk'da çık: {money(row['reference'])}")
+        lines.append("   En iyi kurallar:")
+        for i, (key, r) in enumerate(row["best"], 1):
+            lines.append(f"   {i}. {escape(rule_name(key), quote=False)}: {money(r)}")
+        blocks.append("\n".join(lines))
+    blocks.append("\n<i>Az sinyalli grupta (20'den az) sonuçlar şansa açık. Simülasyon iyimser: tepki süresi ve "
+                  "sığ havuzda kayma yok.</i>")
+    return _chunks(blocks)
+
+
 def format_sweep(hours: float, total: int, winners: int, rows: list[dict], current: tuple[int, int],
                  rug_rows: list[tuple[str, dict]] | None = None) -> list[str]:
     """/tarama: alert bars side by side; sorted by the share of 5x signals caught, then by precision."""

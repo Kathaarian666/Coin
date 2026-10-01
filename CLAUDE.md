@@ -59,7 +59,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~116 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~118 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`, `pons-backfill <gün>`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -82,14 +82,14 @@ alıcı ≥10 (`/minalici`) · 10 dk Fomo alımı ≥$500 (`/minhacim`) · **`/e
 Geçmiş veride bu set: bildirimlerin kalıcı 5x ~%22, 5x yapanları yakalama ~%90, rug ~%10.
 
 ## Telegram komutları (hepsi bot.py HELP'te)
-Ayar: `/minskor` `/minmomentum` `/gecfiltre ac|kapat` `/momentumv2 ac|kapat` `/maxrug N|kapat` `/erken N|kapat` `/minalici`
+Ayar: `/mod erken|hepsi` `/minskor` `/minmomentum` `/gecfiltre ac|kapat` `/momentumv2 ac|kapat` `/maxrug N|kapat` `/erken N|kapat` `/minalici`
 `/minhacim` `/pozisyon` `/durdur` `/devam` `/durum`
 Ölçüm: `/karne [saat]` (gruplar, momentum/güven/rug kırılımı, ⚡ erken, ikinci dalga, ÇIK isabeti, ölçülemeyen
 sayısı) · `/analiz [saat]` (her özellik üç dilim: 2x/5x/kalıcı/rug) · `/bulgular [saat]` (güven bulgusu bazında) ·
 `/tarama [saat]` (min momentum × min güven ızgarası + rug filtresi, kalıcı 5x yakalama) · `/geritest [saat]` (v1 vs
 v2 eski/yeni yarı; küçük coin alıcı eşiği 8; erken kural A/B × momentum 0-90) · `/kazananlar [gün] [kat]`
 (GeckoTerminal 10x+ coinler; bot yakaladı mı, hangi eşik engelledi, her birinin `/sinyal` komutu; ~8 dk sınırı) ·
-`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
+`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/hedef [saat]` (2x al-çık: grupların işlem başı $, en iyi çıkış kuralları, eski/yeni yarı) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
 bildirim anı 5 dk/1 s fiyat değişimi, artış sınırı taraması).
 Diğer: `/check <adres>`, `/trend`, `/akilli`.
 
@@ -165,7 +165,15 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     sadece 35/99'u kalır; 1–1.5x dilimde de 30→13. Kazananlar hızlı ve büyük gidiyor; bekleme fikri bırakıldı.
     `/gecfiltre` (3x+ ve önceki dalga) 71 bildirim eler, 2 kazanan kaybı → kalıcı ~%12.9→~%13.9, rug düşer.
     %30 hedefi mevcut özelliklerle hacimli bir dilimde yok: en iyi dilimler ~%24-26 (mom ≥85 & <1x veya 1.5–3x,
-    gölge fiyatı yok = çok yeni coin), %30+ sadece ⚡ erken ≥90 (az sinyal). Öneri: bildirimlere güçlü/normal sınıf.
+    gölge fiyatı yok = çok yeni coin), %30+ sadece ⚡ erken ≥90 (az sinyal).
+16. **YÖN DEĞİŞİKLİĞİ (1 Ekim, kullanıcı kararı)**: tek yönteme odaklan = **⚡ erken sinyal**; hedef artık kalıcı 5x
+    değil **"2x al-çık"** (sonra 5-10x giderse gitsin). Gerekçe: erken canlıda 1s 2x %44, 1.5x %64, 1s sonu medyan
+    1.61x, rug %4 (normal: %30 / 1.0x). İki sınıf fikri bırakıldı (kullanıcı tek akış istiyor). Eklenenler:
+    `/mod erken|hepsi` (`alert_mode`; erken modda normal bildirimler gönderilmez ama `alert` + `features.muted`
+    olarak kaydedilir, takip/ÇIK yok; karnede 🔕 Sessiz grubu — "Bildirim gidenler" sessizleri de içerir) ·
+    `/hedef [saat]` (`strategy.target_exit/target_table`: hedef 1.5/2/3x × süre 30/60/120 dk × stop yok/0.7x;
+    hedef ancak art arda iki örnekte tutulursa satılır; sabit $100 + komisyon; eski/yeni yarı $; gruplar: ⚡ erken,
+    normal, kural A gölgeleri mom ≥85/≥90; ≥3 saatlik sinyaller).
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
@@ -185,7 +193,9 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 1. **Canlı doğrulama (30 Eylül hatırlatması bu eski sohbete gelir; yeni sohbette kullanıcıdan çıktıları iste)**:
    `/karne 72` (⚡ Erken bildirimler grubu: kalıcı 5x ~%45 tutuyor mu; bildirim gidenler kalıcı 5x ~%22+),
    `/geritest`, `/kazananlar`. Erken kural canlıda kötüyse `/erken 90` veya kapat; iyiyse 80'i dene.
-0. **Geç kalma (`/gec 168`)**: çıktıya göre artış sınırı filtresi / momentum cezası; hedef kalıcı 5x %30+.
+0. **⚡ Erken odak (1 Ekim)**: `/mod erken` + `/hedef 168` çıktısıyla en iyi çıkış kuralını seç; sonra erken kuralın
+   parametrelerini (son 5 dk alıcı, alıcı başına $, tutma, momentum) $ sonucuna göre optimize et — eski/yeni yarı
+   ayrımıyla, aşırı uydurmaya dikkat (canlı erken sinyal az). Gölge kural A sinyalleri veri büyütür.
 1b. **ÇIK sinyalini düzeltmek** (kullanıcı: öncelikli değil): hangi ÇIK nedeni (dev/balina/kim satıyor) tutuyor, `/karne`'de nedene göre kırılım.
 2. **İkinci dalga bildirimi**: wave2 grubu karnede iyi çıkarsa (momentum kırılımıyla) bildirimi aç (ROBINPEPE gibi
    saatler içinde büyüyenler için).

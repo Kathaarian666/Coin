@@ -4,7 +4,7 @@ command then answers nothing. Only <b>, <i>, <code> and <a href> are used."""
 import re
 
 from rhscanner.outcomes import lateness_table, rug_filter_sweep, summarize
-from rhscanner.report import (format_analysis, format_backtest, format_findings, format_lateness, format_scorecard, format_strategies,
+from rhscanner.report import (format_analysis, format_backtest, format_findings, format_lateness, format_scorecard, format_targets, format_strategies,
                               format_sweep, format_winners)
 
 ALLOWED = re.compile(r"</?(b|i|code)>|<a href=\"[^\"]*\">|</a>")
@@ -31,6 +31,9 @@ def test_every_report_is_valid_telegram_html():
     assert_valid(format_backtest(168, 30, 75, halves, True, s, 10, {("A", 0): s, ("A", 80): s, ("B", 0): {"n": 0}}))
     assert_valid(format_analysis(168, 40, [("rug riski puanı", [("0–20", s), ("<5", s)])]))
     assert_valid(format_findings(72, s, [("liq_usd_low", s)]))
+    from rhscanner.strategy import target_table
+    assert_valid(format_targets(168, 100, target_table([("⚡ Erken <test>", [[(0, 1.0), (5, 2.0), (10, 2.1)]]),
+                                                        ("boş", [])], 100, 0.5, 0.95)))
     assert_valid(format_lateness(168, lateness_table([sig(runup_first=2.0, since_first_min=12, change_h1=600,
                                                           change_m5=-5, first_seen="shadow"), {**sig(first_seen="shadow", runup_first=1.2),
                                                           "path": [(0, 1.0), (5, 1.6)], "held_all": 1.0}])))

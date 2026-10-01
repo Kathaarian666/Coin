@@ -97,3 +97,71 @@ def simulate(paths: list[tuple[list[tuple[int, float]], int | None]], position: 
             "best": round(max(pnls), 2),
         }))
     return out
+
+
+def target_exit(target: float, time_stop: int, stop: float | None = None) -> Rule:
+    """Sell everything at `target` once two samples in a row reach it (one sample can be a spike on a thin pool
+    that nobody could sell into), at the first sample at or under `stop` (at that sample's price), else at
+    `time_stop` minutes."""
+    def rule(path, exit_min):
+        for i, (m, x) in enumerate(path):
+            if m > time_stop:
+                break
+            if stop is not None and m > 0 and x <= stop:
+                return [(1.0, x)]
+            if x >= target and i + 1 < len(path) and path[i + 1][1] >= target:
+                return [(1.0, target)]
+        return [(1.0, _at(path, time_stop))]
+    return rule
+
+
+TARGETS = (1.5, 2.0, 3.0)
+TIME_STOPS = (30, 60, 120)
+STOPS = (None, 0.7)
+REFERENCE = (2.0, 60, None)
+
+
+def target_rules() -> list[tuple[tuple[float, int, float | None], Rule]]:
+    return [((t, m, s), target_exit(t, m, s)) for t in TARGETS for m in TIME_STOPS for s in STOPS]
+
+
+def target_stats(paths: list[list[tuple[int, float]]], rule: Rule, position: float, fee_pct: float,
+                 fee_min: float) -> dict:
+    """$ result of one exit rule over signals (oldest first), overall and in the older / newer half."""
+    pnls = [trade_pnl(rule(p, None), position, fee_pct, fee_min) for p in paths if p]
+    if not pnls:
+        return {"n": 0}
+    half = len(pnls) // 2
+    per = lambda xs: round(sum(xs) / len(xs), 2) if xs else None  # noqa: E731
+    return {"n": len(pnls), "per_trade": per(pnls), "total": round(sum(pnls), 2),
+            "win_rate": round(100.0 * sum(1 for p in pnls if p > 0) / len(pnls), 1),
+            "old": per(pnls[:half]), "new": per(pnls[half:])}
+
+
+def held_hit(path: list[tuple[int, float]], target: float, within: int = 60) -> bool:
+    """The price at `target`x or more in two samples in a row, the first within `within` minutes."""
+    return any(m <= within and x >= target and b >= target for (m, x), (_, b) in zip(path, path[1:]))
+
+
+def target_table(groups: list[tuple[str, list[list[tuple[int, float]]]]], position: float, fee_pct: float,
+                 fee_min: float, top: int = 4) -> list[dict]:
+    """/hedef: per group of signals (price paths, oldest first) how often 1.5x / 2x held within an hour, the
+    reference rule (2x, else out at 60 min) and the best exit rules by $ per trade."""
+    out = []
+    for title, paths in groups:
+        paths = [p for p in paths if p]
+        row = {"title": title, "n": len(paths)}
+        if paths:
+            row["held15"] = round(100.0 * sum(held_hit(p, 1.5) for p in paths) / len(paths), 1)
+            row["held2"] = round(100.0 * sum(held_hit(p, 2.0) for p in paths) / len(paths), 1)
+            rules = [(key, target_stats(paths, rule, position, fee_pct, fee_min)) for key, rule in target_rules()]
+            row["reference"] = dict(rules)[REFERENCE]
+            row["best"] = sorted(rules, key=lambda kr: -kr[1]["per_trade"])[:top]
+        out.append(row)
+    return out
+
+
+def rule_name(key: tuple[float, int, float | None]) -> str:
+    target, minutes, stop = key
+    text = f"{target:g}x'te sat, yoksa {minutes} dk'da çık"
+    return text + (f", {stop:g}x'e düşerse kes" if stop else "")
