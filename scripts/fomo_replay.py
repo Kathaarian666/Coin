@@ -55,9 +55,8 @@ def features(ts, side, trader, usd, i):
 def outcome(ts, side, price, t_signal, delay, targets):
     """Multiples for a buy `delay` s after the signal; None if no buy came within 10 minutes.
 
-    Prices are real Fomo fills (buys and sells, USDG per token). A target counts when someone sold at or above
-    it within the hour, or two trades in a row printed it; else the sale is at the median price of the trades
-    in the 10 minutes around the hour (sells preferred). With no trade at all in the 20 minutes before the hour
+    Prices are real Fomo fills (USDG per token). A target counts when two buys in a row paid at least that
+    within the hour; else the sale is at the median price of the trades in the 10 minutes around the hour. With no trade at all in the 20 minutes before the hour
     the coin is taken as dying: half its last price."""
     j = bisect.bisect_left(ts, t_signal + delay)
     while j < len(ts) and not (side[j] and price[j]) and ts[j] <= t_signal + delay + 600:
@@ -68,8 +67,7 @@ def outcome(ts, side, price, t_signal, delay, targets):
     end = bisect.bisect_right(ts, t_in + HOLD_SEC)
     path = [(ts[k], side[k], price[k] / p_in) for k in range(j + 1, end) if price[k]]
     lo, hi = bisect.bisect_left(ts, t_in + HOLD_SEC - 600), bisect.bisect_right(ts, t_in + HOLD_SEC + 600)
-    around_sells = [price[k] / p_in for k in range(lo, hi) if price[k] and not side[k]]
-    around = around_sells or [price[k] / p_in for k in range(lo, hi) if price[k]]
+    around = [price[k] / p_in for k in range(lo, hi) if price[k]]
     recent = [x for t, _, x in path if t >= t_in + HOLD_SEC - 1200]
     dead = not around and not recent
     if around:
@@ -79,7 +77,10 @@ def outcome(ts, side, price, t_signal, delay, targets):
     else:
         after = (path[-1][2] if path else 1.0) * 0.5
     xs = [x for _, _, x in path]
-    held = [min(a, b) for a, b in zip(xs, xs[1:])] + [x for _, sd, x in path if not sd]
+    # buys only: a sell's dollar size comes from the USDG in its transaction, and Fomo batches several users'
+    # trades in one transaction now and then (5% of sells print over 2x the buy before them)
+    buys = [x for _, sd, x in path if sd]
+    held = [min(a, b) for a, b in zip(buys, buys[1:])]
     out = {"dead": dead, "at60": after, "peak": max(held, default=1.0)}
     for target in targets:
         out[target] = target if any(h >= target for h in held) else after
