@@ -112,6 +112,16 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   düzeltildi (havuz derinliği sinyal sonrası işlemlerden / coinin tüm ömründen hesaplanıyordu → sahte +$13-36).
   **Sonuç: sadece Fomo akışıyla "2x olacak" coin seçmenin örnek dışı kârlı kuralı yok.** Dilimlerde en iyi: havuz
   derinliği $9-34k (%45 2x, ~$0), FDV < $200k, büyük 10 dk hacmi; en kötü: sığ havuz < $9k (%28), FDV > $200k.
+- **Dış güvenlik / geliştirici / kopya denemeleri (1 Ekim, kullanıcı "bekleme yok" dedi)**: GoPlus (`api.gopluslabs.io`,
+  ücretsiz, 4663'ü destekliyor, tek sorguda 1 coin) Pons coinlerinde geçmiş testine yaramıyor: şablon aynı (vergi/mint
+  /sahiplik sabit), "creator" fabrika adresi, ayırıyor görünenler (dex'te mi, holder sayısı) bugünkü durum = sızıntı.
+  Canlıda ek kontrol olabilir. Pons lansmanları (`scripts/pons_launches.py`, 32 günde 627k, RPC'den dakikalar):
+  geliştiricilerin %88'i tek coin; önceki lansman sayısı 2x oranını ayırmıyor (%28-37); dev Fomo kullanıcısı %1.
+  Cüzdan kopyalama (`scripts/copy_study.py`): cüzdan başarısı kalıcı değil (yarılar arası sıra korelasyonu ~0.1).
+  "Her coinin ilk Fomo alımından 30 sn sonra gir" sonuçları ölçüm hatalarıyla şişti (gelecekte alım olmasını şart
+  koşan giriş, %0.5 sanılan $0.95 min. komisyon, tek bozuk fiyat basımları → +$1343 gibi imkânsız değerler); son
+  düzeltilmiş sürüm çalıştırılmadı, kullanıcı durdurdu. Kesin ders: 60 dk içinde çıkmak 72 s tutmaktan açıkça iyi;
+  $100'da al-sat maliyeti 1x'te ~$5 ($5.6k havuz) – $19 ($1k havuz).
 
 ## Sıradaki işler
 1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
