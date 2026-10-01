@@ -122,6 +122,13 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   koşan giriş, %0.5 sanılan $0.95 min. komisyon, tek bozuk fiyat basımları → +$1343 gibi imkânsız değerler); son
   düzeltilmiş sürüm çalıştırılmadı, kullanıcı durdurdu. Kesin ders: 60 dk içinde çıkmak 72 s tutmaktan açıkça iyi;
   $100'da al-sat maliyeti 1x'te ~$5 ($5.6k havuz) – $19 ($1k havuz).
+- **"Gözümle 10x-100x görüyorum" kontrolü (1 Ekim, `scripts/ride_test.py`)**: 18-30 Eyl ilk Fomo fiyatından 10x+ yapan
+  günde ~44 coin (zirve medyan 19x, zirveye ~4 saat). 10. alıcıda (medyan 12. dk) bunlar zaten 2.4x, kalan yükseliş
+  medyan 8.6x (%92'sinde ≥2x kaldı) → yakalanabilir; ama aynı anda 10 alıcıya ulaşan ~264 coin/gün, girişten sonra
+  ≥2x %33, ≥10x %6. Her coine girip (k. alıcı +30 sn, kayma+komisyon, coin başı tavan 100x): **3. alıcı + yarısı 2x'te,
+  kalanı zirveden %30 düşüşte (iz süren stop): +$10.2/işlem, en iyi %1 hariç +$2.1, 11/11 artı gün** (441/gün);
+  5. alıcı +$6.9 (−$0.6), 10. alıcı +$4.2 (−$1.6); tamamını tutmak / sadece 2x hep eksi. Erken giriş + kazananı
+  koşturma tek umut veren yapı; kayma varsayılan $5.6k derinlikle (erken anda bilinmiyor) → kötümser maliyetle doğrulanmalı.
 
 ## Sıradaki işler
 1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
