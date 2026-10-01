@@ -192,7 +192,16 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     `Transfer(to=executor)` logları ayrıca çekilip tx'e göre eşleniyor. `scripts/fomo_replay.py <db>`: her alımda
     kural A özellikleri, ilk eşleşme = sinyal; gerçek Fomo fiyatlarıyla 30/60/120 sn gecikmeli giriş, 2x/3x hedef
     (birisi o fiyattan sattıysa) yoksa 60. dk; FDV (1B arz varsayımı) ve Fomo yaşı ile ızgara, eski/yeni yarı.
-    Momentum ve güven zincirden hesaplanamaz.
+    Momentum ve güven zincirden hesaplanamaz. Veri hataları düzeltildi: satış $'ı tx'teki en büyük USDG transferi
+    olduğundan Fomo'nun toplu tx'lerinde ~%5 satış 2x+ pahalı görünüyordu → hedef sadece art arda iki ALIM fiyatıyla,
+    saat sonu fiyatı alımların medyanı. Kalibrasyon: gevşek kural "1s 2x" %22 = botun gölge ölçümü (tutarlı).
+    **Sonuç (14 gün, 4.6M işlem, 120k aday an, 5.8k coin)**: sadece Fomo verisiyle (momentum yok) en iyi kurallar
+    son 5 dk ≥8 alıcı · önceki 0 · alıcı başı ≥$200 · tutma ≥0.9-1.0 · FDV ≤$50k · yaş ≤6s: ~5 sinyal/gün, 3x/60dk
+    ham ort. 30-60 sn gecikmeyle +$22-28, en iyi %5 hariç +$9-13, **medyan −$23** (çoğu işlem ~%23 kaybeder, ~%25'i
+    3x yapar), iki yarıda da pozitif. Canlı kuralın Fomo kısmı (5/0/$50/0.8, momentumsuz): ham +$12-18, %5 hariç
+    −$11 → momentum filtresi şart. Botun `/hedef` ölçümü (erken mom ≥90: +$70-100) zincir fiyatlarıyla
+    doğrulanmadı — sıradaki adım: bottaki erken sinyallerin (adres+zaman) listesini replay'de gerçek fiyatlarla
+    değerlendirmek.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
