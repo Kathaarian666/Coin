@@ -129,6 +129,18 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   kalanı zirveden %30 düşüşte (iz süren stop): +$10.2/işlem, en iyi %1 hariç +$2.1, 11/11 artı gün** (441/gün);
   5. alıcı +$6.9 (−$0.6), 10. alıcı +$4.2 (−$1.6); tamamını tutmak / sadece 2x hep eksi. Erken giriş + kazananı
   koşturma tek umut veren yapı; kayma varsayılan $5.6k derinlikle (erken anda bilinmiyor) → kötümser maliyetle doğrulanmalı.
+- **Kazananların ortak noktaları (1 Ekim, `scripts/winner_study.py` + `winner_report.py`; kullanıcı: "önce tespit, maliyet
+  sonra")**: internet araştırması (Pump.fun akademik çalışmaları, GMGN/Axiom kontrol listeleri): en güçlü erken sinyal
+  "az işlemle hızlı para birikimi" (büyük, kararlı alımlar), alıcı hızı, hacmin çok cüzdana yayılması, satış olmaması,
+  akıllı cüzdan (küçük etki); risk: top10/dev/bundle/sniper/yeni cüzdan payları (bizde arz dağılımı yok). Veride:
+  coinin 3./5./10./20. alıcısının geldiği an, sadece o ana kadarki bilgi; etiket = o anki fiyattan 72 s içinde tutulan
+  zirve. O andan sonra ≥10x: %6-7 (her kontrol noktasında). **Kazananlar (≥10x) vs <2x medyan**: işlem başı $ 65-81 vs
+  40-54, toplam $ ~1.5x, k. alıcıya daha hızlı (5. alıcı 3.9 vs 6.3 dk, 10. alıcı 6.9 vs 12.2 dk), en büyük alıcının
+  payı daha düşük, henüz satan yok, FDV daha düşük ($14k vs $18k), lansmana daha yakın, biraz daha fazla akıllı cüzdan.
+  Lansmancı geçmişi, yeni cüzdan payı, piyasa genel hareketi ayırmıyor. Model test AUC 0.63-0.66 (20. alıcıda 0.58).
+  **Puanlı tarama** (6 kriter: işlem başı ≥$100 · k. alıcıya ≤k/2 dk · satan yok · en büyük alıcı payı ≤0.5 (k≤5) / ≤0.3 ·
+  FDV ≤$10k · akıllı cüzdan ≥max(2,k/2)), test döneminde (son %35): 3. alıcıda puan ≥4 → 10x %12 (295 coin), puan
+  0-2 → %4-6; 10. alıcıda puan 5-6 → 10x %22, 5x %30 (23 coin), taban ~%6. Yani ~2-3 kat seçicilik; isabet hâlâ ~%10-20.
 
 ## Sıradaki işler
 1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
