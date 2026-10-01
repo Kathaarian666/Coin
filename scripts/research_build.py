@@ -25,7 +25,7 @@ from fomo_replay import FEE_MIN, FEE_PCT, POSITION, outcome  # noqa: E402
 from rhscanner.flow import flow_features  # noqa: E402
 from rhscanner.strategy import trade_pnl  # noqa: E402
 
-DELAYS = (30, 60)
+DELAYS = (5, 15, 30, 60)
 TARGETS = (2.0, 3.0)
 WIN_MULTIPLE = 2.0
 

@@ -34,7 +34,10 @@ def main():
     db = sqlite3.connect(sys.argv[1])
     db.execute("CREATE TABLE IF NOT EXISTS supply (addr TEXT PRIMARY KEY, raw REAL)")
     have = {a for (a,) in db.execute("SELECT addr FROM supply")}
-    todo = [a for (a,) in db.execute("SELECT addr FROM names WHERE kind = 'token'") if a not in have]
+    # coins with a few trades never make a candidate: skip them (the public RPC is shared with downloads)
+    todo = [a for (a,) in db.execute(
+        "SELECT n.addr FROM names n JOIN (SELECT token, COUNT(*) c FROM trades GROUP BY token) t ON t.token = n.id "
+        "WHERE n.kind = 'token' AND t.c >= 20") if a not in have]
     for k in range(0, len(todo), 50):
         chunk = todo[k:k + 50]
         res = batch(chunk)

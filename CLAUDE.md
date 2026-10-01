@@ -220,7 +220,12 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     eksik yeni günler `fomo_download.py` ile indirilip `data_export.py fomo.db /tmp/veri` + commit/push ile eklenir.
     `install.sh` artık `--single-branch` (sunucu veri dalını çekmez). FDV: `fomo_supply.py` (totalSupply ham).
     Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir. İlk 14 gün modeli (FDV düzeltmesi öncesi):
-    saf Fomo akışıyla test döneminde kalıcı kenar YOK (eğitimde iyi görünenler test'te ~0/negatif).
+    saf Fomo akışıyla test döneminde kalıcı kenar YOK (eğitimde iyi görünenler test'te ~0/negatif). FDV düzeltmesi
+    sonrası (gerçek arz) aynı: kazancı 3x'te sınırlı ortalama + bootstrap %90 güven aralığı ile model en iyi %0.5-5:
+    valid +$9-22 (GA sıfırın üstünde) ama **test −$3…+$4 (GA sıfırı içeriyor)**; taban test −$7.7; canlı A'nın Fomo
+    kısmı test −$1. Ham ortalamadaki büyük değerler ($3-60k) saat sonu fiyatındaki veri hatası uç değerleri.
+    Yorum: 30 sn gecikmeyle alıcı fiyatından girince Fomo akışında kalıcı kâr görünmüyor. 30 günlük veriyle teyit
+    + 5/15 sn gecikme testi (hız yarışı mı?) sırada.
     Hedef: canlıya analiz beklemeden saniyeler içinde giden saf Fomo kuralı + sonuçların Fomo fiyatlarıyla ölçümü.
 
 ## Denenip bırakılanlar / yapılamayanlar
