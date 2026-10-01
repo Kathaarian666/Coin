@@ -1,6 +1,6 @@
 """Download every Fomo trade of the last N days from the chain into a SQLite file (resumable).
 
-  python scripts/fomo_download.py <days> <out.db>
+  python scripts/fomo_download.py <days> <out.db> [until_days_ago]
 
 Trades are parsed like the live watcher (rhscanner.fomo.parse_fomo_logs); block times are interpolated
 from block headers sampled every SAMPLE_BLOCKS. Used by scripts/fomo_replay.py for backtests.
@@ -80,7 +80,8 @@ def main():
     head = int(call("eth_blockNumber", []), 16)
     state = dict(db.execute("SELECT k, v FROM state"))
     start = int(state.get("start", head - int(days * DAY_BLOCKS)))
-    end = int(state.get("end", head))
+    until = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
+    end = int(state.get("end", head - int(until * DAY_BLOCKS)))
     done = int(state.get("done", start))
     db.execute("INSERT OR REPLACE INTO state VALUES ('start', ?), ('end', ?)", (str(start), str(end)))
     step, t0 = 8000, time.time()
