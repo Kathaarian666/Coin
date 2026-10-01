@@ -111,8 +111,19 @@ def target_exit(target: float, time_stop: int, stop: float | None = None) -> Rul
                 return [(1.0, x)]
             if x >= target and i + 1 < len(path) and path[i + 1][1] >= target:
                 return [(1.0, target)]
-        return [(1.0, _at(path, time_stop))]
+        # at the time stop, no better than the next sample either: one high sample can be a spike
+        after = [x for m, x in path if m > time_stop][:1]
+        return [(1.0, min([_at(path, time_stop), *after]))]
     return rule
+
+
+def delayed(path: list[tuple[int, float]], minutes: int = 5) -> list[tuple[int, float]]:
+    """The same signal bought `minutes` later (at that sample's price): reaction time on a phone."""
+    later = [(m, x) for m, x in path if m >= minutes]
+    if not later or later[0][1] <= 0:
+        return []
+    m0, x0 = later[0]
+    return [(m - m0, x / x0) for m, x in later]
 
 
 TARGETS = (1.5, 2.0, 3.0)
@@ -157,6 +168,10 @@ def target_table(groups: list[tuple[str, list[list[tuple[int, float]]]]], positi
             rules = [(key, target_stats(paths, rule, position, fee_pct, fee_min)) for key, rule in target_rules()]
             row["reference"] = dict(rules)[REFERENCE]
             row["best"] = sorted(rules, key=lambda kr: -kr[1]["per_trade"])[:top]
+            late = [d for p in paths if (d := delayed(p))]
+            best_key = row["best"][0][0]
+            row["late"] = [(key, target_stats(late, target_exit(*key), position, fee_pct, fee_min))
+                           for key in dict.fromkeys([REFERENCE, best_key])]
         out.append(row)
     return out
 

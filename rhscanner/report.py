@@ -485,7 +485,7 @@ def format_targets(hours: float, position: float, rows: list[dict]) -> list[str]
 
     blocks = [f"🎯 <b>2x hedef raporu — son {hours:g} saat</b>\n"
               f"<i>Her sinyale ${position:g} girilmiş gibi, Fomo komisyonu dahil. Hedef \"tutuldu\" = art arda iki "
-              f"fiyat ölçümünde hedefin üstünde (tek iğne sayılmaz). Fiyatlar 5-30 dk aralıklı ölçümlerden. "
+              f"fiyat ölçümünde hedefin üstünde (tek iğne sayılmaz; süre dolunca da tek ölçümdeki iğneden satılmaz). Fiyatlar 5-30 dk aralıklı ölçümlerden. "
               f"Eski/yeni yarı: kural iki dönemde de kazandırıyorsa güvenilir.</i>\n"]
     for row in rows:
         lines = [f"<b>{escape(row['title'], quote=False)}</b> ({row['n']} sinyal)"]
@@ -498,6 +498,9 @@ def format_targets(hours: float, position: float, rows: list[dict]) -> list[str]
         lines.append("   En iyi kurallar:")
         for i, (key, r) in enumerate(row["best"], 1):
             lines.append(f"   {i}. {escape(rule_name(key), quote=False)}: {money(r)}")
+        for key, r in row.get("late") or []:
+            if r.get("n"):
+                lines.append(f"   ⏳ 5 dk geç girilse — {escape(rule_name(key), quote=False)}: {money(r)}")
         blocks.append("\n".join(lines))
     blocks.append("\n<i>Az sinyalli grupta (20'den az) sonuçlar şansa açık. Simülasyon iyimser: tepki süresi ve "
                   "sığ havuzda kayma yok.</i>")

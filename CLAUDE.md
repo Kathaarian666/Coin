@@ -173,7 +173,11 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     olarak kaydedilir, takip/ÇIK yok; karnede 🔕 Sessiz grubu — "Bildirim gidenler" sessizleri de içerir) ·
     `/hedef [saat]` (`strategy.target_exit/target_table`: hedef 1.5/2/3x × süre 30/60/120 dk × stop yok/0.7x;
     hedef ancak art arda iki örnekte tutulursa satılır; sabit $100 + komisyon; eski/yeni yarı $; gruplar: ⚡ erken,
-    normal, kural A gölgeleri mom ≥85/≥90; ≥3 saatlik sinyaller).
+    normal, kural A gölgeleri mom ≥85/≥90; ≥3 saatlik sinyaller). İlk `/hedef 168`: ⚡ erken (33) "2x/60dk" +$41/işlem,
+    en iyi "3x'te sat yoksa 60-120 dk" +$70-80 (eski yarı +$115-128, yeni +$28-36); gölge A ≥90 (28) 3x/60 +$106,
+    kârlı %89, iki yarı da pozitif; normal (733) 3x/30 +$22. 3x hedefi her grupta 2x'ten iyi. Şüphe: süre dolunca
+    tek ölçümdeki iğneden satılıyordu → düzeltildi (sonraki ölçümle min); "5 dk geç giriş" satırı eklendi. Kayma
+    (sığ havuz) hâlâ yok.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan

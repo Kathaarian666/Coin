@@ -42,10 +42,13 @@ def test_target_exit_needs_two_samples_and_respects_stop_and_time():
     dump = [(0, 1.0), (5, 0.6), (10, 3.0), (15, 3.0)]
     rule = target_exit(2.0, 60)
     assert rule(spike, None) == [(1.0, 0.9)]  # a one-sample spike is not a sale
+    assert target_exit(3.0, 30)([(0, 1.0), (30, 40.0), (45, 1.2)], None) == [(1.0, 1.2)]  # nor at the time stop
+    from rhscanner.strategy import delayed
+    assert delayed([(0, 1.0), (5, 2.0), (10, 3.0)]) == [(0, 1.0), (5, 1.5)]
     assert rule(held, None) == [(1.0, 2.0)]
     assert target_exit(2.0, 60, 0.7)(dump, None) == [(1.0, 0.6)]  # cut before the rebound
     assert held_hit(held, 2.0) and not held_hit(spike, 2.0)
     [row] = target_table([("g", [spike, held, dump])], 100, 0.5, 0.95)
     assert row["n"] == 3 and row["held2"] == round(200 / 3, 1)
-    assert row["reference"]["n"] == 3 and len(row["best"]) == 4
+    assert row["reference"]["n"] == 3 and len(row["best"]) == 4 and row["late"][0][1]["n"] == 3
     assert rule_name((2.0, 60, 0.7)) == "2x'te sat, yoksa 60 dk'da çık, 0.7x'e düşerse kes"
