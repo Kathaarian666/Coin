@@ -251,6 +251,15 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     gecikmeyle +$3), std hata ~$7-8 → **maliyetler sonrası kenar istatistiksel olarak belirsiz**. Model %1-2 için de
     benzer düşüş beklenir (henüz kaymalı ölçülmedi). Gerçek parayla işlem önerilmez; daha fazla gün + kaymalı ölçüm şart.
 
+21. **BAŞA DÖNÜŞ (1 Ekim, kullanıcı kararı)**: "3x/5x/60 dk hikaye". Amaç: yeni çıkan coinlerde **güvenli olanları** ve
+    **yükselecek olanları** tespit etmek; tüm parametreler canlı/zincir verisiyle baştan. Hedef tanımı yeniden yapılacak.
+    İlk bakış (`scripts/coin_lifecycle.py`, kural/hedef yok; 18-30 Eyl ilk Fomo işlemi olan 24.9k coin, ~2.070/gün):
+    %86'sı hiç 10 alıcıya ulaşmıyor (medyan 1 alıcı). ≥10 alıcılı ~300/gün: ilk alış fiyatına göre zirve ≥2x %62, ≥5x
+    %26, ≥10x %13.5 (~40/gün), ≥100x %0.8; 1 s sonra medyan 1.10x, 6 s 0.68x, 24 s 0.50x (%50'si yarıdan aşağı);
+    son fiyat/zirve medyan 0.23; satıcısı hiç olmayan (bal tuzağı adayı) %4. **10x+ olanlar yavaş**: zirveye medyan
+    179 dk (%25'i 44 dk içinde, %25'i 24 s sonra), 24 s sonra hâlâ ilk fiyatın 2.6x'i. **İlk 10 dk akışı 10x olanları
+    ayırmıyor** (alıcı 9 vs 8, $753 vs $444; FDV $12k vs $20k) → karar anı ilk dakikalar olmayabilir.
+
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
   1s sonu 0.70–0.78x, 5x %1.5–1.9 (Fomo bildirimleri %14.7). Erken eşik (4+ alıcı) daha iyi değil → coinlerin çoğu
