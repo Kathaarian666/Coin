@@ -20,9 +20,9 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from .exits import STRONG, WARNING, Snapshot, breakeven_multiple, evaluate_exit, exit_level
 from .momentum import fomo_features, momentum_score
-from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, momentum_v2_of, lower_bar_candidates, parameter_sweep, feature_table, finding_table, late_block, lateness_table, momentum_bucket, summarize, summarize_exits, trust_bucket
+from .outcomes import EARLY_MOMENTUM_STEPS, OutcomeLog, early_entry, backtest, early_entry_candidates, rug_filter_sweep, rug_risk_of, momentum_v2_of, early_grid, lower_bar_candidates, parameter_sweep, feature_table, finding_table, late_block, lateness_table, momentum_bucket, summarize, summarize_exits, trust_bucket
 from .pons import PonsTracker, PonsWatcher, detect_signals, eth_usd_price, pons_tiers
-from .report import (format_analysis, format_backtest, format_lateness, format_targets, format_exit, format_findings, format_followup,
+from .report import (format_analysis, format_backtest, format_early_grid, format_lateness, format_targets, format_exit, format_findings, format_followup,
                      format_report, format_scorecard, format_signal, format_strategies, format_sweep,
                      format_winners)
 from .rpc import RpcClient
@@ -64,6 +64,7 @@ HELP = (
     "/momentumv2 ac|kapat — bildirimlerde yeni momentum puanını kullan\n"
     "/sinyal &lt;adres&gt; — bir coin için kaydedilen sinyallerin tüm özellikleri ve sonucu\n"
     "/hedef [saat] — 2x'te sat stratejisi: grupların işlem başı $ sonucu ve en iyi çıkış kuralları\n"
+    "/erkenayar [saat] — erken kuralın ayar kombinasyonlarını 3x/60 dk çıkışıyla dene (varsayılan 14 gün)\n"
     "/gec [saat] — bildirimler ne kadar geç geldi, fiyat hareketini beklemek ne kazandırırdı\n"
     "/tarama [saat] — min momentum × min güven kombinasyonlarının isabeti ve yakalaması\n"
     "/strateji [saat] — çıkış kurallarını geçmiş bildirimlerde dene (sabit $100 test tutarı)\n"
@@ -809,6 +810,17 @@ class ScannerApp:
         for text in format_targets(hours, TEST_POSITION_USD, rows):
             await update.message.reply_html(text)
 
+    async def cmd_early_grid(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 336.0
+        cutoff = time.time() - 3 * 3600
+        shadows = [r for r in self.outcomes.results(hours) if r["kind"] == "shadow" and r["ts"] <= cutoff]
+        g = early_grid(shadows, self.min_buyers, TEST_POSITION_USD, self.settings.fomo_fee_pct,
+                       self.settings.fomo_fee_min_usd)
+        for text in format_early_grid(hours, g):
+            await update.message.reply_html(text)
+
     async def cmd_late_filter(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -952,6 +964,7 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("gecfiltre", self.cmd_late_filter))
         self.app.add_handler(CommandHandler("mod", self.cmd_mode))
         self.app.add_handler(CommandHandler("hedef", self.cmd_targets))
+        self.app.add_handler(CommandHandler("erkenayar", self.cmd_early_grid))
         self.app.add_handler(CommandHandler("minalici", self.cmd_min_buyers))
         self.app.add_handler(CommandHandler("minhacim", self.cmd_min_usd))
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))

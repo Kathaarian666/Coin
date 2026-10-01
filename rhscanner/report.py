@@ -507,6 +507,34 @@ def format_targets(hours: float, position: float, rows: list[dict]) -> list[str]
     return _chunks(blocks)
 
 
+def format_early_grid(hours: float, g: dict) -> list[str]:
+    """/erkenayar: early-rule settings ranked on the older half, tested on the newer one."""
+    def line(s: dict) -> str:
+        rule = (f"son 5 dk ≥{s['b5']} alıcı · önceki ≤{s['prev']} · alıcı başı ≥${s['avg']:g} · "
+                f"tutma ≥{s['hold']:g} · mom ≥{s['mom']}")
+        if not s.get("n"):
+            return f"{rule}\n   sinyal yok"
+        fmt = lambda v: "yok" if v is None else f"{v:+.2f}$"  # noqa: E731
+        return (f"{rule}\n   {s['n']} sinyal · kârlı %{s['win']} · eski yarı {fmt(s['old'])} ({s['n_old']}) · "
+                f"<b>yeni yarı {fmt(s['new'])}</b> ({s['n_new']}) · 5 dk geç {fmt(s['late'])}")
+
+    blocks = [f"⚙️ <b>Erken kural ayarları — son {hours:g} saat</b>\n"
+              f"<i>Alıcı eşiğinin altındaki {g['n']} gölge sinyalde her ayar kombinasyonu; çıkış: 3x'te sat, yoksa "
+              f"60 dk'da çık ($100, komisyon dahil, işlem başı). Sıralama sadece ESKİ yarıya göre; yeni yarı "
+              f"gerçek sınav. Her yarıda en az 8 sinyal olanlar.</i>\n"]
+    if g.get("live"):
+        blocks.append("<b>Şu anki kural</b>\n" + line(g["live"]))
+    if not g.get("combos"):
+        blocks.append("Yeterli veri yok.")
+        return _chunks(blocks)
+    blocks.append("<b>Eski yarıda en iyiler</b>\n" + "\n".join(f"{i}. {line(s)}" for i, s in enumerate(g["by_old"], 1)))
+    blocks.append("<b>İki yarıda da en tutarlılar</b> (kötü yarısı en iyi olan)\n"
+                  + "\n".join(f"{i}. {line(s)}" for i, s in enumerate(g["steady"], 1)))
+    blocks.append("\n<i>Yeni yarıda da iyi ve sinyal sayısı makul olan ayar seçilir. Tutarlı listesi iki yarıyı da "
+                  "kullandığı için biraz iyimserdir.</i>")
+    return _chunks(blocks)
+
+
 def format_sweep(hours: float, total: int, winners: int, rows: list[dict], current: tuple[int, int],
                  rug_rows: list[tuple[str, dict]] | None = None) -> list[str]:
     """/tarama: alert bars side by side; sorted by the share of 5x signals caught, then by precision."""

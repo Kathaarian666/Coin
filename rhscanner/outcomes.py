@@ -677,3 +677,55 @@ def confirm_table(alerts: list[dict]) -> list[tuple[str, list[tuple[str, dict]]]
         out.append((title, [("hemen gir", stats(rows, None)),
                             *((f"%{round((k - 1) * 100)} yükselince gir", stats(rows, k)) for k in CONFIRM_STEPS)]))
     return out
+
+
+EARLY_GRID = {"b5": (3, 4, 5, 6, 8), "prev": (0, 1, 2), "avg": (0, 50, 100, 150, 200), "hold": (0.8, 0.9, 1.0),
+              "mom": (80, 85, 90, 95)}
+EARLY_LIVE = {"b5": 5, "prev": 1, "avg": 100, "hold": 0.9, "mom": 90}
+
+
+def early_grid(shadows: list[dict], min_buyers: int, position: float, fee_pct: float, fee_min: float,
+               min_half: int = 8) -> dict:
+    """/erkenayar: every combination of the early rule's settings, replayed on the shadows under the buyer bar
+    with the chosen exit (3x, else out at 60 min; $ per trade with Fomo's fee). The signals are split in time:
+    settings are ranked on the older half only, the newer half is the honest test."""
+    from .strategy import delayed, target_exit, trade_pnl
+    rule = target_exit(3.0, 60)
+    rows = []
+    for r in shadows:
+        f = r.get("features") or {}
+        if (f.get("buyers_10m") or 0) >= min_buyers or not r.get("path") or f.get("hold_rate_30m") is None:
+            continue
+        late = delayed(r["path"])
+        rows.append({"ts": r["ts"], "b5": f.get("buyers_5m") or 0, "prev": f.get("buyers_prev_5m") or 0,
+                     "avg": (f.get("buy_usd_10m") or 0) / f["buyers_10m"] if f.get("buyers_10m") else 0,
+                     "hold": f["hold_rate_30m"], "mom": momentum_v2_of(r) or 0,
+                     "pnl": trade_pnl(rule(r["path"], None), position, fee_pct, fee_min),
+                     "late": trade_pnl(rule(late, None), position, fee_pct, fee_min) if late else None})
+    if not rows:
+        return {"n": 0, "combos": [], "live": None}
+    cut = sorted(x["ts"] for x in rows)[len(rows) // 2]
+
+    def stats(p: dict) -> dict:
+        picked = [x for x in rows if x["b5"] >= p["b5"] and x["prev"] <= p["prev"] and x["avg"] >= p["avg"]
+                  and x["hold"] >= p["hold"] and x["mom"] >= p["mom"]]
+        old = [x["pnl"] for x in picked if x["ts"] < cut]
+        new = [x["pnl"] for x in picked if x["ts"] >= cut]
+        late = [x["late"] for x in picked if x["late"] is not None]
+        per = lambda xs: round(sum(xs) / len(xs), 2) if xs else None  # noqa: E731
+        return {**p, "n": len(picked), "n_old": len(old), "n_new": len(new), "old": per(old), "new": per(new),
+                "late": per(late), "win": round(100.0 * sum(1 for x in picked if x["pnl"] > 0) / len(picked), 1)
+                if picked else None}
+
+    combos = []
+    for b5 in EARLY_GRID["b5"]:
+        for prev in EARLY_GRID["prev"]:
+            for avg in EARLY_GRID["avg"]:
+                for hold in EARLY_GRID["hold"]:
+                    for mom in EARLY_GRID["mom"]:
+                        s = stats({"b5": b5, "prev": prev, "avg": avg, "hold": hold, "mom": mom})
+                        if s["n_old"] >= min_half and s["n_new"] >= min_half:
+                            combos.append(s)
+    return {"n": len(rows), "combos": combos, "live": stats(EARLY_LIVE),
+            "by_old": sorted(combos, key=lambda s: -s["old"])[:8],
+            "steady": sorted(combos, key=lambda s: -min(s["old"], s["new"]))[:8]}

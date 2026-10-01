@@ -304,3 +304,22 @@ def test_late_block_and_waiting_for_the_price_to_move():
     assert rows["hemen gir"]["entered"] == 2 and rows["hemen gir"]["winners"] == 1
     assert rows["%30 yükselince gir"]["entered"] == 1 and rows["%30 yükselince gir"]["kept"] == 1
     assert rows["%50 yükselince gir"]["kept"] == 0  # entered at 3.0: 7.5 / 3 is not 5x
+
+
+def test_early_grid_ranks_on_the_old_half_and_tests_on_the_new():
+    from rhscanner.outcomes import early_grid
+    from rhscanner.report import format_early_grid
+
+    def shadow(ts, b5, mom, peak):
+        return {"kind": "shadow", "ts": ts, "momentum": mom, "path": [(0, 1.0), (5, peak), (10, peak), (60, 1.0)],
+                "features": {"buyers_5m": b5, "buyers_prev_5m": 0, "buyers_10m": b5, "buy_usd_10m": 200 * b5,
+                             "hold_rate_30m": 1.0, "momentum_v2": mom}}
+    shadows = [shadow(t, 6, 95, 4.0) for t in range(20)] + [shadow(t, 3, 80, 0.5) for t in range(20)]
+    shadows.append(shadow(50, 12, 99, 9.0))  # over the buyer bar: not an early-entry case
+    g = early_grid(shadows, 10, 100, 0.5, 0.95)
+    assert g["n"] == 40 and g["live"]["n"] == 20 and g["live"]["old"] > 100
+    best = g["by_old"][0]
+    assert g["steady"][0]["mom"] >= 85  # mixing in the losers (momentum 80) drags every looser setting down
+    assert best["mom"] >= 85 and best["new"] > 100 and best["late"] is not None
+    text = "\n".join(format_early_grid(336, g))
+    assert "Şu anki kural" in text and "yeni yarı" in text and "<b>" in text

@@ -59,7 +59,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~118 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~119 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`, `pons-backfill <gün>`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -89,7 +89,7 @@ sayısı) · `/analiz [saat]` (her özellik üç dilim: 2x/5x/kalıcı/rug) · `
 `/tarama [saat]` (min momentum × min güven ızgarası + rug filtresi, kalıcı 5x yakalama) · `/geritest [saat]` (v1 vs
 v2 eski/yeni yarı; küçük coin alıcı eşiği 8; erken kural A/B × momentum 0-90) · `/kazananlar [gün] [kat]`
 (GeckoTerminal 10x+ coinler; bot yakaladı mı, hangi eşik engelledi, her birinin `/sinyal` komutu; ~8 dk sınırı) ·
-`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/hedef [saat]` (2x al-çık: grupların işlem başı $, en iyi çıkış kuralları, eski/yeni yarı) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
+`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/erkenayar [saat]` (erken kural ayar ızgarası) · `/hedef [saat]` (2x al-çık: grupların işlem başı $, en iyi çıkış kuralları, eski/yeni yarı) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
 bildirim anı 5 dk/1 s fiyat değişimi, artış sınırı taraması).
 Diğer: `/check <adres>`, `/trend`, `/akilli`.
 
@@ -177,7 +177,12 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     en iyi "3x'te sat yoksa 60-120 dk" +$70-80 (eski yarı +$115-128, yeni +$28-36); gölge A ≥90 (28) 3x/60 +$106,
     kârlı %89, iki yarı da pozitif; normal (733) 3x/30 +$22. 3x hedefi her grupta 2x'ten iyi. Şüphe: süre dolunca
     tek ölçümdeki iğneden satılıyordu → düzeltildi (sonraki ölçümle min); "5 dk geç giriş" satırı eklendi. Kayma
-    (sığ havuz) hâlâ yok.
+    (sığ havuz) hâlâ yok. Düzeltilmiş `/hedef 168`: sonuç sağlam — 3x/60dk: ⚡ erken +$69 (5 dk geç ~+$43), gölge A
+    ≥85 +$84 (geç +$52), ≥90 +$101 (geç +$67), normal +$14 (geç 2x kuralı −$5). **Seçilen çıkış: "3x'te sat, yoksa
+    60 dk'da çık"** (stop 0.7 tutarlı fark yok). Hız kritik: 5 dk gecikme kazancın 1/3–1/2'si.
+17. `/erkenayar [saat]` (varsayılan 336): erken kural ızgarası (son 5 dk alıcı 3-8 · önceki ≤0-2 · alıcı başı
+    $0-200 · tutma 0.8-1.0 · mom 80-95; `outcomes.early_grid`) gölgelerde (alıcı eşiği altı), 3x/60dk $; eski
+    yarıya göre sıralı, yeni yarı sınav, 5 dk geç; her yarıda ≥8 sinyal. Canlı kural `EARLY_LIVE` = 5/1/$100/0.9/90.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
