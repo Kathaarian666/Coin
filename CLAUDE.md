@@ -202,7 +202,12 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     −$11 → momentum filtresi şart. Botun `/hedef` ölçümü (erken mom ≥90: +$70-100) zincir fiyatlarıyla
     doğrulanmadı — sıradaki adım: `/disari` (erken bildirimler E + kural A gölgeleri mom ≥80, satır başı
     "adres12 unix kod mom") çıktısını kullanıcı yapıştırır → `scripts/fomo_check_signals.py <db> <txt>` gerçek
-    fiyatlarla puanlar (veri yoksa önce `fomo_download.py 14`).
+    fiyatlarla puanlar (veri yoksa önce `fomo_download.py 14`). **Sonuç (2 Ekim, 127 ölçülen sinyal, ~7 gün)**:
+    3x/60dk, 30-60 sn gecikme — A gölge mom ≥90 (47): ort +$32-44, %5 hariç +$20-33, medyan −$30, hedef %28-30,
+    kârlı %40-45 (en iyi grup); ⚡ erken bildirim (32): ort +$10-13, %5 hariç ~$0, medyan −$21-26 (gölgeden ~15-40 sn
+    sonra gidiyor; bir kısmı eski /erken 85 ile); mom 85-89 (25): ~$0 / %5 hariç −$10-14; mom 80-84 (23): −$9-12.
+    → **momentum ≥90 gerçekten ayırıyor** ama **botun `/hedef` ölçümü ~2-3 kat iyimser** (DexScreener 5-30 dk
+    örnekleri). Kenar küçük ve örnek az (std hata ~±$13). Gerçek parayla büyük işlem önerilmedi.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
