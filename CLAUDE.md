@@ -208,6 +208,16 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     sonra gidiyor; bir kısmı eski /erken 85 ile); mom 85-89 (25): ~$0 / %5 hariç −$10-14; mom 80-84 (23): −$9-12.
     → **momentum ≥90 gerçekten ayırıyor** ama **botun `/hedef` ölçümü ~2-3 kat iyimser** (DexScreener 5-30 dk
     örnekleri). Kenar küçük ve örnek az (std hata ~±$13). Gerçek parayla büyük işlem önerilmedi.
+19. **BAŞTAN TASARIM (2 Ekim, kullanıcı kararı)**: tüm parametreler zincir verisiyle (gerçek Fomo fiyatları) yeniden
+    optimize edilecek; botun DexScreener tabanlı ölçümleri artık karar ölçüsü değil. Altyapı: `rhscanner/flow.py`
+    (bir coinin işlemlerinden akış özellikleri; canlı bot da aynı kodu kullanacak) · `scripts/research_build.py
+    <out.parquet> <db...>` (her coin için dakikada en fazla 1 aday an, ≥3 alıcı/5 dk; özellikler + "akıllı cüzdan"
+    (geçmişte erken alıp 1 saatte 2x gören, sadece o saat bittikten sonra bilinir) + 30/60 sn gecikmeli 2x/3x/60dk
+    sonuçları) · `scripts/research_model.py <parquet...>` (zaman bölmeli eğitim %60/doğrulama %20/test %20; coin başına
+    ilk eşleşme + 24 s dinlenme; gradient boosting puanı, okunur karar ağacı, tabanlar). **Veri Claude bulut
+    ortamında geçici** (yeni oturumda yok): yeniden üretmek için `fomo_download.py 14 fomo.db` ve
+    `fomo_download.py 30 fomo_old.db <14.1>` (~1.5 saat/14 gün, token harcamaz), sonra research_build + model.
+    Hedef: canlıya analiz beklemeden saniyeler içinde giden saf Fomo kuralı + sonuçların Fomo fiyatlarıyla ölçümü.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
