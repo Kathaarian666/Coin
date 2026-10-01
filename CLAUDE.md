@@ -160,7 +160,12 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
 15. **1 Ekim**: `/gecfiltre ac|kapat` (varsayılan kapalı; `late_filter`): önceki dalga (ilk görülme >24s) ve ilk
     görülmeden 3x+ yükselmiş coinlere bildirim yok (`filtered` kaydedilir; `runup_live`/`first_age_min`/`late_block`
     özelliklerde). `/gec`'e "fiyat hareketini bekle" simülasyonu: bildirimden 60 dk içinde %20/30/50 yükselince
-    gir (`confirm_entry`, örnek fiyatlarından), 1–1.5x dilimi ve tüm bildirimler için.
+    gir (`confirm_entry`, örnek fiyatlarından), 1–1.5x dilimi ve tüm bildirimler için. **Sonuç (770 bildirim, 99
+    kalıcı 5x): beklemek ZARARLI** — %20 bekle: girilen 348, girişten kalıcı 5x %10.1 (hemen %12.9), kazananların
+    sadece 35/99'u kalır; 1–1.5x dilimde de 30→13. Kazananlar hızlı ve büyük gidiyor; bekleme fikri bırakıldı.
+    `/gecfiltre` (3x+ ve önceki dalga) 71 bildirim eler, 2 kazanan kaybı → kalıcı ~%12.9→~%13.9, rug düşer.
+    %30 hedefi mevcut özelliklerle hacimli bir dilimde yok: en iyi dilimler ~%24-26 (mom ≥85 & <1x veya 1.5–3x,
+    gölge fiyatı yok = çok yeni coin), %30+ sadece ⚡ erken ≥90 (az sinyal). Öneri: bildirimlere güçlü/normal sınıf.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
