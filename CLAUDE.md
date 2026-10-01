@@ -186,7 +186,7 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     belirleyici** (tüm üst sıralar); eski kural 5/≤1/$100/0.9: 28 sinyal, yeni yarı +$83, geç +$67. Yeni **canlı kural
     A = son 5 dk ≥5 · önceki 5 dk 0 · alıcı başı ≥$50 · tutma ≥0.8** (+ `/erken 90`): 46 sinyal, eski +$134 (12),
     yeni +$78 (34), geç +$64, kârlı %83 → aynı kalite, ~1.6x sinyal. (son 5 dk 3/4/5 fark etmiyor.)
-18. **Zincir backtesti (2 Ekim, devam ediyor)**: kullanıcı 3 gün beklemek istemiyor. `scripts/fomo_download.py <gün>
+18. **Zincir backtesti (1 Ekim)**: kullanıcı 3 gün beklemek istemiyor. `scripts/fomo_download.py <gün>
     <db>` tüm Fomo işlemlerini zincirden indirir (Claude bulut ortamından da çalışır; RPC'ye `user-agent` başlığı
     gerekir, yoksa 403). Günde ~300k işlem; 14 gün ~3 saat. **Fomo olaylarında satışların $ tutarı yok** → USDG
     `Transfer(to=executor)` logları ayrıca çekilip tx'e göre eşleniyor. `scripts/fomo_replay.py <db>`: her alımda
@@ -202,13 +202,13 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     −$11 → momentum filtresi şart. Botun `/hedef` ölçümü (erken mom ≥90: +$70-100) zincir fiyatlarıyla
     doğrulanmadı — sıradaki adım: `/disari` (erken bildirimler E + kural A gölgeleri mom ≥80, satır başı
     "adres12 unix kod mom") çıktısını kullanıcı yapıştırır → `scripts/fomo_check_signals.py <db> <txt>` gerçek
-    fiyatlarla puanlar (veri yoksa önce `fomo_download.py 14`). **Sonuç (2 Ekim, 127 ölçülen sinyal, ~7 gün)**:
+    fiyatlarla puanlar (veri yoksa önce `fomo_download.py 14`). **Sonuç (1 Ekim, 127 ölçülen sinyal, ~7 gün)**:
     3x/60dk, 30-60 sn gecikme — A gölge mom ≥90 (47): ort +$32-44, %5 hariç +$20-33, medyan −$30, hedef %28-30,
     kârlı %40-45 (en iyi grup); ⚡ erken bildirim (32): ort +$10-13, %5 hariç ~$0, medyan −$21-26 (gölgeden ~15-40 sn
     sonra gidiyor; bir kısmı eski /erken 85 ile); mom 85-89 (25): ~$0 / %5 hariç −$10-14; mom 80-84 (23): −$9-12.
     → **momentum ≥90 gerçekten ayırıyor** ama **botun `/hedef` ölçümü ~2-3 kat iyimser** (DexScreener 5-30 dk
     örnekleri). Kenar küçük ve örnek az (std hata ~±$13). Gerçek parayla büyük işlem önerilmedi.
-19. **BAŞTAN TASARIM (2 Ekim, kullanıcı kararı)**: tüm parametreler zincir verisiyle (gerçek Fomo fiyatları) yeniden
+19. **BAŞTAN TASARIM (1 Ekim, kullanıcı kararı)**: tüm parametreler zincir verisiyle (gerçek Fomo fiyatları) yeniden
     optimize edilecek; botun DexScreener tabanlı ölçümleri artık karar ölçüsü değil. Altyapı: `rhscanner/flow.py`
     (bir coinin işlemlerinden akış özellikleri; canlı bot da aynı kodu kullanacak) · `scripts/research_build.py
     <out.parquet> <db...>` (her coin için dakikada en fazla 1 aday an, ≥3 alıcı/5 dk; özellikler + "akıllı cüzdan"
@@ -226,6 +226,15 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     kısmı test −$1. Ham ortalamadaki büyük değerler ($3-60k) saat sonu fiyatındaki veri hatası uç değerleri.
     Yorum: 30 sn gecikmeyle alıcı fiyatından girince Fomo akışında kalıcı kâr görünmüyor. 30 günlük veriyle teyit
     + 5/15 sn gecikme testi (hız yarışı mı?) sırada.
+    **Eski dönem indirmesi çok yavaş** (eski aralıklar; ~%10/30 dk) → kullanıcı erteledi: `fomo_old.db` state start
+    51644641 / done 53013127 / end 65374567 (1-2 Eylül indi, ~3-17 Eylül eksik; `veri` dalında 1-3 Eylül + 17 Eylül-1
+    Ekim). **2 Ekim 10:00 TR hatırlatması kuruldu** (trig_01S63zcrxzH5t4goZwCFjY1Y): kalan veriyi indir, 30 gün analizi.
+    15.6 günle (eğitim 21 gün aralığı içinde 1-2 Eylül + 17-26 Eylül, doğrulama 3.9 g, test 4.8 g) model:
+    **en iyi %0.5-1 test'te de pozitif**: 3x-sınırlı ort +$8-14/işlem, %90 GA alt sınır ~+$0.5-3 (n 167-309, ~35-65
+    sinyal/gün); en iyi %5 test +$4-7. **Gecikme 5→60 sn neredeyse fark etmiyor** (hız yarışı değil). Taban test −$4-6,
+    canlı A Fomo kısmı ~$0. Modelin seçtiği anların profili (medyan): FDV ~$20k (taban $51k), 5 dk 8 alıcı / 10 dk 11,
+    balina payı 0.26 (taban 0.67; geniş tabanlı alım), **akıllı cüzdan 7** (taban 2), ilk görülmeden fiyat 1.7x, yaş
+    ~84 dk, tutma 0.86. Kenar küçük ve kırılgan; 30 gün ile teyit şart.
     Hedef: canlıya analiz beklemeden saniyeler içinde giden saf Fomo kuralı + sonuçların Fomo fiyatlarıyla ölçümü.
 
 ## Denenip bırakılanlar / yapılamayanlar
