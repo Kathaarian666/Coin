@@ -141,6 +141,14 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   **Puanlı tarama** (6 kriter: işlem başı ≥$100 · k. alıcıya ≤k/2 dk · satan yok · en büyük alıcı payı ≤0.5 (k≤5) / ≤0.3 ·
   FDV ≤$10k · akıllı cüzdan ≥max(2,k/2)), test döneminde (son %35): 3. alıcıda puan ≥4 → 10x %12 (295 coin), puan
   0-2 → %4-6; 10. alıcıda puan 5-6 → 10x %22, 5x %30 (23 coin), taban ~%6. Yani ~2-3 kat seçicilik; isabet hâlâ ~%10-20.
+- **Token transferleri eklendi (1 Ekim, `transfer_download.py` → `transfer_features.py` → `rise_detect.py`)**: 5.1k coinin
+  ilk saatlerinin 12.9M Transfer kaydı (RPC, 4 paralel, ~18 dk). Kontrol noktasında holder sayısı/artışı, top10/top1
+  payı, dev payı/satışı, sniper payı, Fomo holder payı. **Fomo holder'ların sadece ~%9-20'si** (3. Fomo alıcısı geldiğinde
+  coinin zaten ~41-46 holder'ı var) → asıl talep Fomo dışında. Holder özellikleri tahmini az artırıyor: 3. alıcıda test
+  AUC (≥5x) 0.627 → 0.669; 5/10/20. alıcıda artış yok. En iyi nokta 3. alıcı, model en iyi %10: ≥2x %54 · ≥5x %29 ·
+  ≥10x %16 · ≥100x %1.2 (taban %37 · %14 · %7 · %0.4) → ~2 kat seçicilik, tavan gibi duruyor. En etkili: FDV (küçük),
+  top10 payı, transfer yoğunluğu, sniper payı. Kazananlarda dev payı 0 (Pons şablonu), sniper payı biraz yüksek.
+  Muhtemel eksik: sosyal sinyaller (X/Telegram/KOL; ücretli) ve Fomo dışı alımlarla tanımlanan daha erken an.
 
 ## Sıradaki işler
 1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
