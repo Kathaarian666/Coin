@@ -67,15 +67,17 @@ def outcome(ts, side, price, t_signal, delay, targets):
     end = bisect.bisect_right(ts, t_in + HOLD_SEC)
     path = [(ts[k], side[k], price[k] / p_in) for k in range(j + 1, end) if price[k]]
     lo, hi = bisect.bisect_left(ts, t_in + HOLD_SEC - 600), bisect.bisect_right(ts, t_in + HOLD_SEC + 600)
-    around = [price[k] / p_in for k in range(lo, hi) if price[k]]
-    recent = [x for t, _, x in path if t >= t_in + HOLD_SEC - 1200]
+    around = ([price[k] / p_in for k in range(lo, hi) if price[k] and side[k]]
+              or [price[k] / p_in for k in range(lo, hi) if price[k]])
+    recent = [x for t, sd, x in path if t >= t_in + HOLD_SEC - 1200 and sd]
     dead = not around and not recent
     if around:
         after = statistics.median(around)
     elif recent:
         after = recent[-1]
     else:
-        after = (path[-1][2] if path else 1.0) * 0.5
+        last_buy = [x for _, sd, x in path if sd]
+        after = (last_buy[-1] if last_buy else 1.0) * 0.5
     xs = [x for _, _, x in path]
     # buys only: a sell's dollar size comes from the USDG in its transaction, and Fomo batches several users'
     # trades in one transaction now and then (5% of sells print over 2x the buy before them)
@@ -156,9 +158,10 @@ def main():
         if len(old) < 20 or len(new) < 20:
             continue
         po, pn = pnl(old, 60, 3.0), pnl(new, 60, 3.0)
-        rows.append({"combo": combo, "n": len(idx), "old": statistics.mean(po), "new": statistics.mean(pn),
+        trim = lambda v: statistics.mean(sorted(v)[: max(1, int(len(v) * 0.95))])  # noqa: E731
+        rows.append({"combo": combo, "n": len(idx), "old": trim(po), "new": trim(pn),
                      "n_old": len(po), "n_new": len(pn), "idx": idx})
-    print(f"{len(rows)} kombinasyon (her yarıda ≥20 sinyal)\n")
+    print(f"{len(rows)} kombinasyon (her yarıda ≥20 sinyal); eski/yeni = en iyi %5 hariç ortalama\n")
 
     def show(r):
         B5, P, A, H, F, G = r["combo"]
@@ -171,13 +174,16 @@ def main():
                 v = pnl(idx, d, target)
                 extra.append(f"{d}sn/{target:g}x {statistics.mean(v):+.1f}$")
         wins = pnl(idx, 60, 3.0)
+        ranked = sorted(wins)
+        trimmed = statistics.mean(ranked[: max(1, int(len(ranked) * 0.95))])
         win = 100 * sum(1 for v in wins if v > 0) / len(wins)
         peak = [outcomes[i][60]["peak"] for i in idx if outcomes[i][60]]
         dead = 100 * sum(1 for i in idx if outcomes[i][60] and outcomes[i][60]["dead"]) / len(idx)
         print(f"{name}\n   {r['n']} sinyal ({r['n'] / 14:.1f}/gün) · kârlı %{win:.0f} · eski {r['old']:+.1f}$ "
               f"({r['n_old']}) · YENİ {r['new']:+.1f}$ ({r['n_new']}) · 1s içinde 2x %"
               f"{100 * sum(1 for p in peak if p >= 2) / len(peak):.0f} · 3x %{100 * sum(1 for p in peak if p >= 3) / len(peak):.0f}"
-              f" · ölü %{dead:.0f}\n   " + " · ".join(extra))
+              f" · ölü %{dead:.0f}\n   medyan {statistics.median(wins):+.1f}$ · en iyi %5 hariç ort. {trimmed:+.1f}$\n   "
+              + " · ".join(extra))
 
     print("== Eski yarıya göre en iyi 10 ==")
     for r in sorted(rows, key=lambda r: -r["old"])[:10]:
