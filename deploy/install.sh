@@ -36,7 +36,7 @@ if [ -d "$APP_DIR/.git" ]; then
     git -C "$APP_DIR" checkout -q "$BRANCH"
     git -C "$APP_DIR" reset -q --hard "origin/$BRANCH"
 else
-    git clone -q -b "$BRANCH" "$REPO_URL" "$APP_DIR"
+    git clone -q --single-branch -b "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
 
 say "Python ortamı hazırlanıyor (1-3 dakika sürebilir)..."
