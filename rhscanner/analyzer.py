@@ -221,7 +221,7 @@ class Analyzer:
             log.warning("recent flow for %s failed: %s", token, exc)
             flow = {}
         report["wash"] = flow
-        findings += wash_findings(flow, None)  # Fomo churn needs the tracker: see ScannerApp.attach_momentum
+        findings += wash_findings(flow, (fomo or {}).get("churn_share_30m"))  # from the bot's Fomo tracker
 
         if fomo:
             findings += fomo_findings(fomo)

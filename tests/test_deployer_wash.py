@@ -7,7 +7,6 @@ from rhscanner.checks.deployer import (
 )
 from rhscanner.checks.wash import TRANSFER_TOPIC, fomo_churn, recent_flow, wash_findings
 from rhscanner.fomo import FomoTrade, FomoTracker
-from rhscanner.momentum import momentum_score
 
 HEAD = 50_000_000
 LAUNCHER = "0x" + "1" * 40
@@ -137,14 +136,6 @@ def test_fomo_churn_share():
     assert fomo_churn(tracker, TOKEN, now=now) == 0.8
     assert fomo_churn(tracker, "0x" + "f" * 40, now=now) is None
     assert [f.code for f in wash_findings({}, 0.8)] == ["wash_fomo_churn"]
-
-
-def test_wash_lowers_momentum():
-    base = {"buyers_10m": 20, "buyers_5m": 10, "buyers_prev_5m": 10}
-    clean, _, _ = momentum_score(base, {})
-    washed, reasons, _ = momentum_score({**base, "churn_share_30m": 0.6, "transfers_5m": 80, "wallets_5m": 5}, {})
-    assert clean - washed == 30
-    assert any("sahte hacim" in r for r in reasons)
 
 
 class FactoryRpc:

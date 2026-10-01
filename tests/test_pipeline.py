@@ -1,17 +1,12 @@
 from types import SimpleNamespace
 
-from eth_abi import encode
-
 from conftest import EvmRpc
 from rhscanner.analyzer import Analyzer, pool_from_dexscreener
-from rhscanner.discovery import TOPIC_V2_PAIR_CREATED, PoolWatcher
 from rhscanner.storage import Storage
 
 
 def settings(weth, **kw):
-    base = dict(weth=weth, quote_tokens={weth.lower(), "0x" + "0" * 40}, probe_eth=0.01,
-                factory_allowlist=[], start_lookback_blocks=0, max_block_range=100, poll_interval=0,
-                v4_pool_manager="0x" + "8" * 40, holder_lookback_blocks=10_000)
+    base = dict(weth=weth, probe_eth=0.01, v4_pool_manager="0x" + "8" * 40, holder_lookback_blocks=10_000)
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -73,36 +68,6 @@ class LogRpc:
 
     async def try_call_fn(self, to, signature, out_types, *args):
         return (self.pair_factory,)
-
-
-async def test_watcher_emits_genuine_pools_and_saves_progress(tmp_path):
-    weth, token = "0x" + "a" * 40, "0x" + "b" * 40
-    factory, pair = "0x" + "f" * 40, "0x" + "c" * 40
-    entry = {"address": factory, "blockNumber": hex(100), "transactionHash": "0x1",
-             "topics": [TOPIC_V2_PAIR_CREATED, "0x" + token[2:].rjust(64, "0"), "0x" + weth[2:].rjust(64, "0")],
-             "data": "0x" + encode(["address", "uint256"], [pair, 1]).hex()}
-    storage = Storage(str(tmp_path / "w.db"))
-    storage.set_state("last_block", "90")
-    found = []
-
-    async def on_pool(pool):
-        found.append(pool)
-
-    async def run(rpc):
-        try:
-            await PoolWatcher(rpc, settings(weth), storage).run(on_pool)
-        except KeyboardInterrupt:
-            pass
-
-    await run(LogRpc(entry, factory))
-    assert [p.token.lower() for p in found] == [token]
-    assert storage.get_state("last_block") == "100"
-
-    # A log from a contract that is not the pair's real factory is rejected.
-    found.clear()
-    storage.set_state("last_block", "90")
-    await run(LogRpc(entry, "0x" + "e" * 40))
-    assert found == []
 
 
 def test_storage_marks_tokens_once(tmp_path):

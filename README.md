@@ -22,9 +22,6 @@ Bu olaylardan her coin için **kaç farklı Fomo kullanıcısının aldığı/sa
 verisidir. (Bu kontratlar bir Fomo kullanıcısının alımları izlenerek bulundu; Fomo tarafından
 resmî olarak duyurulmuş değildir. Fomo altyapısını değiştirirse `rhscanner/fomo.py` güncellenmeli.)
 
-**Takip mesajı:** Her bildirimden `FOLLOWUP_MIN` (15) dakika sonra fiyat ve likidite değişimi, Fomo'da satış
-yapılabildiği ve satış baskısı tekrar kontrol edilip kısa bir güncelleme gönderilir (likidite yarıdan fazla düşerse rug uyarısı).
-
 **Bildirim kuralı:** `FOMO_WINDOW_MIN` (10) dakikada en az `FOMO_MIN_BUYERS` (10) farklı
 alıcı → analiz → skor `MIN_SCORE_ALERT` (50) ve üstüyse Telegram bildirimi. Her coin bir kez
 bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim atılmaz (`/trend` ile görülür).
@@ -45,32 +42,7 @@ bildirilir. Bot açıldığında zaten trend olan coinler için toplu bildirim a
 | **Cüzdan dağılımı** | Transfer kayıtlarından RPC ile: ilk 10 cüzdan, en büyük cüzdan, kontratlardaki pay |
 | **Piyasa** | DexScreener: FDV, son 1 saat alım/satım, sosyal linkler |
 | **Geliştirici geçmişi** | Pons V2 lansmanlarından: coini çıkaran cüzdanın son ~3 haftada kaç coin daha çıkardığı, son 30'unun kaçının hâlâ yaşadığı (likidite ≥ $5k), en iyisinin FDV'si. Bot tüm Pons lansmanlarını yerel bir indekste tutar (ilk açılışta ~10 dk'da doldurur) |
-| **Mezuniyet öncesi Pons** | Pons coinleri doğduğu curve kontratında işlem görürken (DexScreener'da yokken) izlenir: 10 dk'da ≥ 8 farklı alıcı ve ≥ $300 alım olan 2 saatten genç coinler kaydedilir (yanında daha erken bir eşik de ölçülür: ≥ 4 alıcı, ≥ $100). Bariz çöp ön filtresi: seri geliştirici (24 saatte ≥ 10 coin), geliştirici sattı / kendi aldı, tek cüzdan alımı, ilk saniyelerde küme alım, satış baskısı, aynı cüzdanların tekrar tekrar alması. **Varsayılan kapalı** (`ENABLE_PONS_WATCHER=1` ile açılır): 3 günlük ölçümde bu coinler Fomo bildirimlerinden çok daha kötü çıktı |
 | **Sahte hacim (wash trading)** | Son 5 dk transferlerinde kaç farklı cüzdan var, en aktif cüzdanın payı; Fomo'da aynı coini tekrar tekrar alıp satan cüzdanların hacim payı |
-
-**İki ayrı skor:**
-- 🛡️ **Güven skoru** (rug/tuzak riski): kontrat, likidite, holder dağılımı, satılabilirlik, lansman (dev/bundle/sniper).
-- 🚀 **Momentum skoru** (vur-kaç için şu an gerçek alım hızlanıyor mu): son 5/10 dk Fomo alıcıları ve ivme,
-  alım/satım oranı, alıcıların hâlâ tutma oranı, tek cüzdan ağırlığı, Fomo'nun toplam hacimdeki payı (organik akış),
-  coinin yaşı, son 1 saat/5 dk fiyat hareketi, Telegram/X/web sitesi, likidite derinliği; sahte hacim şüphesi puan düşürür.
-  Ağırlıklar ilk tahmindir; `/karne` sonuçlarıyla kalibre edilecek.
-
-**Çıkış sinyalleri:** Bildirim giden her coin 5, 15 ve 30. dakikalarda kontrol edilir. Fiyat düşüşü tek başına
-çıkış sebebi sayılmaz (çoğu coin sert geri çekilip tekrar yükselir); bakılan şey kimin sattığıdır:
-- 🔴 **ÇIK**: geliştirici payının yarısından fazlasını sattı, ilk 5 holder'dan biri (≥%3) yarısından fazlasını sattı,
-  ya da havuzun iki tarafı birden %40+ azaldı (likidite çekiliyor; normal alım-satım iki tarafı ters yönde oynatır).
-- 🟠 **DİKKAT**: Fomo'da son 5 dk alım bitip satış başladı, ya da tüm piyasada satış dalgası var.
-Bunlar yoksa 15. dakika takibinde düşüş "sağlıklı geri çekilme olabilir" diye belirtilir.
-
-**Akıllı Fomo cüzdanları:** Tüm Fomo işlemlerinden cüzdan bazında son 7 günün kapanmış işlemleri, kazanma oranı ve
-kâr hesaplanır (≥5 işlem, ≥%55 kazanma, ≥$100 kâr). Son 10 dk'da bu cüzdanlardan alım varsa momentum artar. `/akilli`.
-
-**Komisyon:** Fomo'nun %0.5 / en az ~$0.95 ücretiyle, `/pozisyon` ile ayarlanan tutar için başa baş çarpanı her
-bildirimde yazar ($3 → 1.93x, $5 → 1.47x, $10 → 1.21x).
-
-**Sonuç kaydı ve karne:** Bildirim giden, filtreye takılan ve karşılaştırma için "gölge" (eşiğin yarısını geçen,
-analiz edilmemiş) coinlerin fiyat ve likiditesi 0, 5, 10 … 1440. dakikalarda DexScreener'dan kaydedilir.
-`/karne [saat]` her grup ve momentum aralığı için 1 saatte 2x, 24 saatte 2x/5x, yarıya düşme ve rug oranlarını gösterir.
 
 **Güven skoru:** 🟢 75–100 düşük risk · 🟡 50–74 orta · 🔴 1–49 yüksek · ⛔ 0 tehlikeli (honeypot vb.)
 
@@ -102,31 +74,17 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | Komut | Açıklama |
 |---|---|
 | `/trend` | Şu an Fomo'da en çok alınan 10 coin (son 15 dk) |
-| `/pozisyon 5` | İşlem tutarınız; bildirimlerde komisyonla başa baş çarpanı buna göre yazılır |
-| `/akilli` | Kazanma oranı yüksek Fomo cüzdanları (son 7 gün) |
-| `/karne 24` | Son 24 saatteki sinyallerin sonuçları (bildirim / filtre / gölge / Pons, momentum ve güven aralıkları, ÇIK/DİKKAT sinyallerinin isabeti); uzunsa birkaç mesaja bölünür |
-| `/bulgular 72` | Analiz edilen sinyallerin sonuçları, güven bulgusu koduna göre (varsayılan 72 saat) |
-| `/analiz 168` | Her özellik (alıcı sayısı, hızlanma, tutma oranı, akıllı cüzdan, FDV, likidite…) değerine göre üçe bölünür, her dilimin sonucu gösterilir: hangi özellik gerçekten kazandırıyor |
-| `/geritest 168` | Yeni momentum puanını (v2) geçmiş sinyallerde eskisiyle (v1) karşılaştırır; dönem ikiye bölünür, asıl sınav yeni yarı |
-| `/momentumv2 ac` | Bildirimlerde v2 momentum puanını kullan (`kapat` ile v1'e dön) |
-| `/strateji 168` | Çıkış kurallarını (30 dk–24 saat tut, 2x/3x/5x'te sat, yarısını sat, ÇIK'ta sat) geçmiş bildirimlerde dener; sabit $100 test tutarı, komisyon dahil |
-| `/tarama 168` | Min momentum × min güven kombinasyonları: kaç bildirim, isabet (2x/5x/rug), 5x yapanların kaçı yakalanır; sonunda rug riski filtresi denemesi |
-| `/kazananlar 7 10` | Son 7 günde 10x+ yapan coinler (GeckoTerminal, ücretsiz) ve bot onları yakaladı mı, hangi fiyattan; kaçırıldıysa bugünkü eşiklerden hangisi engelledi |
-| `/bulgular 72 pons` | Pons sinyallerinin (8+ alıcı) sonuçları, çöp nedenine göre; `erken` ile 4+ alıcı eşiği |
 | `/check 0x...` | Herhangi bir token'ı hemen analiz et |
 | `/minskor 60` | Skoru 60'ın altındakiler için bildirim gönderme |
-| `/erken 85` | ⚡ Erken sinyal: alım sıfırdan başlayıp alıcı başına ≥$100 ve tutuluyorsa 10 alıcıyı beklemeden analiz; momentum ≥85 ise bildirim (`/erken kapat`) |
-| `/maxrug 60` | Rug riski 60 ve üstü olanlar için bildirim gönderme (`/maxrug kapat`) |
-| `/minmomentum 45` | Momentumu 45'in altındakiler için bildirim gönderme (0 = kapalı, varsayılan) |
 | `/minalici 15` | Bildirim için 10 dakikada gereken farklı Fomo alıcısı sayısı |
+| `/minhacim 500` | Bildirim için 10 dakikada gereken en az Fomo alım hacmi ($) |
 | `/durdur` / `/devam` | Otomatik bildirimleri kapat / aç |
-| `/durum` | Son taranan blok, görülen token sayısı, kuyruk |
+| `/durum` | Son taranan blok, izlenen coin sayısı, kuyruk, ayarlar |
 
 Botu açmadan terminalden de kullanabilirsiniz:
 ```bash
 .venv/bin/python -m rhscanner trend        # son ~10 dk Fomo'da en çok alınanlar
 .venv/bin/python -m rhscanner trend 3      # ... ve ilk 3'ünün tam analizi
-.venv/bin/python -m rhscanner pons-backfill 3   # son 3 günün Pons curve sinyallerini zincirden /karne'ye doldur
 .venv/bin/python -m rhscanner check 0xTOKEN_ADRESI
 ```
 
@@ -163,18 +121,15 @@ node scripts/compile_contracts.mjs
 ```
 rhscanner/
   fomo.py           Fomo alım/satım akışını zincirden okur, coin bazında sayar
-  discovery.py      yeni havuzları yakalar (V2/V3/V4 olayları, opsiyonel)
   analyzer.py       tüm kontrolleri çalıştırıp raporu oluşturur
   checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
-  pons.py           mezuniyet öncesi Pons curve alım/satımları ve bariz çöp filtresi
-  rugrisk.py        rug riski puanı (küçük alımlar, satan alıcılar, Fomo dışı hacim, az alım, çok yeni)
-  strategy.py       çıkış kurallarının geçmiş bildirimlerde simülasyonu (/strateji)
-  winners.py        10x+ yapan coinleri GeckoTerminal'den bulup sinyal kayıtlarıyla eşleştirir (/kazananlar)
-  pons_backfill.py  aynı Pons sinyallerini geçmiş günlerin zincir verisinden yeniden üretir
+  hooks.py          Uniswap V4 hook kayıt defteri (yaygın launchpad hook'u mu?)
+  flow.py           bir coinin Fomo işlemlerinden akış özellikleri (araştırma ve ileride canlı kural)
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı
   bot.py            Telegram botu + tarayıcı döngüsü
+scripts/            zincir verisi indirme/arşiv (fomo_download, data_export/import, fomo_supply), coin_lifecycle
 contracts/          honeypot simülasyon kontratı (+ test kontratları)
 tests/              testler
 ```
@@ -184,8 +139,8 @@ tests/              testler
 - [x] Robinhood Chain tarayıcı + güvenlik kontrolleri + Telegram botu
 - [x] Fomo akışını zincirden okuma, Fomo'da yükselen coinler için bildirim
 - [ ] Sunucuya kurulum ve canlı ayar (eşikler, gerçek verilerle kalibrasyon)
-- [x] Pons coinlerini doğduğu anda (curve üzerinde) yakalama — denendi, kârsız çıktı, varsayılan kapalı
 - [ ] V3/V4 honeypot simülasyonu
 - [x] Geliştirici geçmişi (aynı cüzdanın önceki token'ları rug oldu mu?)
-- [x] Sniper / bundle tespiti, momentum takibi, çıkış sinyalleri, sahte hacim tespiti
+- [x] Sniper / bundle tespiti, sahte hacim tespiti
+- [ ] "2x yapmaya eğilimli" coinleri zincir verisiyle bulan yeni kural (1 Ekim'de eski momentum/çıkış/ölçüm özellikleri silindi)
 - [ ] Solana (ayrı proje)

@@ -35,16 +35,9 @@ class Settings:
     rpc_fallback_urls: list[str] = field(default_factory=lambda: _list(DEFAULT_RPC_FALLBACK_URLS))
     blockscout_url: str = DEFAULT_BLOCKSCOUT_URL
     weth: str = DEFAULT_WETH
-    # Extra quote tokens (e.g. stablecoins) besides WETH/native ETH, lowercased.
-    extra_quote_tokens: list[str] = field(default_factory=list)
-    # Only accept pools from these factories/PoolManagers (lowercased); empty = any.
-    factory_allowlist: list[str] = field(default_factory=list)
     db_path: str = "rhscanner.db"
     poll_interval: float = 3.0
-    max_block_range: int = 2000
-    start_lookback_blocks: int = 0
     rpc_max_rps: float = 6.0
-    analysis_delay: float = 8.0
     analysis_workers: int = 2
     probe_eth: float = 0.005
     min_score_alert: int = 50
@@ -58,28 +51,7 @@ class Settings:
     fomo_min_buyers: int = 10
     # ...and at least this much bought through Fomo in the window (median Fomo buy is ~$20).
     fomo_min_buy_usd: float = 500.0
-    # Minutes after an alert to send a follow-up (price, liquidity, Fomo sells); 0 disables.
-    followup_min: float = 15.0
-    # Minutes after an alert at which exit signals are checked.
-    exit_checks_min: list[float] = field(default_factory=lambda: [5.0, 15.0, 30.0])
-    # Position size used for the fee-aware break-even line, and Fomo's spot fee.
-    position_usd: float = 5.0
-    fomo_fee_pct: float = 0.5
-    fomo_fee_min_usd: float = 0.95
     fomo_lookback_blocks: int = 6000
-    # Pons coins before graduation (bonding-curve trading). Off: 3 days / ~9k signals showed they lose
-    # (median 0.7-0.8x after an hour, 5x ~2% vs ~15% for Fomo alerts); kept for re-measuring.
-    enable_pons_watcher: bool = False
-    pons_poll_interval: float = 10.0
-    pons_lookback_blocks: int = 6000
-    pons_min_buyers: int = 8
-    pons_min_buy_usd: float = 300.0
-    pons_max_age_min: float = 120.0
-    # A second, earlier bar measured alongside (the first one fired after most of the rise).
-    pons_early_min_buyers: int = 4
-    pons_early_min_buy_usd: float = 100.0
-    # Raw new-pool watcher: every new DEX pool, Fomo or not (very noisy).
-    enable_pool_watcher: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -92,14 +64,9 @@ class Settings:
             rpc_fallback_urls=_list(env("RPC_FALLBACK_URLS", DEFAULT_RPC_FALLBACK_URLS)),
             blockscout_url=env("BLOCKSCOUT_URL", DEFAULT_BLOCKSCOUT_URL).rstrip("/"),
             weth=env("WETH_ADDRESS", DEFAULT_WETH),
-            extra_quote_tokens=[a.lower() for a in _list(env("EXTRA_QUOTE_TOKENS", ""))],
-            factory_allowlist=[a.lower() for a in _list(env("FACTORY_ALLOWLIST", ""))],
             db_path=env("DB_PATH", "rhscanner.db"),
             poll_interval=float(env("POLL_INTERVAL", "3")),
-            max_block_range=int(env("MAX_BLOCK_RANGE", "2000")),
-            start_lookback_blocks=int(env("START_LOOKBACK_BLOCKS", "0")),
             rpc_max_rps=float(env("RPC_MAX_RPS", "6")),
-            analysis_delay=float(env("ANALYSIS_DELAY", "8")),
             analysis_workers=int(env("ANALYSIS_WORKERS", "2")),
             probe_eth=float(env("PROBE_ETH", "0.005")),
             min_score_alert=int(env("MIN_SCORE_ALERT", "50")),
@@ -110,24 +77,5 @@ class Settings:
             fomo_window_min=float(env("FOMO_WINDOW_MIN", "10")),
             fomo_min_buyers=int(env("FOMO_MIN_BUYERS", "10")),
             fomo_min_buy_usd=float(env("FOMO_MIN_BUY_USD", "500")),
-            followup_min=float(env("FOLLOWUP_MIN", "15")),
-            exit_checks_min=[float(x) for x in _list(env("EXIT_CHECKS_MIN", "5,15,30"))],
-            position_usd=float(env("POSITION_USD", "5")),
-            fomo_fee_pct=float(env("FOMO_FEE_PCT", "0.5")),
-            fomo_fee_min_usd=float(env("FOMO_FEE_MIN_USD", "0.95")),
             fomo_lookback_blocks=int(env("FOMO_LOOKBACK_BLOCKS", "6000")),
-            enable_pons_watcher=_flag(env("ENABLE_PONS_WATCHER", "0")),
-            pons_poll_interval=float(env("PONS_POLL_INTERVAL", "10")),
-            pons_lookback_blocks=int(env("PONS_LOOKBACK_BLOCKS", "6000")),
-            pons_min_buyers=int(env("PONS_MIN_BUYERS", "8")),
-            pons_min_buy_usd=float(env("PONS_MIN_BUY_USD", "300")),
-            pons_max_age_min=float(env("PONS_MAX_AGE_MIN", "120")),
-            pons_early_min_buyers=int(env("PONS_EARLY_MIN_BUYERS", "4")),
-            pons_early_min_buy_usd=float(env("PONS_EARLY_MIN_BUY_USD", "100")),
-            enable_pool_watcher=_flag(env("ENABLE_POOL_WATCHER", "0")),
         )
-
-    @property
-    def quote_tokens(self) -> set[str]:
-        # The zero address stands for native ETH in Uniswap V4 pools.
-        return {self.weth.lower(), "0x" + "0" * 40, USDG.lower(), *self.extra_quote_tokens}

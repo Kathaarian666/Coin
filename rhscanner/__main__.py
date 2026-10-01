@@ -3,7 +3,6 @@
   python -m rhscanner              run the Telegram bot + scanners
   python -m rhscanner check 0x...  analyse one token and print the report
   python -m rhscanner trend        print the tokens most bought on Fomo recently
-  python -m rhscanner pons-backfill 3   replay the last 3 days of Pons curve signals into /karne
 """
 
 import asyncio
@@ -18,7 +17,6 @@ from .analyzer import Analyzer
 from .bot import ScannerApp
 from .config import Settings
 from .fomo import FomoTracker, fetch_fomo_logs, parse_fomo_logs
-from .pons_backfill import backfill
 from .report import format_report
 from .rpc import RpcClient
 from .sources import Blockscout, DexScreener
@@ -73,21 +71,6 @@ async def _trend(settings: Settings, analyze_top: int):
     await rpc.close()
 
 
-async def _pons_backfill(settings: Settings, days: float):
-    async with httpx.AsyncClient(timeout=20) as http:
-        rpc = RpcClient(settings.rpc_url, settings.rpc_max_rps, fallback_urls=settings.rpc_fallback_urls)
-        storage = Storage(settings.db_path)
-        try:
-            result = await backfill(settings, rpc, storage, DexScreener(http), days)
-            print(f"\nBitti: {result['signals']} sinyal bulundu, {result['written']} tanesi kaydedildi "
-                  f"({result['graduated']} coin mezun olmuş).")
-            for kind, n in sorted(result["by_kind"].items()):
-                print(f"  {kind}: {n}")
-        finally:
-            await rpc.close()
-            storage.close()
-
-
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -97,9 +80,6 @@ def main():
     elif len(sys.argv) >= 2 and sys.argv[1] == "trend":
         analyze_top = int(sys.argv[2]) if len(sys.argv) >= 3 else 0
         asyncio.run(_trend(settings, analyze_top))
-    elif len(sys.argv) >= 2 and sys.argv[1] == "pons-backfill":
-        days = float(sys.argv[2]) if len(sys.argv) >= 3 else 3.0
-        asyncio.run(_pons_backfill(settings, days))
     else:
         ScannerApp(settings).run()
 
