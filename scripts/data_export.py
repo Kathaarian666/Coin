@@ -2,7 +2,7 @@
 
   python scripts/data_export.py <trades.db> <out_dir>
 
-A day already exported is merged with the new trades (duplicates dropped). Also writes supply.parquet.
+A day already exported only gains the trades it does not hold yet. Also writes supply.parquet.
 Back: scripts/data_import.py.
 """
 
@@ -31,9 +31,12 @@ def main():
             before = len(old)
             for col in ("token", "trader"):
                 old[col], part[col] = old[col].astype(str), part[col].astype(str)
-            part = pd.concat([old, part]).drop_duplicates(["block", "token", "trader", "side", "amount"])
-            if len(part) == before:
+            key = ["block", "token", "trader", "side", "amount"]
+            seen = pd.MultiIndex.from_frame(old[key])
+            fresh = part[~pd.MultiIndex.from_frame(part[key]).isin(seen)]  # twins inside one download stay
+            if fresh.empty:
                 continue
+            part = pd.concat([old, fresh])
         part = part.sort_values(["ts", "block"])
         for col in ("token", "trader"):
             part[col] = part[col].astype(str).astype("category")
