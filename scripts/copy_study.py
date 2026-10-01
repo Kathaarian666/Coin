@@ -1,6 +1,6 @@
 """Copy-trading study: do Fomo wallets that made money for a copier keep doing it?
 
-  python scripts/copy_study.py <trades.db> [<out.parquet>]
+  python scripts/copy_study.py <trades.db or events.parquet> [<events out.parquet>] [<picks out.parquet>]
 
 Every wallet's first buy in each coin is an event. A copier buys $100 at the first Fomo buy 30 s later (price
 plus slippage from the pool depth of the last 15 minutes) and exits by each rule in EXITS (target = the money
@@ -99,8 +99,9 @@ def build(path):
             if j >= len(bts) - 2 or bts[j] > t + DELAY + 600:
                 continue
             seg_end = segs[bisect.bisect_right(seg_starts, t) - 1][1]
-            depth, _ = depth_at(pref, t)
+            depth, depth_known = depth_at(pref, t)
             row = {"wallet": w, "coin": coin, "ts": t, "rank": len(seen), "usd": busd[k], "depth": depth,
+                   "depth_known": depth_known, "coin_buyers": len(set(who)),
                    "obs_min": (seg_end - bts[j]) / 60}
             for name, rule in EXITS.items():
                 row[name] = copy_result(c, j, depth, seg_end, rule)
@@ -185,9 +186,11 @@ def walk_forward(df: pd.DataFrame):
         chosen.append(best)
         print(f"  {pd.to_datetime(start, unit='s'):%d.%m}: ≥{best[0]} kopya, ort ≥${best[1]}, çıkış {best[2]} "
               f"(geçmiş alt {best_lb:+.1f}$) → bugün {len(today)} işlem, ort {today[best[2]].mean():+.1f}$")
-    if picks:
-        p = pd.concat(picks)
-        print(f"\n  TOPLAM: {describe(p.pnl.values, p.day.values, len(test_days))}")
+    if not picks:
+        return None
+    p = pd.concat(picks)
+    print(f"\n  TOPLAM: {describe(p.pnl.values, p.day.values, len(test_days))}")
+    return p
 
 
 def main():
@@ -199,7 +202,9 @@ def main():
         df = build(path)
         if out:
             df.to_parquet(out)
-    walk_forward(df)
+    picks = walk_forward(df)
+    if picks is not None and len(sys.argv) > 3:
+        picks.to_parquet(sys.argv[3])
 
 
 if __name__ == "__main__":
