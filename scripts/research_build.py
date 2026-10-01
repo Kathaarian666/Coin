@@ -33,15 +33,20 @@ WIN_MULTIPLE = 2.0
 def load(paths):
     coins: dict[str, list] = defaultdict(list)
     traders: dict[str, int] = {}
+    supply: dict[str, float] = {}
     for path in paths:
         db = sqlite3.connect(path)
+        try:
+            supply.update({a: raw for a, raw in db.execute("SELECT addr, raw FROM supply") if raw})
+        except sqlite3.OperationalError:
+            print(f"{path}: arz tablosu yok (scripts/fomo_supply.py), FDV boş kalacak", flush=True)
         names = {(k, i): a for i, k, a in db.execute("SELECT id, kind, addr FROM names")}
         for ts, tok, side, trd, usd, amount in db.execute("SELECT ts, token, side, trader, usd, amount FROM trades"):
             who = traders.setdefault(names[("trader", trd)], len(traders))
             coins[names[("token", tok)]].append((ts, side, who, usd, (usd / amount) if usd and amount else None))
     for rows in coins.values():
         rows.sort(key=lambda r: r[0])
-    return coins
+    return coins, supply
 
 
 def wallet_wins(coins):
@@ -70,7 +75,7 @@ def wallet_wins(coins):
 def main():
     out, paths = sys.argv[1], sys.argv[2:]
     t0 = time.time()
-    coins = load(paths)
+    coins, supply = load(paths)
     print(f"{len(coins)} coin yüklendi ({time.time() - t0:.0f} sn)", flush=True)
     wins = wallet_wins(coins)
     print(f"cüzdan geçmişi hazır ({time.time() - t0:.0f} sn)", flush=True)
@@ -95,7 +100,7 @@ def main():
             res = {d: outcome(ts, side, price, ts[i], d, TARGETS) for d in DELAYS}
             if res[DELAYS[0]] is None:
                 continue
-            f = flow_features(ts, side, trader, usd, price, i, ts[0], first_price, wins)
+            f = flow_features(ts, side, trader, usd, price, i, ts[0], first_price, wins, supply.get(coin))
             f.update({"coin": coin, "ts": ts[i]})
             for d in DELAYS:
                 r = res[d]

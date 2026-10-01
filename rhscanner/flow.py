@@ -19,8 +19,9 @@ def last_price(side, price, i: int, buys_only: bool = True) -> float | None:
 
 
 def flow_features(ts, side, trader, usd, price, i: int, first_ts: float, first_price: float | None,
-                  wins=None) -> dict:
-    """Features at trade i (inclusive). `wins(trader, t)`: the trader's past early-buy wins known at t."""
+                  wins=None, supply_raw: float | None = SUPPLY_RAW) -> dict:
+    """Features at trade i (inclusive). `wins(trader, t)`: the trader's past early-buy wins known at t;
+    `supply_raw`: the coin's total supply in raw units (FDV = price per raw unit x supply; None: unknown)."""
     t = ts[i]
     lo30 = bisect.bisect_right(ts, t - 1800)
     b1, b5, prev5, b10, b30 = set(), set(), set(), set(), set()
@@ -66,7 +67,7 @@ def flow_features(ts, side, trader, usd, price, i: int, first_ts: float, first_p
         "age_min": (t - first_ts) / 60,
         "runup": p_now / first_price if p_now and first_price else 1.0,
         "chg5": p_now / p_5 if p_now and p_5 else 1.0,
-        "fdv": p_now * SUPPLY_RAW if p_now else 0.0,
+        "fdv": p_now * supply_raw if p_now and supply_raw else float("nan"),
     }
     if wins is not None:
         scores = [wins(w, t) for w in b10]
