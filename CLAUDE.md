@@ -186,6 +186,13 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     belirleyici** (tüm üst sıralar); eski kural 5/≤1/$100/0.9: 28 sinyal, yeni yarı +$83, geç +$67. Yeni **canlı kural
     A = son 5 dk ≥5 · önceki 5 dk 0 · alıcı başı ≥$50 · tutma ≥0.8** (+ `/erken 90`): 46 sinyal, eski +$134 (12),
     yeni +$78 (34), geç +$64, kârlı %83 → aynı kalite, ~1.6x sinyal. (son 5 dk 3/4/5 fark etmiyor.)
+18. **Zincir backtesti (2 Ekim, devam ediyor)**: kullanıcı 3 gün beklemek istemiyor. `scripts/fomo_download.py <gün>
+    <db>` tüm Fomo işlemlerini zincirden indirir (Claude bulut ortamından da çalışır; RPC'ye `user-agent` başlığı
+    gerekir, yoksa 403). Günde ~300k işlem; 14 gün ~3 saat. **Fomo olaylarında satışların $ tutarı yok** → USDG
+    `Transfer(to=executor)` logları ayrıca çekilip tx'e göre eşleniyor. `scripts/fomo_replay.py <db>`: her alımda
+    kural A özellikleri, ilk eşleşme = sinyal; gerçek Fomo fiyatlarıyla 30/60/120 sn gecikmeli giriş, 2x/3x hedef
+    (birisi o fiyattan sattıysa) yoksa 60. dk; FDV (1B arz varsayımı) ve Fomo yaşı ile ızgara, eski/yeni yarı.
+    Momentum ve güven zincirden hesaplanamaz.
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan
