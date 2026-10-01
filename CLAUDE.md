@@ -59,7 +59,7 @@ Fiyatın zirveden geri çekilmesi tek başına **çıkış sinyali değildir** (
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~119 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~120 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`, `pons-backfill <gün>`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -89,7 +89,7 @@ sayısı) · `/analiz [saat]` (her özellik üç dilim: 2x/5x/kalıcı/rug) · `
 `/tarama [saat]` (min momentum × min güven ızgarası + rug filtresi, kalıcı 5x yakalama) · `/geritest [saat]` (v1 vs
 v2 eski/yeni yarı; küçük coin alıcı eşiği 8; erken kural A/B × momentum 0-90) · `/kazananlar [gün] [kat]`
 (GeckoTerminal 10x+ coinler; bot yakaladı mı, hangi eşik engelledi, her birinin `/sinyal` komutu; ~8 dk sınırı) ·
-`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/erkenayar [saat]` (erken kural ayar ızgarası) · `/hedef [saat]` (2x al-çık: grupların işlem başı $, en iyi çıkış kuralları, eski/yeni yarı) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
+`/sinyal <adres>` (coinin tüm kayıtlı sinyalleri ve sonucu) · `/strateji [saat]` (çıkış kuralları, sabit $100) · `/disari [saat]` (erken sinyal listesi, zincir backtesti için) · `/erkenayar [saat]` (erken kural ayar ızgarası) · `/hedef [saat]` (2x al-çık: grupların işlem başı $, en iyi çıkış kuralları, eski/yeni yarı) · `/gec [saat]` (geç kalma: ilk görülmeden bu yana fiyat artışı/süre,
 bildirim anı 5 dk/1 s fiyat değişimi, artış sınırı taraması).
 Diğer: `/check <adres>`, `/trend`, `/akilli`.
 
@@ -200,8 +200,9 @@ Diğer: `/check <adres>`, `/trend`, `/akilli`.
     ham ort. 30-60 sn gecikmeyle +$22-28, en iyi %5 hariç +$9-13, **medyan −$23** (çoğu işlem ~%23 kaybeder, ~%25'i
     3x yapar), iki yarıda da pozitif. Canlı kuralın Fomo kısmı (5/0/$50/0.8, momentumsuz): ham +$12-18, %5 hariç
     −$11 → momentum filtresi şart. Botun `/hedef` ölçümü (erken mom ≥90: +$70-100) zincir fiyatlarıyla
-    doğrulanmadı — sıradaki adım: bottaki erken sinyallerin (adres+zaman) listesini replay'de gerçek fiyatlarla
-    değerlendirmek.
+    doğrulanmadı — sıradaki adım: `/disari` (erken bildirimler E + kural A gölgeleri mom ≥80, satır başı
+    "adres12 unix kod mom") çıktısını kullanıcı yapıştırır → `scripts/fomo_check_signals.py <db> <txt>` gerçek
+    fiyatlarla puanlar (veri yoksa önce `fomo_download.py 14`).
 
 ## Denenip bırakılanlar / yapılamayanlar
 - **Mezuniyet öncesi Pons takibi**: `pons.py` + `pons-backfill` ile 3 gün ~9k sinyal: filtreden geçenler bile medyan

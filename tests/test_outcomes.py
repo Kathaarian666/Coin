@@ -324,3 +324,14 @@ def test_early_grid_ranks_on_the_old_half_and_tests_on_the_new():
     assert best["mom"] >= 85 and best["new"] > 100 and best["late"] is not None
     text = "\n".join(format_early_grid(336, g))
     assert "Şu anki kural" in text and "yeni yarı" in text and "<b>" in text
+
+
+def test_export_early_lists_alerts_and_rule_a_shadows():
+    from rhscanner.outcomes import export_early
+    log = OutcomeLog(sqlite3.connect(":memory:"))
+    a = {"buyers_5m": 5, "buyers_prev_5m": 0, "buyers_10m": 5, "buy_usd_10m": 500, "hold_rate_30m": 1.0}
+    log.record("0x" + "a" * 40, "alert", momentum=95, ts=T0, features={"early": True, "momentum_v2": 95})
+    log.record("0x" + "b" * 40, "shadow", ts=T0 + 1, features={**a, "momentum_v2": 88})
+    log.record("0x" + "c" * 40, "shadow", ts=T0 + 2, features={**a, "momentum_v2": 60})  # weak momentum
+    log.record("0x" + "d" * 40, "alert", momentum=95, ts=T0 + 3, features={"early": False})
+    assert export_early(log.db, T0 - 1, 10) == [f"{'a' * 12} {int(T0)} E 95", f"{'b' * 12} {int(T0) + 1} A 88"]

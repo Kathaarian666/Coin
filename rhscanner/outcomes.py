@@ -731,3 +731,25 @@ def early_grid(shadows: list[dict], min_buyers: int, position: float, fee_pct: f
     return {"n": len(rows), "combos": combos, "live": stats(EARLY_LIVE),
             "by_old": sorted(combos, key=lambda s: -s["old"])[:8],
             "steady": sorted(combos, key=lambda s: -min(s["old"], s["new"]))[:8]}
+
+
+def export_early(db, since: float, min_buyers: int, min_momentum: int = 80) -> list[str]:
+    """/disari: the early signals as short lines for the chain backtest (scripts/fomo_replay.py): the first 12 hex
+    digits of the coin, the unix time, E (⚡ alert) or A (rule A shadow under the buyer bar) and the v2 momentum."""
+    lines = []
+    for token, ts, kind, momentum, features in db.execute(
+        "SELECT token, ts, kind, momentum, features FROM signals WHERE kind IN ('alert', 'shadow') AND ts >= ? "
+        "ORDER BY ts", (since,)
+    ):
+        r = {"momentum": momentum, "features": json.loads(features or "{}")}
+        f = r["features"]
+        mom = momentum_v2_of(r) or 0
+        if kind == "alert" and f.get("early"):
+            code = "E"
+        elif (kind == "shadow" and early_entry(f, "A") and (f.get("buyers_10m") or 0) < min_buyers
+              and mom >= min_momentum):
+            code = "A"
+        else:
+            continue
+        lines.append(f"{token[2:14]} {int(ts)} {code} {mom}")
+    return lines
