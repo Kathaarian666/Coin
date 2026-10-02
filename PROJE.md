@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 2 Ekim. Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
+Son güncelleme: 2 Ekim (taze veri testi). Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
 neyi denedik ve bıraktık, sırada ne var. Ayrıntılı tarihçe ve silinen eski betikler (`rise_model`, `copy_study`, `ride_test`, `winner_report`) git geçmişinde.
 
 ## 1. Amaç
@@ -77,6 +77,7 @@ düşük, çünkü çöp lansman çok. **Fomo'da alıcı gelmesi kendisi güçl�
 | Yarı yarıya | ~$0 | +$31,9 ±10 (7/7) | +$24,8 ±7 |
 | **Kayan pencere** (her gün sadece geçmişle), akış + holder | −$0,2 | **+$30,1 ±10 (7/7)** | +$18,8 ±6 |
 | **Kayan pencere, sadece Fomo akışı** | −$0,2 | **+$29,5 ±12 (7/7)** | +$16,9 ±6 |
+| **Taze veri** (1 Ekim 15:18 – 2 Ekim 08:34, hiç kullanılmamış; sadece Fomo akışı; açık pozisyonlar son fiyattan) | −$5,5 ±8 | **+$26,7 ±25** (26 coin) | **+$24,4 ±15** (70 coin) |
 
 - Sadece Fomo akışı da neredeyse aynı iyi: canlıda transfer okumaya gerek yok.
 - Kötü çıkışlar: 72 saat tutmak, %50 iz süren stop, "2x'te sat, olmazsa 72 saat bekle".
@@ -84,7 +85,8 @@ düşük, çünkü çöp lansman çok. **Fomo'da alıcı gelmesi kendisi güçl�
   - Test sadece 7 gün.
   - İşlemlerin yarısından fazlası zararla kapanıyor; kâr az sayıda büyük yükselişten geliyor.
   - İz süren stopun gerçek doluşu daha kötü olabilir.
-  - 1 Ekim 15:00 sonrası veri hiç kullanılmadı; taze test için hazır.
+  - Taze veri testi (2 Ekim) aynı yönde ve büyüklükte çıktı. Ama sadece 17 saat ve 26-70 işlem; en iyi %10'un
+    hata payı sıfıra dokunuyor, en iyi %20'ninki sıfırın üstünde.
 
 ## 4. Denenip bırakılanlar (neden)
 
@@ -157,7 +159,9 @@ scan_trade.py fomo.db winners_tx.parquet kayan
 
 ## 7. Yol haritası
 
-1. **Taze veriyle son sınav:** 1 Ekim sonrası günleri indirip (`fomo_download.py`) taramayı hiç görmediği veride denemek.
+1. ~~Taze veriyle son sınav~~ (2 Ekim: yön tuttu, örnek küçük). Birkaç gün sonra aynı testi daha uzun taze
+   veriyle tekrarlamak: `fomo_download.py` → `data_merge.py` → `winner_study.py ... <başlangıç> <bitiş>` →
+   `scan_trade.py ... taze <yeni.parquet>`.
 2. **Bota "kayıt modu":** Fomo 3. alıcısında tarama puanı (sadece akış özellikleri, `flow.py`) hesaplansın, bildirim
    göndermeden kaydedilsin. Sonuç zincirden ölçülsün.
 3. Tutarsa: bildirim (puan, kriterler, "yarısı 2x, kalanı iz süren stop" hatırlatması).
