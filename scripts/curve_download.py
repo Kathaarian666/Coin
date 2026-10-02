@@ -1,6 +1,9 @@
 """Download the Pons bonding-curve trades (all buyers, from the launch) of the Pons coins in a winner_study table.
 
-  python scripts/curve_download.py <trades.db> <winners.parquet> [<hours after launch>=6]
+  python scripts/curve_download.py <trades.db> <winners.parquet | all> [<hours after launch>=6]
+
+`all`: every Pons coin launched in the data window, not only those that later traded on Fomo (no selection on
+the future).
 
 CurveBuy(router, buyer, eth, tokens, fee, tax) / CurveSell(router, seller, tokens, eth, fee, tax) from each coin's
 curve contract (launches table). Table `curve_trades(token, block, li, side, trader, eth, tokens)` (eth, tokens in
@@ -41,10 +44,10 @@ def main():
     db.executescript("""CREATE TABLE IF NOT EXISTS curve_trades (token TEXT, block INTEGER, li INTEGER, side INTEGER,
                         trader TEXT, eth REAL, tokens REAL, PRIMARY KEY (token, block, li));
                         CREATE TABLE IF NOT EXISTS curve_ranges (lo INTEGER PRIMARY KEY);""")
-    coins = set(pd.read_parquet(sys.argv[2], columns=["coin"]).coin)
+    coins = None if sys.argv[2] == "all" else set(pd.read_parquet(sys.argv[2], columns=["coin"]).coin)
     since = db.execute("SELECT MIN(block) FROM trades WHERE ts >= strftime('%s', '2026-09-17 12:00')").fetchone()[0]
     curves = {c.lower(): (t, b) for t, c, b in db.execute("SELECT lower(token), curve, block FROM launches")
-              if t in coins and b >= since}  # coins launched before the data window have no early history here
+              if (coins is None or t in coins) and b >= since}  # coins launched before the data window have no early history here
     lo = min(b for _, b in curves.values())
     hi = max(b for _, b in curves.values()) + int(hours * 36000)
     done = {r for (r,) in db.execute("SELECT lo FROM curve_ranges")}

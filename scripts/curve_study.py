@@ -43,16 +43,19 @@ def main():
 
     # ETH/USD from Fomo buys landing next to a curve buy of the same coin
     cb = curve[(curve.side == 1) & (curve.tokens > 0)].assign(eth_px=lambda d: d.eth / d.tokens)
-    ratios = []
-    for tok, f in fomo.groupby("token"):
-        c = cb[cb.token == tok]
-        if c.empty:
+    cb_by = {t: c for t, c in cb.groupby("token", sort=False)}
+    fomo_by = {t: f for t, f in fomo.groupby("token", sort=False)}
+    ratios, coin_ratio = [], defaultdict(list)
+    for tok, f in fomo_by.items():
+        c = cb_by.get(tok)
+        if c is None:
             continue
         idx = np.searchsorted(c.block.values, f.block.values)
         for j, (blk, px) in zip(idx, zip(f.block.values, f.px.values)):
             for k in (j - 1, j):
                 if 0 <= k < len(c) and abs(c.block.values[k] - blk) <= 20:
                     ratios.append((blk, px / c.eth_px.values[k]))
+                    coin_ratio[tok].append(px / c.eth_px.values[k])
                     break
     r = pd.DataFrame(ratios, columns=["block", "ratio"])
     r = r[(r.ratio > 500) & (r.ratio < 20000)]
@@ -64,13 +67,19 @@ def main():
     def eth_usd(block):
         return float(eth_usd_by_day.get(block // 864000, r.ratio.median()))
 
+    # Fomo prices are used only where they agree with the curve (else a unit mismatch, e.g. other decimals)
+    fomo_ok = {t for t, v in coin_ratio.items() if 0.5 < np.median(v) / r.ratio.median() < 2}
+    print(f"Fomo fiyatı curve ile uyumlu coin: {len(fomo_ok)}/{len(coin_ratio)} (eşleşmesi olan)", flush=True)
+
     rows = []
     for n, (tok, c) in enumerate(curve.groupby("token", sort=False)):
         lb, launcher = launches[tok]
         blk, side, who = c.block.values, c.side.values, c.trader.str.lower().values
         eth, toks = c.eth.values, c.tokens.values
         cpx = np.where(toks > 0, eth / np.where(toks > 0, toks, 1), np.nan) * eth_usd(int(lb))
-        f = fomo[fomo.token == tok]
+        f = fomo_by.get(tok, fomo.iloc[:0])
+        if tok not in fomo_ok:
+            f = f.iloc[:0]  # no check possible or a mismatch: curve prices only
         series = pd.concat([pd.DataFrame({"block": blk[side == 1], "px": cpx[side == 1]}),
                             pd.DataFrame({"block": f.block.values, "px": f.px.values})]).dropna()
         series = series.sort_values("block", kind="stable")
@@ -120,7 +129,7 @@ def main():
                 "curve_sold_pct": float((toks[past][pb].sum() - toks[past][~pb].sum()) / 1e9 * 100),
                 "runup": float(p_now / s_px[0]),
                 "mcap_usd": p_now * 1e9,
-                "fomo_buys_before": int((f.block.values <= b).sum()),
+                "fomo_buys_before": int((fomo_by.get(tok, fomo.iloc[:0]).block.values <= b).sum()),
                 "launcher_prior": int(np.searchsorted(launcher_blocks[launcher], lb)),
             })
         if n % 500 == 0:
