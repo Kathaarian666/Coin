@@ -100,7 +100,7 @@ def add_history(w):
 def load(winners, security, k):
     w = pd.read_parquet(winners)
     w = w[w.k == k].copy()
-    if "first3" in w:
+    if "first3" in w and (w.first3 != "").any():  # wave moments (k = 0) bring their own buyers_hit_rate
         w = add_history(w)
     w["hit2x"] = w.t2x_h.notna()
     w["hour"] = (w.ts % DAY) // 3600
