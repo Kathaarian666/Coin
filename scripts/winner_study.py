@@ -19,14 +19,36 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
-from rise_build import Sparse  # noqa: E402
-
 KS = (3, 5, 10, 20)
 HORIZON = 72 * 3600
 START = pd.Timestamp("2026-09-17 18:41").value / 1e9
 END = pd.Timestamp("2026-09-28 15:00").value / 1e9
 WIN = 10.0  # a "winner" wallet trade: its first buy in a coin that later held 10x
+
+
+class Sparse:
+    """O(1) range min / max and 'first index from j with value >= x' over a fixed array."""
+
+    def __init__(self, values: np.ndarray, op):
+        self.op, self.levels = op, [values]
+        k = 1
+        while 2 * k <= len(values):
+            prev = self.levels[-1]
+            self.levels.append(op(prev[:-k], prev[k:]))
+            k *= 2
+
+    def query(self, lo: int, hi: int) -> float:  # inclusive
+        lvl = (hi - lo + 1).bit_length() - 1
+        t = self.levels[lvl]
+        return self.op(t[lo], t[hi - (1 << lvl) + 1])
+
+    def first_at_least(self, lo: int, x: float) -> int:
+        """First index >= lo whose value >= x (max table only); len if none."""
+        n, pos = len(self.levels[0]), lo
+        for lvl in range(len(self.levels) - 1, -1, -1):
+            if pos + (1 << lvl) <= n and self.levels[lvl][pos] < x:
+                pos += 1 << lvl
+        return pos
 
 
 def main():

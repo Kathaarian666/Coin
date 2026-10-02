@@ -129,11 +129,11 @@ rhscanner/
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   hooks.py          Uniswap V4 hook kayıt defteri (yaygın launchpad hook'u mu?)
   flow.py           bir coinin Fomo işlemlerinden akış özellikleri (araştırma)
-  scan.py           kayıt modu: yeni coinleri 3. Fomo alıcısında puanlar, 1 saat sonra ölçer (scan_model.json)
+  scan.py           eski kayıt modu ("1 saat tut"); 4. adımda yeni bildirimle değişecek
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı
   bot.py            Telegram botu + tarayıcı döngüsü
-scripts/            zincir verisi indirme/arşiv (fomo_download, data_export/import, fomo_supply), coin_lifecycle
+scripts/            veri indirme/arşiv ve araştırma betikleri (PROJE.md §6)
 contracts/          honeypot simülasyon kontratı (+ test kontratları)
 tests/              testler
 ```
@@ -146,5 +146,5 @@ tests/              testler
 - [ ] V3/V4 honeypot simülasyonu
 - [x] Geliştirici geçmişi (aynı cüzdanın önceki token'ları rug oldu mu?)
 - [x] Sniper / bundle tespiti, sahte hacim tespiti
-- [ ] "2x yapmaya eğilimli" coinleri zincir verisiyle bulan yeni kural (1 Ekim'de eski momentum/çıkış/ölçüm özellikleri silindi)
+- [ ] Yeni plan (PROJE.md §7): güvenlik kriterleri → yükseliş kriterleri (backtest) → simülasyon → bildirim + "2x oldu" haberi
 - [ ] Solana (ayrı proje)

@@ -1,9 +1,9 @@
 """Record mode of the rise scan (PROJE.md §3.3): score every new coin at its 3rd distinct Fomo buyer and, an hour
 later, measure what buying it would have returned. Nothing is sent to Telegram from here.
 
-The features and the cost model are the research's (scripts/winner_study.py, scripts/rise_build.py); the
-model is a gradient-boosting classifier trained offline (scripts/scan_export.py) and kept as JSON, so the bot
-needs no scikit-learn.
+Old approach ("buy, hold 1 hour"): kept only so the running bot stays unchanged until step 4 of the plan in
+PROJE.md replaces it. Its trainer (scripts/scan_export.py) and cost research (scripts/rise_build.py) are in the
+git history. The model is a gradient-boosting classifier kept as JSON, so the bot needs no scikit-learn.
 """
 
 import json
@@ -41,7 +41,7 @@ class Trade:
         return self.usd / self.amount if self.usd > 0 and self.amount > 0 else None
 
 
-# --- costs (scripts/rise_build.py) ---
+# --- costs (old research, scripts/rise_build.py in the git history) ---
 def money_back(final: float, depth: float) -> float:
     """$ back from $100 bought at the pool price and sold at `final` x that price, after Fomo's fee (0.5%, at
     least $0.95) and slippage both ways (price step ~ trade size / pool dollar depth)."""

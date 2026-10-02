@@ -26,17 +26,20 @@ bildirim gönderen bot + yükselecek coinleri erken bulma araştırması. Proje 
 **Önce `PROJE.md`'yi oku**: amaç, botun şu anki hali, kanıtlanmış bulgular, denenip bırakılanlar, ölçüm kuralları,
 betiklerin durumu ve yol haritası orada (tek özet; bu dosyada tekrarlanmaz). Her önemli bulgu/karar sonrası
 `PROJE.md` güncellenir.
-Kısaca (2 Ekim): hedef yeni coinlerde güvenli olanları ve ciddi yükselecekleri erken yakalamak. Güven taraması hazır.
-Yükseliş için en iyi aday: "Fomo 3. alıcısında tarama (en iyi %10) + 1 saat tut" (kayan pencerede, dürüst çıkış
-seçimiyle +$28/işlem; kârı ~%5 büyük kazanan getiriyor). Bot bunu **kayıt modunda** çalıştırıyor (bildirim yok,
-`/kayit`); sıradaki: birkaç gün canlı sonuçlara bakmak.
+Kısaca (2 Ekim, yeniden hizalama): bot yeni Fomo coinlerinden **yükselme ihtimali en yüksekleri** bulur, güvenlik
+taramasını geçemeyenleri sessizce eler, kalanları **güven puanı + 2x ihtimali (nedenleriyle)** olarak bildirir; coin
+bildirim fiyatının **brüt 2x**'ine ulaşınca "2x oldu" der. Alım-satım kararı kullanıcının; bot işlem yapmaz.
+**Adım adım ilerlenir, her adım sonunda kullanıcıyla durulur** (`PROJE.md` §2): 0 temizlik · 1 güvenlik kriterleri ·
+2 yükseliş kriterleri (backtest) · 3 simülasyon (karar kapısı) · 4 bot · 5 canlı izleme. Adımı atlama, hızlıca sonuca
+koşma; kriterler kesinleşmeden bota dokunma. "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
-## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte kâr üretti; ayrıntı `PROJE.md` §5)
-Gelecek bilgisi yok (havuz derinliği dahil) · giriş gelecekteki bir işleme bağlanmaz · "ileride Fomo'ya gelen coinler"
-gibi evren seçimi yok · yol sırası (stop hedeften önce geldiyse stop) · düşüş/çıkış fiyatı tüm işlemlerden (sadece alım değil), ölü coin yarı fiyat · yükseliş iki
-ardışık alımla, coin başı tavan 100x · Fomo komisyonu en az $0.95 + kayma · ayrı test dönemi / kayan pencere, "en
-iyi %1 hariç" kontrolü. Sonuç fazla iyiyse önce hata ara.
+## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte sonuç üretti; ayrıntı `PROJE.md` §6)
+Gelecek bilgisi yok · bildirim fiyatı o anda bilinen fiyat (gelecekteki işleme bağlanmaz) · "ileride Fomo'ya gelen
+coinler" gibi evren seçimi yok · 2x iki ardışık alımla, coin başı tavan 100x · düşüş/son değer tüm işlemlerden, ölü coin
+yarı fiyat · yol sırası · süresiz 2x'te veri sonunda yeterince izlenmeyen coin "olmadı" sayılmaz · kayan pencere, gün
+gün, "en iyi %1 hariç" kontrolü · başarı brüt (komisyon/kayma sadece 3. adımda, kararlaştırılırsa). Sonuç fazla iyiyse
+önce hata ara.
 
 ## Sunucu
 - Oracle Always Free, VM.Standard.E2.1.Micro, Ubuntu 24.04, IP `79.76.124.29`, kullanıcı `ubuntu`.
@@ -66,7 +69,7 @@ iyi %1 hariç" kontrolü. Sonuç fazla iyiyse önce hata ara.
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~55 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~64 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -74,19 +77,19 @@ iyi %1 hariç" kontrolü. Sonuç fazla iyiyse önce hata ara.
 `bot.py` Telegram + akış (Fomo'da 10 dk'da `/minalici` alıcı ve `/minhacim` $ → güven taraması → skor ≥ `/minskor`
 ise bildirim) · `fomo.py` Fomo işlemleri · `analyzer.py`/`checks/`/`scoring.py` güven skoru (Fomo churn = sahte
 hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches.py` Pons lansman indeksi
-(geliştirici geçmişi) · `scan.py` + `scan_model.json` kayıt modu (yeni coinleri 3. Fomo alıcısında puanlar, 1 s sonra
-ölçer; tablolar `scan_log`, `scan_known`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
+(geliştirici geçmişi) · `scan.py` + `scan_model.json` eski kayıt modu ("1 saat tut"; 4. adımda
+değişecek; tablolar `scan_log`, `scan_known`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
-Araştırma betikleri `scripts/` — hangisinin güncel/eski olduğu ve çalışma sırası `PROJE.md` §6'da.
+Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 
 ## Telegram komutları (hepsi bot.py HELP'te)
 `/check <adres>` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum` `/kayit [saat]`
 
 ## Veri (araştırma)
-**Veri arşivi: GitHub `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; 1-3 Eylül + 17 Eylül-1 Ekim; 3-17 Eylül
+**Veri arşivi: GitHub `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; 1-3 Eylül + 17 Eylül'den bugüne; 3-17 Eylül
 eksik, indirilmeyecek — kullanıcı kararı). Yeni oturumda: `git fetch origin veri && git worktree add /tmp/veri
 origin/veri` → `python scripts/data_import.py /tmp/veri fomo.db` (~1 dk) → `fomo_supply.py fomo.db` (eksik arzlar) → `pons_launches.py fomo.db`.
-Yeni günler: `fomo_download.py` → `data_export.py fomo.db /tmp/veri` + commit/push (veri dalına). RPC'ye `user-agent`
+Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.db` → `data_export.py fomo.db /tmp/veri` + commit/push (veri dalına). RPC'ye `user-agent`
 başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=executor) ile eşleniyor; Fomo toplu tx'lerinde
-~%5 satış fiyatı bozuk → yükseliş için ALIM'ları kullan (düşüş için tüm işlemler, `PROJE.md` §5). Araştırma venv'i: `numpy pandas pyarrow scikit-learn`.
+~%5 satış fiyatı bozuk → yükseliş için ALIM'ları kullan (düşüş için tüm işlemler, `PROJE.md` §6). Araştırma venv'i: `numpy pandas pyarrow scikit-learn`.
 

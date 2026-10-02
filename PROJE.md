@@ -1,150 +1,108 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 2 Ekim (kayıt modu kuruldu). Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
-neyi denedik ve bıraktık, sırada ne var. Ayrıntılı tarihçe ve silinen eski betikler (`rise_model`, `copy_study`, `ride_test`, `winner_report`) git geçmişinde.
+Son güncelleme: 2 Ekim (yeniden hizalama, 0. adım). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
-## 1. Amaç
+## 1. Amaç (kullanıcı kararları, 2 Ekim)
 
-Fomo uygulamasında (Robinhood Chain) işlem gören **yeni çıkmış coinlerde**:
+Bot, Fomo uygulamasında (Robinhood Chain) **yeni çıkan coinler** arasından **yükselme ihtimali en yüksek olanları**
+bulur, güvenlik taramasından geçemeyenleri sessizce eler, kalanları kullanıcıya rapor olarak gönderir.
+**Alıp almama kararı kullanıcınındır.** İşlemler elle, Fomo'da yapılır; bot alım-satım yapmaz.
 
-1. **Güvenli olanları** ayırmak: satılabilir, tuzak değil.
-2. **Ciddi yükselecek olanları** (2x, 5x, 10x, 100x; süresi önemli değil) **mümkün olduğunca erken** tespit etmek.
-3. Sonra bunu kârlı bir al-sat kuralına çevirmek. Önce sabit $100 test tutarıyla; pozisyon büyüklüğü, risk yönetimi
-   ve gerçek işlem en son.
+| Konu | Karar |
+|---|---|
+| Rapor | **Güven puanı** + **2x ihtimali** (model puanı ve detayı: puanı en çok etkileyen nedenler) + bildirim fiyatı |
+| Başarı | Coin **bildirim anındaki fiyatın brüt 2x'ine** ulaşır. Süre önemsiz, üst sınır yok. Kayma ve komisyon başarı tanımına girmez. |
+| Bildirimden sonra | Bot sadece coin 2x'e ulaşınca **"2x oldu"** haberi verir. Kısmi/tam satış kararı kullanıcının. Başka bir şey yapmaz. |
+| Bildirim sayısı | Mümkün olduğunca az. Eşik, backtest'in "günde kaç bildirim · yüzde kaçı 2x" tablosuna bakılarak birlikte seçilir. |
+| Güvenlik | Ciddi sorunda (honeypot, satılamama, yüksek vergi vb.) bildirim **hiç gelmez**, coin elenir. Hangi kontrolün eleyeceği 1. adımda birlikte belirlenir. |
+| Kriterler | Model puanı kullanılabilir; kullanıcı puanın detayını görür. |
+| Veri | Her kriter **gerçek Fomo zincir verisiyle** backtest edilir; DexScreener vb. tahmini veri karar ölçüsü olmaz. |
 
-Kullanıcı kararları:
-- Sadece ücretsiz kaynaklar. X/Twitter API pahalı, şimdilik yok.
-- Fomo içindeki "thesis" yazıları kullanılmaz.
-- Karar sadece zincir verisiyle verilir. DexScreener örnekleri yanıltıcıydı.
+Değişmeyen eski kararlar: sadece ücretsiz kaynaklar (X/Twitter API yok), Fomo "thesis" yazıları kullanılmaz.
 
-## 2. Şu anki durum
+**Neden yeniden hizalandı:** 24–27 Eylül'deki bot bu hedefe yakındı (güven + momentum puanı, bildirim). Sonra
+DexScreener ölçümleri sahte sonuç üretti, bot sadeleştirildi ve araştırma "botun kendisi alıp 1 saat tutsa kaç $
+kazanır" sorusuna kaydı (çıkış stratejileri, kayma, $ kâr). Kullanıcı satışa botun karışmasını istemiyor; o işler
+bırakıldı.
 
-**Bot (`rhscanner/`, sunucuda systemd servisi):** 1 Ekim'de sadeleştirildi. Fomo işlemlerini izliyor. Bir coin 10 dakikada
-yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven taraması yapıyor. Skor `/minskor` eşiğinin
-üstündeyse Telegram'a rapor gönderiyor.
+## 2. Plan (her adımın sonunda durup kullanıcıyla bakılır; onaysız sonraki adıma geçilmez)
+
+| Adım | Ne | Durum |
+|---|---|---|
+| **0** | Temizlik + bu belge + veri arşivini güncelleme | **bu adım** |
+| **1** | **Güvenlik kriterleri (birlikte).** Her kontrol için: ne kontrol ediyor, neyi eliyor, geçmiş veride kaç coini eledi, elenenler gerçekten kötü müydü. Ekle/çıkar; hangisi **eler**, hangisi raporda **yazar**. | bekliyor |
+| **2** | **Yükseliş kriterleri (backtest ile, birlikte).** Aday kriterler tek tek: 2x oranını ne kadar artırıyor, görmediği günlerde tutuyor mu. Bildirim anı karşılaştırması (Fomo'da 3./5./10. alıcı). Kriter listesi + model. | bekliyor |
+| **3** | **Simülasyon (karar kapısı).** Güvenlik elemesi + model uçtan uca geçmiş veride: günde kaç bildirim, kaçı 2x, girseydik sonuç ne olurdu. "Yeterince kâr" tanımı ve 2x olmayanların nasıl sayılacağı bu adımda birlikte belirlenir. Yetmezse 1/2'ye dönülür. | bekliyor |
+| **4** | **Bot.** Bildirim (güven + 2x ihtimali + nedenler), "2x oldu" haberi, karne. Kriterler kesinleşmeden bota dokunulmaz. | bekliyor |
+| **5** | **Canlı izleme.** Karne (bildirimlerin kaçı 2x yaptı) simülasyonla karşılaştırılır. | bekliyor |
+
+## 3. Şu anki durum
+
+**Sunucudaki bot (`rhscanner/`, systemd servisi):** 4. adıma kadar olduğu gibi çalışıyor, değiştirilmeyecek.
+- Fomo işlemlerini izliyor. Bir coin 10 dakikada yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven
+  taraması yapıyor, skor `/minskor` üstündeyse Telegram'a rapor gönderiyor.
 - Güven taraması: satılabilirlik, honeypot simülasyonu, kontrat, likidite, V4 hook, holder, geliştirici geçmişi,
-  sniper/bundle, sahte hacim.
-- Komutlar: `/check` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum`.
-- Silinenler (git geçmişinde): momentum, rug riski, ÇIK/DİKKAT, erken sinyal, DexScreener tabanlı bütün ölçüm komutları.
-- **Sunucu:** kayıt modlu sürüm 2 Ekim'de kuruldu, `/durum`'da kayıt modu açık. İlk 24 saat sadece öğreniyor; kayıtlar 3 Ekim'den itibaren.
+  sniper/bundle, sahte hacim (Fomo churn). Ayrıntı: `README.md`. 1. adımda tek tek gözden geçirilecek.
+- Eski "kayıt modu" (`scan.py`, `/kayit`): yeni coinleri 3. Fomo alıcısında puanlıyor, "1 saat tutsaydık" sonucunu
+  kaydediyor, bildirim yok. Eski yaklaşım; 4. adımda yeni bildirimle değişecek.
 
-**Kayıt modu (2 Ekim):** Bot, Fomo'da 3. alıcısına ulaşan her **yeni** coini puanlıyor ve 1 saat sonra "30 sn
-sonra $100 alıp 1 saat tutsaydık" sonucunu ölçüyor. **Bildirim göndermiyor.** Sonuçlar `/kayit [saat]` ile görülüyor.
-- Model: `rhscanner/scan_model.json` (`scripts/scan_export.py` ile eğitilir).
-- "Yeni coin" = Fomo'da daha önce hiç işlem görmemiş. Bot gördüğü coinleri kalıcı tutuyor; sıfırdan kurulumda ilk 24
-  saat sadece öğreniyor, kayıt tutmuyor.
-- Eşikler: başta modelden, ~100 puanlamadan sonra botun son 2 günlük kendi puanlarından.
+## 4. Şimdiye kadar bilinenler (eski araştırma, 17–28 Eylül zincir verisi)
 
-## 3. Kanıtlanmış bulgular (zincir verisi, 17–28 Eylül)
-
-### 3.1 Piyasanın gerçekleri
-- Günde ~2.000 yeni coin Fomo'da görünüyor, Pons'ta günde ~6.500 lansman var. Fomo coinlerinin %86'sı hiç 10 alıcıya
-  ulaşmıyor.
-- **Fomo, coinin küçük bir parçası.** Fomo'da 3. alıcı geldiğinde coinin zincirde zaten ~40+ holder'ı var. Holder'ların
-  sadece %9-20'si Fomo kullanıcısı.
-- Ciddi yükselişler var: ilk Fomo fiyatından **günde ~44 coin 10x+** yapıyor (zirve medyanı 19x, zirveye ~4 saat).
-  Ama aynı anda benzer görünen yüzlerce coin ölüyor. 72 saat sonra medyan fiyat ilk fiyatın ~%30'u.
-- 2x yapanlar önce neredeyse düşmüyor (dip medyanı 0,98x). 2x'lerin 2/3'ü ilk 30 dakikada geliyor.
-- Maliyet: $100'lık al-sat 1x'te bile ~$5 ($5,6k havuz) ile $19 ($1k havuz) arası. Fomo komisyonu yön başına en az
-  $0,95; kayma havuz derinliğine bağlı.
-
-### 3.2 Yükselecek coini ne ayırıyor? (Fomo'da 3. alıcı anı)
-İnternet araştırması (Pump.fun akademik çalışmaları, GMGN/Axiom kontrol listeleri) ve bizim veri aynı şeyi söylüyor.
-Kazananlar o anda şöyle görünüyor:
-- **Hızlı, büyük, dağınık alım:** işlem başına daha fazla $, k. alıcıya daha hızlı ulaşma, en büyük alıcının payı düşük.
-- **Henüz satan yok.**
-- **Küçük FDV** (~$14k'ya karşı ~$18k), lansmana yakın.
-- Holder tarafında: ilk 10 cüzdanın payı, transfer yoğunluğu, sniper payı. Küçük katkı yapıyorlar.
-- **Ayırmayanlar:** geliştiricinin geçmişi, yeni cüzdan oranı, genel piyasa hareketi, cüzdan kopyalama (başarı kalıcı
-  değil).
-
-Seçicilik 2-3 kat. Fomo 3. alıcısında, taramanın en iyi %10'u:
+Bunlar yön gösterir; 2x tanımı (bildirim fiyatından, süresiz) ile 2. adımda **yeniden ölçülecek**.
+- Günde ~2.000 yeni coin Fomo'da görünüyor, Pons'ta günde ~6.500 lansman. Fomo coinlerinin %86'sı hiç 10 alıcıya
+  ulaşmıyor. 72 saat sonra medyan fiyat ilk fiyatın ~%30'u.
+- Fomo coinin küçük bir parçası: Fomo'da 3. alıcı geldiğinde coinin zincirde zaten ~40+ holder'ı var; holder'ların
+  %9-20'si Fomo kullanıcısı.
+- Ciddi yükselişler var: ilk Fomo fiyatından günde ~44 coin 10x+ yapıyor. 2x'lerin 2/3'ü ilk 30 dakikada geliyor;
+  2x yapanlar önce neredeyse düşmüyor (dip medyanı 0,98x).
+- Yükselenleri 3. alıcı anında ayıranlar: hızlı, büyük, dağınık alım (işlem başına $, k. alıcıya hız, en büyük
+  alıcının payı düşük), henüz satan yok, küçük FDV, lansmana yakınlık; holder tarafında ilk 10 cüzdan payı,
+  transfer yoğunluğu, sniper payı (küçük katkı). Ayırmayanlar: geliştirici geçmişi, yeni cüzdan oranı, genel piyasa,
+  cüzdan kopyalama.
+- Model puanının en iyi %10'u (3. alıcıda, sonraki 72 saatte zirve, fiyat = son 3 alımın medyanı):
 
 | | ≥2x | ≥5x | ≥10x |
 |---|---|---|---|
 | Bütün coinler | %37 | %14 | %7 |
-| Taramanın en iyi %10'u | %54 | %29 | %16 |
+| Model puanının en iyi %10'u | %54 | %29 | %16 |
 
-Daha erken an (zincirde 5.–40. curve alıcısı, lansmandan saniyeler sonra) isabeti artırmıyor. Mutlak oranlar daha
-düşük, çünkü çöp lansman çok. **Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç.**
+- Daha erken an (zincirde 5.–40. curve alıcısı) isabeti artırmıyor; Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç.
 
-### 3.3 Strateji: tarama + "1 saat tut"
-`scripts/exit_search.py`. Veri 17 Eylül - 2 Ekim, 11 test günü, taze dönem dahil.
-
-**Kurulum:**
-- **Seçim:** Fomo'da 3. alıcı anında, sadece Fomo akışı ve lansman özellikleriyle gradient boosting puanı. Her gün
-  sadece önceki günlerle yeniden eğitilir (kayan pencere). Günün eşikleri önceki 2 günün puanlarından.
-- **Giriş:** 30 sn sonra havuz fiyatından, $100 ile. Komisyon ve kayma dahil.
-- **Izgara:** 915 çıkış stratejisi denendi: kademeli kâr alma, iz süren stop %20-60, zarar-kes, tutma 1 saat - 7 gün.
-- **Çıkış seçimi de dürüst:** her gün önceki günlerde en iyi olan strateji uygulandı.
-
-**Sonuç:** Bu seçim neredeyse her gün "**hiç kısmi satış yok, stop yok, 1 saat tut, sonra sat**" oldu.
-
-| Grup | Dürüst (kayan) seçim | 1 saat tut | En iyi %5 hariç | Medyan | Taze dönem |
-|---|---|---|---|---|---|
-| Taramanın en iyi %10'u (540 işlem) | **+$28 ±18** | +$38 (10/11 gün artı) | −$9 | −$18 | +$59 (26 işlem) |
-| Taramanın en iyi %20'si (1.219 işlem) | **+$24 ±11** | +$27 (10/11 gün artı) | −$12 | −$20 | +$40 (59 işlem) |
-
-En iyi %10'da tutma süresine göre: 15 dk +$24 · 30 dk +$36 · **60 dk +$38** · 6 saat +$25 · 24 saat ve üstü ~+$10.
-
-**Canlı prova:** Botun kendi kodu (`rhscanner/scan.py`) taze dönemde canlıymış gibi çalıştırıldı. Model bu dönemi
-hiç görmedi.
-- Seçimsiz: −$8.
-- En iyi %20: 53 işlem, +$21.
-- **En iyi %10: 22 işlem, +$42; en iyi %5 hariç +$18.**
-
-**Yorum:**
-- Bu bir **"piyango" yapısı**. İşlemlerin çoğu küçük zararla kapanıyor; kârı seçilenlerin ~%5'i getiriyor (ilk
-  saatte 15-25x yapanlar).
-- Kademeli satış, iz süren stop ve zarar-kes bu büyükleri erken kestiği için ortalamayı düşürüyor.
-- **Sınırlar:**
-  - 11 gün kısa.
-  - Sonuç az sayıda büyük işleme bağlı.
-  - Sığ havuzda 15-25x'te satışın gerçek kayması tahminden kötü olabilir.
-
-**Düzeltilen hatalar (2 Ekim):**
-1. `scan_trade.py`'de iz süren stop, fiyat 2x'e varmadan tetiklense bile yok sayılıyordu. Eski "+$26-32" sonucu bu
-   yüzden şişmişti; doğru simülasyonda −$1 ile −$6 arası.
-2. `winner_study.py`, 3. alıcıdan sonra en az 2 alım daha gelmeyen coinleri (%25) tablodan atıyordu (gelecek seçimi).
-   Kaldırıldı.
-3. Taze dönemin Pons lansmanları indirilmemişti. Taze coinler "Pons değil" görünüyordu (Pons oranı %2'ye karşı %61).
-   Lansmanlar tamamlandı, tablolar yeniden kuruldu. Yukarıdaki rakamlar düzeltilmiş halleri.
-
-## 4. Denenip bırakılanlar (neden)
+## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
 |---|---|
-| DexScreener 5-30 dk örnekleriyle ölçüm (`/karne`, `/hedef` vb.) | Zincir fiyatlarına göre 2-3 kat iyimser → silindi |
-| Momentum v1/v2, rug riski, ÇIK/DİKKAT | Zincir verisiyle kanıtlanmadı; ÇIK %43 yanıldı → silindi |
-| Mezuniyet öncesi Pons takibi | Medyan 1 saat sonra 0,7x → kapalı, sonra silindi |
-| Sadece Fomo akışıyla "2x olur mu", 72 saat tutarak | Örnek dışı başa baş / eksi |
+| "Bot alır, 1 saat tutar" + 915 çıkış stratejisi, $ kâr/kayma hesapları (1–2 Ekim) | Hedef dışı: satış kararı kullanıcının. Silindi (`exit_search`, `scan_trade`, `scan_export`, `rise_build`). |
+| DexScreener 5-30 dk örnekleriyle ölçüm | Zincir fiyatlarına göre 2-3 kat iyimser → silindi |
+| Momentum v1/v2, rug riski, ÇIK/DİKKAT | Zincir verisiyle kanıtlanmadı → silindi (momentum yerine 2. adımda 2x ihtimali gelecek) |
+| Mezuniyet öncesi Pons takibi, zincirde çok erken an (curve) | İsabet artmıyor → silindi (`curve_*`) |
 | Cüzdan kopyalama | Cüzdan başarısı kalıcı değil (korelasyon ~0,1) |
-| GoPlus (dış güvenlik API'si) | Pons coinleri aynı şablon; geçmiş testine yaramıyor (canlıda ek kontrol olabilir) |
-| Geliştirici geçmişi | Geliştiricilerin %88'i tek coin çıkarıyor; ayırmıyor |
-| Zincirde çok erken an (curve) | İsabet artmıyor (3.2) |
-| Seçimsiz "her coine gir" | Her çıkış kuralında eksi ya da ~0 |
-| X/Twitter sosyal sinyaller | Ücretli → şimdilik yok |
+| GoPlus | Pons coinleri aynı şablon; geçmiş testine yaramıyor (canlıda ek kontrol olabilir, 1. adımda bakılır) |
+| Geliştirici geçmişi (yükseliş için) | Geliştiricilerin %88'i tek coin çıkarıyor; ayırmıyor (güvenlik için 1. adımda bakılır) |
+| İşlem günlüğü (`/aldim`, `/sattim`) | Kullanıcı istemedi, geri alındı |
+| X/Twitter sosyal sinyaller | Ücretli → yok |
 
-## 5. Ölçüm kuralları (zor yoldan öğrenildi)
+## 6. Ölçüm kuralları (her biri bir kez sahte sonuç üretti)
 
-Her biri bir kez sahte kâr üretti:
-1. **Gelecek bilgisi yok:** Özellik sadece o ana kadarki veriden. Havuz derinliği bile sinyalden **önceki** işlemlerden.
-2. **Giriş gelecekteki bir işleme bağlanmaz.** "30 sn sonraki alımın fiyatı" demek, sonra kimse almadıysa işlemi
-   saymamak demektir. Giriş o anki havuz fiyatından olur.
-3. **Seçim sızıntısı:** "İleride Fomo'ya gelen coinler" gibi bir evren gelecek bilgisidir. Erken an testinde bütün
-   lansmanlar kullanılır.
-4. **Düşüşler ve çıkış değeri tüm işlemlerden okunur.** Coinler satışlarla çöker; sadece alım fiyatı kaybı gizler.
-   Ölü coin (6 saat işlem yok) yarı fiyat.
-5. **Yol sırası korunur:** Bir kural iki olayı içeriyorsa (ör. 2x'te sat + iz süren stop) hangisi önce olduysa o
-   uygulanır. "Sonunda 2x'e ulaştı" diye önceki stopu yok saymak gelecek bilgisidir.
-6. **Yükseliş iki ardışık alımla tutulmalı.** Fomo toplu işlemlerinde ~%5 satış fiyatı bozuk; tek basım hedefi
-   geçemez, coin başına tavan 100x.
-7. **Komisyon en az $0,95** (%0,5 değil). Kayma hesaba katılır.
-8. **Doğrulama:** Ayrı test dönemi, kayan pencere, gün gün artı/eksi ve hata payı. "En iyi %1 hariç" ile şans kontrolü.
+1. **Gelecek bilgisi yok:** Kriter sadece bildirim anına kadarki veriden hesaplanır.
+2. **Bildirim fiyatı o anda bilinen fiyattır.** Gelecekteki bir işleme bağlanmaz ("sonraki alımın fiyatı" değil).
+3. **Evren seçimi yok:** "İleride Fomo'ya gelen / en az N alım daha gelen coinler" gibi bir seçim gelecek bilgisidir.
+   O anda bilinen bütün coinler sayılır.
+4. **2x iki ardışık alımla tutulmalı.** Fomo toplu işlemlerinde ~%5 satış fiyatı bozuk; tek basım 2x sayılmaz. Coin
+   başına tavan 100x.
+5. **Düşüş ve son değer tüm işlemlerden okunur** (sadece alımlardan değil). Ölü coin (6 saat işlem yok) yarı fiyat.
+6. **Yol sırası korunur:** iki olaylı kurallarda hangisi önce olduysa o geçerli.
+7. **Süresiz 2x, veri sonuna dikkat:** veri bitmeden önce yeterince izlenmemiş coin "2x olmadı" sayılmaz; ya
+   yeterli izleme süresi olanlar sayılır ya da "henüz bilinmiyor" ayrı gösterilir.
+8. **Doğrulama:** kriter görmediği günlerde sınanır (kayan pencere); gün gün sonuç ve hata payı; "en iyi %1 hariç"
+   şans kontrolü. Sonuç fazla iyiyse önce hata aranır.
+9. **Başarı brüttür** (kullanıcı kararı). Komisyon/kayma sadece 3. adımda "girseydik sonuç ne olurdu" için, kullanıcıyla
+   birlikte kararlaştırılırsa.
 
-## 6. Veri ve araçlar
+## 7. Veri ve araçlar
 
-**Arşiv:** GitHub `veri` dalı, günlük parquet (1-3 Eylül + 17 Eylül-1 Ekim; 3-17 Eylül eksik, indirilmeyecek).
+**Arşiv:** GitHub `veri` dalı, günlük parquet (1-3 Eylül + 17 Eylül'den bugüne; 3-17 Eylül eksik, indirilmeyecek).
 Yeni oturumda araştırma veritabanını kurmak:
 ```
 git fetch origin veri && git worktree add /tmp/veri origin/veri
@@ -152,53 +110,28 @@ python scripts/data_import.py /tmp/veri fomo.db
 python scripts/fomo_supply.py fomo.db
 python scripts/pons_launches.py fomo.db
 ```
-Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir.
+Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.db` → `data_export.py fomo.db /tmp/veri`
+→ veri dalına commit/push. Araştırma venv'i: `numpy pandas pyarrow scikit-learn`.
 
 **Betikler (`scripts/`):**
 
-| Durum | Betik | Ne yapar |
+| Tür | Betik | Ne yapar |
 |---|---|---|
 | Veri | `fomo_download.py` | Zincirden bütün Fomo işlemleri (günde ~300k) |
+| Veri | `data_merge.py` | Yeni indirilen işlemleri ana veritabanına ekler |
 | Veri | `data_export.py` / `data_import.py` | `veri` dalı arşivi |
 | Veri | `fomo_supply.py` | Coin arzları (FDV için) |
 | Veri | `pons_launches.py` | Bütün Pons lansmanları (token, curve, geliştirici) |
 | Veri | `transfer_download.py` | Coinlerin ilk saat token transferleri (holder özellikleri) |
-| Veri | `curve_download.py` | Pons curve işlemleri (`all`: bütün lansmanlar) |
-| **Güncel** | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
-| **Güncel** | `transfer_features.py` | Bu anlara holder özellikleri ekler |
-| **Güncel** | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
-| **Bot** | `scan_export.py` | Taramayı eğitip bot için JSON'a aktarır (sklearn ile birebir kontrol) |
-| **Güncel** | `exit_search.py` | Kayan pencereli tarama + 915 çıkış stratejisi ızgarası, dürüst çıkış seçimi |
-| Güncel | `scan_trade.py` | Tarama + birkaç çıkış kuralı (`kayan`, `taze` modları); 2 Ekim'de iz süren stop sırası düzeltildi |
-| Güncel (olumsuz sonuç) | `curve_study.py` / `curve_report.py` | Zincirde çok erken an testi |
-| Betimleyici | `coin_lifecycle.py` | Coin yaşam döngüsü istatistikleri |
-| Yardımcı | `rise_build.py` | Maliyet/kayma/havuz derinliği fonksiyonları (diğer betikler kullanıyor); kendi tablosu eski "2x olur mu" çalışmasından |
+| Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
+| Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
+| Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 
 **Git dalları:**
 
 | Dal | Ne |
 |---|---|
-| `claude/fomo-coin-scanner-app-mhz9rk` | **Asıl proje dalı.** Sunucu buradan kurulur, bütün geçmiş burada. |
-| `ccr-...` / `claude/...` | Claude Code'un her oturum için otomatik açtığı dallar. Her değişiklik bunlara ve asıl dala birlikte gönderilir; asıl dalda olmayan bir şey içermezler. Kullanıcı kararı: silinmiyorlar. |
-| `veri` | Araştırma verisinin arşivi (günlük parquet). Kod değil, kalmalı. |
-| `main` | GitHub'ın depo açılışındaki boş dal, kullanılmıyor. |
-
-**Çalışma sırası (güncel boru hattı):**
-```
-winner_study.py fomo.db winners.parquet
-transfer_download.py fomo.db winners.parquet
-transfer_features.py fomo.db winners.parquet winners_tx.parquet
-rise_detect.py winners_tx.parquet
-exit_search.py fomo.db winners_tx.parquet [taze_winners.parquet]
-```
-
-## 7. Yol haritası
-
-1. ~~Taze veriyle son sınav~~ (2 Ekim: yön tuttu, örnek küçük). Birkaç gün sonra aynı testi daha uzun taze
-   veriyle tekrarlamak: `fomo_download.py` → `data_merge.py` → `winner_study.py ... <başlangıç> <bitiş>` →
-   `scan_trade.py ... taze <yeni.parquet>`.
-2. ~~Bota kayıt modu~~ (2 Ekim kuruldu). Birkaç gün çalışsın, `/kayit 72` ile en iyi %10'un gerçek sonuçlarına
-   bakılsın.
-3. Tutarsa: en iyi %10'a bildirim (puan, "1 saat tut" hatırlatması), güven taramasıyla birlikte.
-   Model ara ara yeni veriyle yeniden eğitilmeli (`scan_export.py`).
-4. Sonraki aşama (kullanıcı onayıyla): pozisyon büyüklüğü ve risk yönetimi, gerçek işlem takibi, canlı işlem.
+| `claude/fomo-coin-scanner-app-mhz9rk` | **Asıl proje dalı.** Sunucu buradan kurulur. |
+| `ccr-...` / `claude/...` | Oturum dalları; her değişiklik bunlara ve asıl dala birlikte gönderilir. Silinmiyorlar (kullanıcı kararı). |
+| `veri` | Araştırma verisinin arşivi (günlük parquet). |
+| `main` | GitHub'ın boş ilk dalı, kullanılmıyor. |

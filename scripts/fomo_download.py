@@ -3,7 +3,7 @@
   python scripts/fomo_download.py <days> <out.db> [until_days_ago]
 
 Trades are parsed like the live watcher (rhscanner.fomo.parse_fomo_logs); block times are interpolated
-from block headers sampled every SAMPLE_BLOCKS. Used by scripts/fomo_replay.py for backtests.
+from block headers sampled every SAMPLE_BLOCKS. Archived with scripts/data_export.py.
 """
 
 import json
