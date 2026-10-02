@@ -193,8 +193,8 @@ def main():
     out = []
     for r in df.itertuples():
         s = states.get(r.token)
-        if not s:
-            out.append({"token": r.token})
+        if not s or not s["full"]:  # logs not from the mint: balances incomplete, nothing measured
+            out.append({"token": r.token, "full": bool(s and s["full"])})
             continue
         total = supply.get(r.token) or sum(v for v in s["held"].values())
         pct = lambda v: 100.0 * v / total if total else np.nan  # noqa: E731
@@ -207,8 +207,8 @@ def main():
             "top10_pct": share(wallets[:10]), "largest_pct": share(wallets[:1]),
             "dev_pct": dev_now, "dev_initial_pct": dev_init,
             "dev_sold": bool(dev_init >= 1 and dev_now < dev_init / 2) if s["creator"] else None,
-            "bundle_pct": share(s["bundle"]) if s["full"] else np.nan,
-            "sniper_pct": share(s["early"]) if s["full"] else np.nan,
+            "bundle_pct": share(s["bundle"]),
+            "sniper_pct": share(s["early"]),
         })
     feats = pd.DataFrame(out)
     df = df.drop(columns=[c for c in feats.columns if c != "token" and c in df.columns]).merge(feats, on="token", how="left")
@@ -224,7 +224,7 @@ def main():
     df["hook_upgradeable"] = df.hook.isin(upgradeable)
     df["hook_named"] = df.hook.isin(named) | (df.hook == "pons")
     df.to_parquet(path, index=False)
-    print("yazıldı", path, f"(holder verisi {df.full.notna().sum()} coin, tam {int(df.full.fillna(False).sum())})")
+    print("yazıldı", path, f"(holder ölçülen {int(df.full.fillna(False).sum())} / {len(df)} coin)")
 
 
 if __name__ == "__main__":
