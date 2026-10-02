@@ -191,6 +191,24 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   En iyi %2'de: 2x %53, %50 zarar-kes %36. Beklenen: haftada yaklaşık **+%10-65**, hedef 2x değil. Çok bildirim
   masrafta eriyor. Holder kriterleri (transfer verisi) henüz eklenmedi.
 
+### 4.4 Farklı açılar (3 Ekim gece; kullanıcı: kâr yetersiz, "farklı gözle bak"; sıra A → B → D → C)
+- **A. Modele işlemin net getirisini öğretmek (`scripts/profit_study.py`): işe yaradı.** Etiket: kullanıcının kuralları,
+  30 sn gecikme, $20'lık işlem, komisyon + kayma; eğitimde test günü başladığında açık olan işlem o anki fiyatla
+  değerlenir. Son fiyat = son 5 işlemin ortancası (tek bozuk satış fiyatı açık pozisyonu 100x'e kadar şişiriyordu).
+  Hafta hafta, $1.000, masraflı (10-16 / 17-23 / 24-30 Eylül):
+
+| Model, seçim | Günde | 2x | Haftalar | En iyi %1 işlem hariç, 22 gün |
+|---|---|---|---|---|
+| 2x modeli, en iyi %2 | 14 | %51 | 0,83 / 1,02 / 1,15x | 0,51x |
+| kâr>0 modeli, en iyi %2 | 16 | %41 | 1,44 / 1,40 / 1,05x | 0,82x |
+| **getiri modeli, en iyi %2** | 17 | %33 | **1,67 / 4,04 / 1,35x** | **1,42x** |
+| **getiri modeli, en iyi %1** | 9 | %35 | **1,85 / 4,36 / 1,39x** | **1,80x** |
+
+  Getiri modeli daha az 2x seçiyor ama gecikmeye dayanıklı, büyük kazananları seçiyor; işlemlerin ~%70'i zarar
+  (piyango). **Kapasite sınırı:** kasa büyüyünce sığ havuzlarda kayma kârı yiyor (22 gün bileşik ≈ 1,7-2,3x).
+- **B. Piyasa ısısı filtresi: işe yaramadı.** Üç tanım (son 24 saatte 1 saat içinde 2x oranı, son 6 saat Fomo hacmi,
+  son 6 saat yeni coin sayısı; eşik önceki 7 günün ortancası): sıcak/soğuk anlarda ortalama getiri aynı ya da ters.
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
@@ -254,6 +272,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 | Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |
+| Araştırma (3. adım) | `profit_study.py` | Modeli işlemin net getirisiyle eğitir; 2x / kâr>0 / getiri modelleri hafta hafta |
 | Simülasyon (3. adım) | `trade_sim.py` | Kullanıcının kurallarıyla işlem simülasyonu: gecikme, masraf, şans kontrolü, hafta hafta |
 | Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
 | Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
