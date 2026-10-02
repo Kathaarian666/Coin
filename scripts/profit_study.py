@@ -1,6 +1,6 @@
 """Profit-trained selection (PROJE.md step 3, angle A): teach the model what a trade earns, not whether a 2x comes.
 
-  python scripts/profit_study.py <trades.db> <winners.parquet> [<first test day>=2026-09-10]
+  python scripts/profit_study.py <trades.db> <winners.parquet> [<first test day>=2026-09-10] [k=3]
 
 Every new coin at its 3rd Fomo buyer gets the result of the user's trade (scripts/trade_sim.py rules): bought DELAY s
 after the alert at the last price then, half sold at the bot's 2x, the rest on the trailing rule ("iz"), -50 %
@@ -87,7 +87,8 @@ def trade_return(o, depth, cutoff=np.inf):
 def main():
     db = sqlite3.connect(sys.argv[1], timeout=300)
     cut = pd.Timestamp(sys.argv[3] if len(sys.argv) > 3 else "2026-09-10").value / 1e9
-    df = rise_study.load(sys.argv[2], None, 3).sort_values("ts").reset_index(drop=True)
+    k = int(sys.argv[4]) if len(sys.argv) > 4 else 3  # angle C: a later alert moment (5th / 10th buyer)
+    df = rise_study.load(sys.argv[2], None, k).sort_values("ts").reset_index(drop=True)
     cols = [c for c in rise_study.CHOSEN if c in df]
     print(f"{len(df)} coin, {len(cols)} kriter; işlem sonuçları hesaplanıyor...", flush=True)
     outs = outcomes(db, df)
@@ -152,7 +153,7 @@ def main():
                   f"getiri ort {sel.ret.mean():+.2f} medyan {sel.ret.median():+.2f} · kârlı %{100 * (sel.ret > 0).mean():.0f}"
                   f" · hafta hafta ($1000, masraflı): {' / '.join(weeks)} · 22 gün en iyi %1 hariç {luck:.2f}x "
                   f"(hepsi {trade_sim.simulate(alerts, 'iz', 1000, True) / 1000:.2f}x)")
-            sel.assign(model=m, bar=bar).to_parquet(f"/tmp/claude-0/data/profit_{m.replace('>', '')}_{bar}.parquet")
+            sel.assign(model=m, bar=bar).to_parquet(f"/tmp/claude-0/data/profit_k{k}_{m.replace('>', '')}_{bar}.parquet")
         print()
 
 

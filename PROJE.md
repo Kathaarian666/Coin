@@ -209,6 +209,20 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 - **B. Piyasa ısısı filtresi: işe yaramadı.** Üç tanım (son 24 saatte 1 saat içinde 2x oranı, son 6 saat Fomo hacmi,
   son 6 saat yeni coin sayısı; eşik önceki 7 günün ortancası): sıcak/soğuk anlarda ortalama getiri aynı ya da ters.
 
+- **D. Yeni kriterler: işe yaradı.** `winner_study.py`'ye eklendi: son 60 sn alıcı ve alım payı, aynı blokta alım
+  (bot), <$20 alım payı, ilk 3 alıcının daha önce ilk alıcısı oldukları coinlerde 1 saatte 2x oranı (o coinin sonucu
+  1 saat sonra bilinir; `rise_study.add_history`), geliştiricinin önceki coinlerinde aynı oran. Tek tek: küçük alım
+  payı (%37 / %25), ilk alıcı geçmişi (%26 / %37), son 60 sn alım payı güçlü. Çıkarma testi (en iyi %1'de 2x): eski
+  15 kriter %59 → hepsi %68; ilk alıcı geçmişi ~4 puan katıyor; geliştirici geçmişi negatif → çıkarıldı (20 kriter).
+  Kâr (masraflı, $1.000, 30 sn, 2x modeli):
+
+| Seçim | Günde | 2x | Kârlı | Haftalar | 22 gün kesintisiz | En iyi %1 işlem hariç |
+|---|---|---|---|---|---|---|
+| **En iyi %2** | 15 | %59 | %46 | **2,30 / 5,00 / 1,64x** | 5,65x | 4,36x |
+| En iyi %1 | 7,5 | %65 | %52 | 2,09 / 4,42 / 1,57x | 6,32x | 5,15x |
+
+  D ile 2x modeli getiri modelini geçti (getiri en iyi %2: 2,38 / 5,64 / 1,27x, %1 hariç 2,16x).
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
