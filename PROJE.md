@@ -26,7 +26,7 @@ yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven taramas
   sniper/bundle, sahte hacim.
 - Komutlar: `/check` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum`.
 - Silinenler (git geçmişinde): momentum, rug riski, ÇIK/DİKKAT, erken sinyal, DexScreener tabanlı bütün ölçüm komutları.
-- **Açık nokta:** sadeleştirilmiş sürüm sunucuya kuruldu mu, bildirimler kapalı mı (`/durdur`), kullanıcıyla teyit edilmeli.
+- **Sunucu:** kayıt modlu sürüm 2 Ekim'de kuruldu, `/durum`'da kayıt modu açık. İlk 24 saat sadece öğreniyor; kayıtlar 3 Ekim'den itibaren.
 
 **Kayıt modu (2 Ekim):** Bot, Fomo'da 3. alıcısına ulaşan her **yeni** coini puanlıyor ve 1 saat sonra "30 sn
 sonra $100 alıp 1 saat tutsaydık" sonucunu ölçüyor. **Bildirim göndermiyor.** Sonuçlar `/kayit [saat]` ile görülüyor.
