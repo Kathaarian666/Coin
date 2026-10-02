@@ -49,7 +49,7 @@ def outcomes(db, df):
                      "ORDER BY token, ts", db)
     by = {i: g for i, g in tr.groupby("token")}
     out = {}
-    for coin, i, t0 in zip(df.coin, ids, df.ts):
+    for key, coin, i, t0 in zip(df.key, df.coin, ids, df.ts):
         g = by[i]
         ts, side = g.ts.values, g.side.values
         px = np.where(g.amount.values > 0, g.usd.values / np.maximum(g.amount.values, 1e-30), np.nan)
@@ -59,7 +59,7 @@ def outcomes(db, df):
         p_in = px[b & (ts <= t_in)][-1]
         depth = depth_at(px[b], g.usd.values[b], ts[b], t0)
         ev, kind = trade_sim.path_events(ts, px, side, t_in, p_in, p_alert, data_end)
-        out[coin] = dict(ts=ts, px=px, t_in=t_in, p_in=p_in, depth=depth, legs=ev["iz"], kind=kind)
+        out[key] = dict(ts=ts, px=px, t_in=t_in, p_in=p_in, depth=depth, legs=ev["iz"], kind=kind)
     return out
 
 
@@ -87,16 +87,17 @@ def trade_return(o, depth, cutoff=np.inf):
 def main():
     db = sqlite3.connect(sys.argv[1], timeout=300)
     cut = pd.Timestamp(sys.argv[3] if len(sys.argv) > 3 else "2026-09-10").value / 1e9
-    k = int(sys.argv[4]) if len(sys.argv) > 4 else 3  # angle C: a later alert moment (5th / 10th buyer)
+    k = int(sys.argv[4]) if len(sys.argv) > 4 else 3  # angle C: a later moment (5th / 10th buyer; 0 = second waves)
     df = rise_study.load(sys.argv[2], None, k).sort_values("ts").reset_index(drop=True)
+    df["key"] = df.coin + "@" + df.ts.astype(str)  # a coin can have several moments (second waves)
     cols = [c for c in rise_study.CHOSEN if c in df]
     print(f"{len(df)} coin, {len(cols)} kriter; işlem sonuçları hesaplanıyor...", flush=True)
     outs = outcomes(db, df)
     med_depth = np.nanmedian([o["depth"] for o in outs.values()])
     for o in outs.values():
         o["depth"] = o["depth"] if np.isfinite(o["depth"]) else med_depth
-    df["ret"] = [trade_return(outs[c], outs[c]["depth"]) for c in df.coin]
-    df["hit2x"] = [outs[c]["kind"] == "2x" for c in df.coin]
+    df["ret"] = [trade_return(outs[c], outs[c]["depth"]) for c in df.key]
+    df["hit2x"] = [outs[c]["kind"] == "2x" for c in df.key]
     print(f"bütün coinler: işlem başına net getiri ort {df.ret.mean():+.2f}, medyan {df.ret.median():+.2f}, "
           f"kârlı %{100 * (df.ret > 0).mean():.0f}\n", flush=True)
 
@@ -111,7 +112,7 @@ def main():
         if not len(te):
             continue
         y2x = tr.t2x_h.notna() & (tr.ts + 3600 * tr.t2x_h.fillna(0) < start)
-        yret = np.array([trade_return(outs[c], outs[c]["depth"], start) for c in tr.coin])
+        yret = np.array([trade_return(outs[c], outs[c]["depth"], start) for c in tr.key])
         params = dict(max_iter=200, learning_rate=0.05, max_leaf_nodes=15, min_samples_leaf=40, random_state=0)
         fits = {
             "2x": HistGradientBoostingClassifier(**params).fit(tr[cols], y2x),
@@ -136,7 +137,7 @@ def main():
                 continue
             alerts = []
             ranks = sel.pct.rank(pct=True).values
-            for (c, q) in zip(sel.coin, ranks):
+            for (c, q) in zip(sel.key, ranks):
                 o = outs[c]
                 alerts.append(dict(t_in=o["t_in"], p_in=o["p_in"], depth=o["depth"], events={"iz": o["legs"]},
                                    size=0.04 if q > 2 / 3 else 0.02 if q > 1 / 3 else 0.01))
