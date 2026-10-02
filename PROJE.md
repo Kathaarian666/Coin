@@ -223,6 +223,21 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 
   D ile 2x modeli getiri modelini geçti (getiri en iyi %2: 2,38 / 5,64 / 1,27x, %1 hariç 2,16x).
 
+- **C. Farklı giriş anları (`profit_study.py ... k`, `wave_study.py`):** en güncel hafta 24-30 Eylül, masraflı, $1.000,
+  30 sn; 3 hafta = 10-16 / 17-23 / 24-30 Eylül:
+
+| An, seçim (en iyi model) | Günde | 2x | Kârlı | 3 hafta | %1 hariç 22 gün |
+|---|---|---|---|---|---|
+| 3. alıcı, 2x modeli %2 | 15 | %59 | %46 | 2,30 / 5,00 / 1,64x | 4,36x |
+| **5. alıcı, 2x modeli %5** | 25 | %51 | %41 | 2,23 / 4,04 / 2,23x | 2,30x |
+| **5. alıcı, 2x modeli %2** | 10 | %61 | %51 | 2,58 / 4,95 / 1,66x | 4,21x |
+| 10. alıcı, 2x modeli %2 | 7,5 | %61 | %53 | 1,72 / 4,45 / 1,27x | 4,04x |
+| İkinci dalga, 2x modeli %2 | 3 | %53 | %49 | 0,91 / 1,13 / 1,21x | 1,19x |
+
+  5. alıcı en iyi; ikinci dalga zayıf (bırakıldı). **Uyarı:** bu gece çok sayıda varyant aynı 22 test gününde
+  karşılaştırıldı → en iyiyi seçmek şansı da seçer. Son sınav seçimde kullanılmamış yeni günlerde yapılmalı (2 Ekim
+  sonrası; etiketler 24 saat sonra belli). Holder kriterleri (transfer indirmesi yavaş) hâlâ eklenmedi.
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
@@ -286,6 +301,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 | Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |
+| Araştırma (3. adım) | `wave_study.py` | İkinci dalga anları (1 saatlik coin, 30 dk sessizlikten sonra 5 dk'da 5+ alıcı) |
 | Araştırma (3. adım) | `profit_study.py` | Modeli işlemin net getirisiyle eğitir; 2x / kâr>0 / getiri modelleri hafta hafta |
 | Simülasyon (3. adım) | `trade_sim.py` | Kullanıcının kurallarıyla işlem simülasyonu: gecikme, masraf, şans kontrolü, hafta hafta |
 | Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
