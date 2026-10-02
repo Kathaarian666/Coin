@@ -30,7 +30,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from rhscanner.checks.contract import EIP1967_BEACON_SLOT, EIP1967_IMPL_SLOT, find_risky_functions  # noqa: E402
 
-URL = "https://rpc.mainnet.chain.robinhood.com"
+URLS = ["https://rpc.mainnet.chain.robinhood.com", "https://robinhood.drpc.org"]
+CHUNK = 10  # coins per batch request (4 calls each); bigger batches get 429 every time
 K = 3
 START = pd.Timestamp("2026-09-18 00:00").value / 1e9  # one day after the data restarts: coins seen first are new
 TRAP_OBS = 24 * 3600
@@ -43,7 +44,7 @@ def rpc_batch(calls):
     body = [{"jsonrpc": "2.0", "id": i, "method": m, "params": p} for i, (m, p) in enumerate(calls)]
     for attempt in range(8):
         try:
-            req = urllib.request.Request(URL, json.dumps(body).encode(),
+            req = urllib.request.Request(URLS[attempt % len(URLS)], json.dumps(body).encode(),
                                          {"content-type": "application/json", "user-agent": "Mozilla/5.0"})
             out = json.load(urllib.request.urlopen(req, timeout=60))
             res = {r["id"]: r.get("result") for r in out}
@@ -72,8 +73,8 @@ def contract_facts(db, tokens):
     done = {r[0] for r in db.execute("SELECT token FROM contracts")}
     todo = [t for t in tokens if t not in done]
     print(f"kontrat: {len(todo)} coin okunacak", flush=True)
-    for n in range(0, len(todo), 50):
-        part = todo[n:n + 50]
+    for n in range(0, len(todo), CHUNK):
+        part = todo[n:n + CHUNK]
         calls = []
         for t in part:
             calls += [("eth_getCode", [t, "latest"]), ("eth_getStorageAt", [t, EIP1967_IMPL_SLOT, "latest"]),
@@ -90,7 +91,7 @@ def contract_facts(db, tokens):
                          proxy, own))
         db.executemany("INSERT OR REPLACE INTO contracts VALUES (?,?,?,?,?,?)", rows)
         db.commit()
-        if n % 1000 == 0:
+        if n % 500 == 0:
             print(f"  {n + len(part)}/{len(todo)}", flush=True)
     return pd.read_sql("SELECT * FROM contracts", db).set_index("token")
 
