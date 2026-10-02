@@ -23,6 +23,7 @@ import sys
 import time
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -81,26 +82,31 @@ def contract_facts(db, tokens):
     done = {r[0] for r in db.execute("SELECT token FROM contracts")}
     todo = [t for t in tokens if t not in done]
     print(f"kontrat: {len(todo)} coin okunacak", flush=True)
-    for n in range(0, len(todo), CHUNK):
-        part = todo[n:n + CHUNK]
+    def fetch(job):  # spread over both endpoints in parallel: one at a time is slow (429 / 500)
+        n, part = job
         calls = []
         for t in part:
             calls += [("eth_getCode", [t, "latest"]), ("eth_getStorageAt", [t, EIP1967_IMPL_SLOT, "latest"]),
                       ("eth_getStorageAt", [t, EIP1967_BEACON_SLOT, "latest"]),
                       ("eth_call", [{"to": t, "data": OWNER}, "latest"])]
-        res = rpc_batch(calls)
-        rows = []
-        for j, t in enumerate(part):
-            code, impl, beacon, owner = res[4 * j:4 * j + 4]
-            code = code or "0x"
-            proxy = int(any(v and int(v, 16) for v in (impl, beacon)))
-            own = "0x" + owner[-40:] if owner and len(owner) >= 66 else None
-            rows.append((t, (len(code) - 2) // 2, selectors(code), ",".join(sorted(find_risky_functions(code))),
-                         proxy, own))
-        db.executemany("INSERT OR REPLACE INTO contracts VALUES (?,?,?,?,?,?)", rows)
-        db.commit()
-        if n % 500 == 0:
-            print(f"  {n + len(part)}/{len(todo)}", flush=True)
+        return part, rpc_batch(calls, URLS[n % 2:] + URLS[:n % 2])
+
+    jobs = list(enumerate(todo[n:n + CHUNK] for n in range(0, len(todo), CHUNK)))
+    with ThreadPoolExecutor(4) as pool:
+        for k, (part, res) in enumerate(pool.map(fetch, jobs)):
+            rows = []
+            for j, t in enumerate(part):
+                code, impl, beacon, owner = res[4 * j:4 * j + 4]
+                if code is None:
+                    continue  # refused: not stored, read again on the next run
+                proxy = int(any(v and int(v, 16) for v in (impl, beacon)))
+                own = "0x" + owner[-40:] if owner and len(owner) >= 66 else None
+                rows.append((t, (len(code) - 2) // 2, selectors(code), ",".join(sorted(find_risky_functions(code))),
+                             proxy, own))
+            db.executemany("INSERT OR REPLACE INTO contracts VALUES (?,?,?,?,?,?)", rows)
+            db.commit()
+            if k % 50 == 0:
+                print(f"  {k * CHUNK}/{len(todo)}", flush=True)
     return pd.read_sql("SELECT * FROM contracts", db).set_index("token")
 
 
