@@ -1,6 +1,6 @@
 """Security criteria study (PROJE.md step 1): which checks flag the coins that turn out to be traps?
 
-  python scripts/security_study.py <trades.db> <out.parquet>
+  python scripts/security_study.py <trades.db> <out.parquet> [<first day of new coins>=2026-09-18]
   python scripts/security_study.py report <out.parquet>
 
 Moment: every new coin's 3rd distinct Fomo buyer (the alert moment the research used). Price there = the last
@@ -202,7 +202,10 @@ def report(path):
 def main():
     if sys.argv[1] == "report":
         return report(sys.argv[2])
+    global START
     db_path, out = sys.argv[1], sys.argv[2]
+    if len(sys.argv) > 3:  # with the 3-17 Sep hole filled the data runs from 1 Sep: new coins from ~3 Sep
+        START = pd.Timestamp(sys.argv[3]).value / 1e9
     db = sqlite3.connect(db_path, timeout=60)
     names = {i: a.lower() for i, a in db.execute("SELECT id, addr FROM names")}
     tr = pd.read_sql("SELECT ts, token, side, trader, usd, amount FROM trades ORDER BY token, ts", db)

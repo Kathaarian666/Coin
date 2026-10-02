@@ -1,6 +1,6 @@
 """Rise criteria study (PROJE.md step 2): which facts known at the alert moment raise the chance of a 2x?
 
-  python scripts/rise_study.py <winners.parquet> <security.parquet> [k=3]
+  python scripts/rise_study.py <winners.parquet> <security.parquet> [k=3] [<first test day>=2026-09-26]
 
 Label (PROJE.md §1): two buys in a row at >= 2x the moment's price, any time (winner_study `t2x_h`). Coins need
 OBS_MIN hours of data after the moment so "never" means never (rule 7, PROJE.md §6). Train = before CUT,
@@ -149,7 +149,10 @@ def together(df):
 
 def main():
     winners, security = sys.argv[1], sys.argv[2]
+    global CUT
     k = int(sys.argv[3]) if len(sys.argv) > 3 else 3
+    if len(sys.argv) > 4:
+        CUT = pd.Timestamp(sys.argv[4]).value / 1e9
     moments(winners)
     df = load(winners, security, k)
     single(df)
