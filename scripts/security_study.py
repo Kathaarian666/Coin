@@ -103,7 +103,7 @@ def contract_facts(db, tokens):
                 own = "0x" + owner[-40:] if owner and len(owner) >= 66 else None
                 rows.append((t, (len(code) - 2) // 2, selectors(code), ",".join(sorted(find_risky_functions(code))),
                              proxy, own))
-            db.executemany("INSERT OR REPLACE INTO contracts VALUES (?,?,?,?,?,?)", rows)
+            db.executemany("INSERT OR REPLACE INTO contracts (token, size, fp, risky, proxy, owner) VALUES (?,?,?,?,?,?)", rows)
             db.commit()
             if k % 50 == 0:
                 print(f"  {k * CHUNK}/{len(todo)}", flush=True)
