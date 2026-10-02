@@ -125,6 +125,13 @@ satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı)
 
   En çok etki edenler: Pons hook'u ve Fomo'da 2+ satıcı (güven artırır); kontratın sahibi olması, trading aç/kapa,
   başka hook ya da hook yok, nadir kontrat (güven düşürür).
+- **V4 satış simülasyonu (`contracts/V4SellProbe.sol`, `scripts/sell_probe_study.py`, 2 Ekim):** gerçek bir holder'ın
+  adresine eth_call state override ile konan program coini V4 havuzuna satıyor (para harcanmaz). Çalışıyor; geçmiş
+  blokta sadece dRPC'de (ana RPC eski durumu tutmuyor), canlıda `latest` ile. Bulgu: "satılamayan" etiketli 13 Pons
+  dışı coinin **12'si bildirim anında satılabiliyordu**; çoğunda 1 saat içinde satış "çıktı 0" (likidite çekildi = rug),
+  2'sinde satış sonradan kilitlendi. Yani bildirim anında honeypot nadir; asıl tuzak bildirimden sonraki ilk saatte
+  likiditenin çekilmesi → bildirim anında ancak dolaylı işaretlerle (güven puanı) tahmin edilir. Eleme kuralı
+  (honeypot / vergi ≥ %10) yine simülasyonla uygulanır (4. adım).
 - **Botta bulunan açık (4. adımda düzeltilecek):** `checks/contract.py` sadece 45 baytlık EIP-1167 klonu tanıyor;
   44 baytlık PUSH0 türü (714 coin, 33 asıl kontrat) tanınmıyor, kontrol klonun kendisine bakıyor.
 
@@ -205,6 +212,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
+| Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |
 | Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
 | Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
 

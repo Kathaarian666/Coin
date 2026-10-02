@@ -10,6 +10,7 @@ const solc = require("solc");
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const sources = {
   "HoneypotProbe.sol": "contracts/HoneypotProbe.sol",
+  "V4SellProbe.sol": "contracts/V4SellProbe.sol",
   "test/Mocks.sol": "contracts/test/Mocks.sol",
 };
 
