@@ -13,7 +13,7 @@ bulur, güvenlik taramasından geçemeyenleri sessizce eler, kalanları kullanı
 |---|---|
 | Rapor | **Güven puanı** + **2x ihtimali** (model puanı ve detayı: puanı en çok etkileyen nedenler) + bildirim fiyatı |
 | Başarı | Coin **bildirim anındaki fiyatın brüt 2x'ine** ulaşır. Süre önemsiz, üst sınır yok. Kayma ve komisyon başarı tanımına girmez. |
-| Bildirimden sonra | Bot sadece coin 2x'e ulaşınca **"2x oldu"** haberi verir. Kısmi/tam satış kararı kullanıcının. Başka bir şey yapmaz. |
+| Bildirimden sonra | Bot coin 2x'e ulaşınca **"2x oldu"**, likidite çekilirse **"⚠️ likidite çekiliyor"** haberi verir. Satış kararı kullanıcının. |
 | Bildirim sayısı | Mümkün olduğunca az. Eşik, backtest'in "günde kaç bildirim · yüzde kaçı 2x" tablosuna bakılarak birlikte seçilir. |
 | Güvenlik — eleme | **Sadece satılamama elenir:** honeypot ya da toplam alım+satım vergisi **≥ %10**. Satılabilirlik doğrulanamazsa coin elenmez, raporda "⚠️ satılabilirlik doğrulanamadı" yazar. |
 | Güvenlik — rapor | Diğer 14 kontrol **eleme yapmaz**, raporda tek tek görünür (bilinmeyen "bilinmiyor" yazar). Ayrıca 0-100 **güven puanı**; her kontrolün puana etkisi geçmiş veride tuzak oranını ne kadar artırdığına göre belirlenir. |
@@ -24,7 +24,10 @@ bulur, güvenlik taramasından geçemeyenleri sessizce eler, kalanları kullanı
 
 **3. adım (simülasyon) kararları (2 Ekim):** tutar güvene / 2x ihtimaline göre değişir · 2x'te **yarısı satılır**, kalanı
 devam eder · **%50 düşüşte satılır** (zarar-kes) · hedef **haftada kasayı 2x** (kasa belli değil → sonuç kasaya oranla) ·
-tablo **brüt ve masraflı** (Fomo komisyonu yön başına en az $0,95 + kayma) yan yana.
+tablo **brüt ve masraflı** (Fomo komisyonu yön başına en az $0,95 + kayma) yan yana. Varsayılan tutar: 2x ihtimali
+yüksek → kasanın %4'ü, orta → %2, düşük → %1 (kullanıcı değiştirebilir). Kalan yarı için üç kural yan yana: zirveden
+%50 düşünce sat / 24 saat sonra sat / hiç satma. **Bildirimden sonra "⚠️ likidite çekiliyor" uyarısı da olacak**
+(kullanıcı istedi; 4. adım).
 
 **Kapsam (2 Ekim):** şimdilik **sadece Robinhood Chain**. Fomo'da Solana (pump.fun), BNB, Base vb. zincirlerden de coin
 var; bunları görmüyoruz, yani kısıtlı bir havuza bakıyoruz. Robinhood Chain'de sistem kanıtlanınca aynı yöntem diğer
