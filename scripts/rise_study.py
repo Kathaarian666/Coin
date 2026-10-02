@@ -64,7 +64,7 @@ CRITERIA = {
 
 
 # chosen with the user on 2 Oct (PROJE.md §1): the "güçlü" / "orta" criteria; the model uses only these
-DROPPED = {"launcher_prior", "dev_pct", "smart", "hour", "sniper_pct", "fresh_share", "repeat_buys", "top_buyer_share",
+DROPPED = {"launcher_hit_rate", "launcher_prior", "dev_pct", "smart", "hour", "sniper_pct", "fresh_share", "repeat_buys", "top_buyer_share",
            "market_buyers_1h"}
 CHOSEN = [c for c in CRITERIA.values() if c not in DROPPED]
 
