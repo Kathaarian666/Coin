@@ -1,0 +1,16 @@
+# systemd unit: keeps the bot running 24/7 and restarts it after crashes/reboots.
+# Install: sudo cp deploy/rhscanner.service /etc/systemd/system/ && sudo systemctl enable --now rhscanner
+[Unit]
+Description=Robinhood Chain token scanner Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Coin
+ExecStart=/home/ubuntu/Coin/.venv/bin/python -m rhscanner
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

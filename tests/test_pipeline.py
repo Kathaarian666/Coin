@@ -1,0 +1,85 @@
+from types import SimpleNamespace
+
+from conftest import EvmRpc
+from rhscanner.analyzer import Analyzer, pool_from_dexscreener
+from rhscanner.storage import Storage
+
+
+def settings(weth, **kw):
+    base = dict(weth=weth, probe_eth=0.01, v4_pool_manager="0x" + "8" * 40, holder_lookback_blocks=10_000)
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+async def analyze(chain, addrs, tmp_path):
+    analyzer = Analyzer(EvmRpc(chain, addrs["probe"]), settings(addrs["weth"]), None, None,
+                        Storage(str(tmp_path / "t.db")))
+    pool = {"dex": "v2", "pool": addrs["pair"], "token": addrs["token"], "quote": addrs["weth"]}
+    return await analyzer.analyze(addrs["token"], pool)
+
+
+async def test_honeypot_scores_zero(market_factory, tmp_path):
+    chain, addrs = market_factory(block_sells=True, renounce=True)
+    report = await analyze(chain, addrs, tmp_path)
+    assert report["symbol"] == "?" and report["score"] == 0
+    assert any(f["code"] == "honeypot" for f in report["findings"])
+
+
+async def test_clean_renounced_token_scores_well(market_factory, tmp_path):
+    chain, addrs = market_factory(renounce=True, holders=40)
+    report = await analyze(chain, addrs, tmp_path)
+    assert report["liquidity"]["liquidity_eth"] > 9
+    assert report["holders"]["top10_pct"] < 30 and report["missing"] == []
+    assert report["honeypot"]["sell_tax"] == 0
+    assert report["score"] >= 75
+
+
+def test_pool_from_dexscreener_picks_deepest_pair_any_quote():
+    weth, token = "0x" + "a" * 40, "0x" + "b" * 40
+    pairs = [
+        {"pairAddress": "0x1", "baseToken": {"address": token}, "quoteToken": {"address": weth},
+         "labels": ["v3"], "liquidity": {"usd": 100}},
+        {"pairAddress": "0x2", "baseToken": {"address": weth}, "quoteToken": {"address": token},
+         "liquidity": {"usd": 5000}},
+        {"pairAddress": "0x3", "baseToken": {"address": token}, "quoteToken": {"address": "0x" + "c" * 40},
+         "liquidity": {"usd": 99999}},
+        {"pairAddress": "0x4", "baseToken": {"address": "0x" + "d" * 40}, "quoteToken": {"address": weth},
+         "liquidity": {"usd": 10**9}},
+    ]
+    pool = pool_from_dexscreener(token, pairs)
+    assert pool["pool"] == "0x3" and pool["dex"] == "v2" and pool["quote"] == "0x" + "c" * 40
+    assert pool_from_dexscreener(token, pairs[:2])["pool"] == "0x2"
+
+
+class LogRpc:
+    """Serves one PairCreated log, then stops the watcher loop."""
+
+    def __init__(self, entry, pair_factory):
+        self.entry, self.pair_factory, self.calls = entry, pair_factory, 0
+
+    async def block_number(self):
+        self.calls += 1
+        if self.calls > 2:
+            raise KeyboardInterrupt  # escape the infinite loop in the test
+        return 100
+
+    async def get_logs(self, from_block, to_block, topics):
+        return [self.entry] if from_block <= 100 <= to_block else []
+
+    async def try_call_fn(self, to, signature, out_types, *args):
+        return (self.pair_factory,)
+
+
+def test_storage_marks_tokens_once(tmp_path):
+    storage = Storage(str(tmp_path / "s.db"))
+    pool = {"dex": "v2", "pool": "0x1"}
+    assert storage.mark_seen("0xABC", pool, 5) is True
+    assert storage.mark_seen("0xabc", pool, 6) is False
+    assert storage.known_pool("0xAbC") == pool
+
+
+async def test_dev_holding_most_of_the_supply_is_flagged(market_factory, tmp_path):
+    chain, addrs = market_factory(renounce=True)
+    report = await analyze(chain, addrs, tmp_path)
+    assert {"top10_high", "whale"} <= {f["code"] for f in report["findings"]}
+    assert report["score"] < 75
