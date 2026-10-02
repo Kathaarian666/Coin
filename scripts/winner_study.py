@@ -72,7 +72,7 @@ def main():
         launcher_times[launcher].append(ts)
     for v in launcher_times.values():
         v.sort()
-    tr = pd.read_sql("SELECT ts, token, side, trader, usd, amount FROM trades ORDER BY token, ts", db)
+    tr = pd.read_sql("SELECT block, ts, token, side, trader, usd, amount FROM trades ORDER BY token, ts", db)
     print(f"{len(tr):,} işlem ({time.time() - t0:.0f} sn)", flush=True)
     data_end = tr.ts.max()
 
@@ -104,7 +104,7 @@ def main():
     for n, (tok, g) in enumerate(coins.items()):
         if not START <= g.ts.iloc[0] < END:
             continue
-        ts, side, who = g.ts.values, g.side.values, g.trader.values
+        ts, side, who, blk = g.ts.values, g.side.values, g.trader.values, g.block.values
         usd = g.usd.fillna(0).values
         px = np.where((g.usd > 0) & (g.amount > 0), g.usd / g.amount.replace(0, np.nan), np.nan)
         buy = (side == 1) & ~np.isnan(px)
@@ -141,6 +141,10 @@ def main():
             w10 = (ts[past] > t - 600)
             p5 = (ts[past] > t - 600) & (ts[past] <= t - 300)
             first_buyers = list(dict.fromkeys(b_who))[:k]
+            # angle D (PROJE.md §4.4): the last minute, bots in the same block, small buyers
+            w1 = (ts[past] > t - 60) & (side[past] == 1)
+            b_blk = blk[past][side[past] == 1]
+            same_block = int(pd.Series(b_blk).duplicated(keep=False).sum())
             rows.append({
                 "coin": addr, "k": k, "ts": t,
                 "peak": float(fut.max() / p_now),
@@ -169,6 +173,12 @@ def main():
                 "launch_age_min": (t - launch[0]) / 60 if launch else np.nan,
                 "launcher_prior": bisect.bisect_left(launcher_times[launch[1]], launch[0]) if launch else np.nan,
                 "market_buyers_1h": np.nan,
+                "buyers_60s": len(set(who[past][w1])),
+                "usd_60s_share": float(usd[past][w1].sum() / max(1.0, b_usd.sum())),
+                "same_block_buys": same_block,
+                "small_buy_share": float(np.mean(b_usd < 20)) if len(b_usd) else np.nan,
+                "launcher": launch[1] if launch else "",
+                "first3": ",".join(str(x) for x in first_buyers[:3]),
             })
         if n % 5000 == 0:
             print(f"{n}/{len(coins)} coin · {len(rows)} kontrol noktası · {time.time() - t0:.0f} sn", flush=True)

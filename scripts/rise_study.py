@@ -53,6 +53,13 @@ CRITERIA = {
     "Geliştirici payı %": "dev_pct",
     "Sniper payı %": "sniper_pct",
     "Havuz derinliği $": "depth_usd",
+    # angle D (PROJE.md §4.4)
+    "Son 60 sn alıcı": "buyers_60s",
+    "Son 60 sn alım payı": "usd_60s_share",
+    "Aynı blokta alım (bot)": "same_block_buys",
+    "Küçük alım (<$20) payı": "small_buy_share",
+    "Geliştiricinin önceki coinlerinde 1 saatte 2x oranı": "launcher_hit_rate",
+    "İlk 3 alıcının geçmiş 1 saatte 2x oranı": "buyers_hit_rate",
 }
 
 
@@ -62,9 +69,39 @@ DROPPED = {"launcher_prior", "dev_pct", "smart", "hour", "sniper_pct", "fresh_sh
 CHOSEN = [c for c in CRITERIA.values() if c not in DROPPED]
 
 
+def add_history(w):
+    """Track records known at each moment: the launcher's earlier coins and the first 3 buyers' earlier first buys.
+    Outcome = 2x within 1 h of that coin's moment, so it is known 1 h later (no look-ahead)."""
+    w = w.sort_values("ts")
+    hit = (w.t2x_h.fillna(99) <= 1).values
+    pending, l_hist, b_hist = [], {}, {}
+    l_rate, b_rate = [], []
+    events = list(zip(w.ts.values, w.launcher.fillna("").values, w.first3.fillna("").values, hit))
+    import heapq
+    for t, launcher, first3, h in events:
+        while pending and pending[0][0] <= t:
+            _, kind, key, outcome = heapq.heappop(pending)
+            book = l_hist if kind == "l" else b_hist
+            n, k = book.get(key, (0, 0))
+            book[key] = (n + 1, k + outcome)
+        n, k = l_hist.get(launcher, (0, 0)) if launcher else (0, 0)
+        l_rate.append(k / n if n else np.nan)
+        wallets = [x for x in first3.split(",") if x]
+        tot = [b_hist.get(x, (0, 0)) for x in wallets]
+        n = sum(a for a, _ in tot)
+        b_rate.append(sum(b for _, b in tot) / n if n >= 3 else np.nan)
+        if launcher:
+            heapq.heappush(pending, (t + 3600, "l", launcher, int(h)))
+        for x in wallets:
+            heapq.heappush(pending, (t + 3600, "b", x, int(h)))
+    return w.assign(launcher_hit_rate=l_rate, buyers_hit_rate=b_rate)
+
+
 def load(winners, security, k):
     w = pd.read_parquet(winners)
     w = w[w.k == k].copy()
+    if "first3" in w:
+        w = add_history(w)
     w["hit2x"] = w.t2x_h.notna()
     w["hour"] = (w.ts % DAY) // 3600
     w["day"] = (w.ts // DAY).astype(int)
