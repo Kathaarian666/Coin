@@ -42,7 +42,9 @@ def main():
                         trader TEXT, eth REAL, tokens REAL, PRIMARY KEY (token, block, li));
                         CREATE TABLE IF NOT EXISTS curve_ranges (lo INTEGER PRIMARY KEY);""")
     coins = set(pd.read_parquet(sys.argv[2], columns=["coin"]).coin)
-    curves = {c.lower(): (t, b) for t, c, b in db.execute("SELECT lower(token), curve, block FROM launches") if t in coins}
+    since = db.execute("SELECT MIN(block) FROM trades WHERE ts >= strftime('%s', '2026-09-17 12:00')").fetchone()[0]
+    curves = {c.lower(): (t, b) for t, c, b in db.execute("SELECT lower(token), curve, block FROM launches")
+              if t in coins and b >= since}  # coins launched before the data window have no early history here
     lo = min(b for _, b in curves.values())
     hi = max(b for _, b in curves.values()) + int(hours * 36000)
     done = {r for (r,) in db.execute("SELECT lo FROM curve_ranges")}
