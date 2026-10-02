@@ -80,8 +80,8 @@ def contract_facts(db, tokens):
     db.execute("""CREATE TABLE IF NOT EXISTS contracts (token TEXT PRIMARY KEY, size INTEGER, fp TEXT, risky TEXT,
                   proxy INTEGER, owner TEXT)""")
     done = {r[0] for r in db.execute("SELECT token FROM contracts")}
-    todo = [t for t in tokens if t not in done]
-    print(f"kontrat: {len(todo)} coin okunacak", flush=True)
+    print(f"kontrat: {sum(t not in done for t in tokens)} coin okunacak", flush=True)
+
     def fetch(job):  # spread over both endpoints in parallel: one at a time is slow (429 / 500)
         n, part = job
         calls = []
@@ -89,10 +89,24 @@ def contract_facts(db, tokens):
             calls += [("eth_getCode", [t, "latest"]), ("eth_getStorageAt", [t, EIP1967_IMPL_SLOT, "latest"]),
                       ("eth_getStorageAt", [t, EIP1967_BEACON_SLOT, "latest"]),
                       ("eth_call", [{"to": t, "data": OWNER}, "latest"])]
-        return part, rpc_batch(calls, URLS[n % 2:] + URLS[:n % 2])
+        try:
+            return part, rpc_batch(calls, URLS[n % 2:] + URLS[:n % 2])
+        except RuntimeError:  # refused again and again: skip, the next pass reads it
+            return part, [None] * len(calls)
 
+    for attempt in range(5):  # passes over what is still missing
+        todo = [t for t in tokens if t not in {r[0] for r in db.execute("SELECT token FROM contracts")}]
+        if not todo:
+            break
+        if attempt:
+            print(f"kontrat: {len(todo)} coin tekrar deneniyor", flush=True)
+        read_contracts(db, todo, fetch)
+    return pd.read_sql("SELECT * FROM contracts", db).set_index("token")
+
+
+def read_contracts(db, todo, fetch):
     jobs = list(enumerate(todo[n:n + CHUNK] for n in range(0, len(todo), CHUNK)))
-    with ThreadPoolExecutor(4) as pool:
+    with ThreadPoolExecutor(3) as pool:
         for k, (part, res) in enumerate(pool.map(fetch, jobs)):
             rows = []
             for j, t in enumerate(part):
@@ -107,7 +121,6 @@ def contract_facts(db, tokens):
             db.commit()
             if k % 50 == 0:
                 print(f"  {k * CHUNK}/{len(todo)}", flush=True)
-    return pd.read_sql("SELECT * FROM contracts", db).set_index("token")
 
 
 CLONE = re.compile(r"73([0-9a-f]{40})5af4")  # minimal proxies (EIP-1167 and the shorter PUSH0 variant)
