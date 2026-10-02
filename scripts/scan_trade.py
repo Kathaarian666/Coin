@@ -1,6 +1,8 @@
 """Trading the scan: coins picked at their 3rd Fomo buyer, with entry, exit rules and costs.
 
-  python scripts/scan_trade.py <trades.db> <winners_with_transfers.parquet> [<train share>=0.65]
+  python scripts/scan_trade.py <trades.db> <winners_with_transfers.parquet> [<train share>=0.65 | kayan]
+
+`kayan`: walk-forward, a new scan every day from the earlier days only (label: 5x within 24 h).
 
 The scan (gradient boosting on >= 5x, Fomo flow + holder features, scripts/rise_detect.py) is trained on the
 first 65% of the period; trades are simulated on the last 35% only. Entry 30 s after the checkpoint at the pool
@@ -82,20 +84,11 @@ def exits(held, h_t, allp, a_t, t_in, depth):
     return out
 
 
-def main():
-    db = sqlite3.connect(sys.argv[1])
-    df = pd.read_parquet(sys.argv[2])
-    df = df[df.k == 3].sort_values("ts").reset_index(drop=True)
-    feats = FLOW + [c for c in HOLD if c in df]
-    df[feats] = df[feats].astype(float)
-    split = df.ts.quantile(float(sys.argv[3]) if len(sys.argv) > 3 else 0.65)
-    tr, te = df[df.ts < split], df[df.ts >= split].copy()
-    gbm = HistGradientBoostingClassifier(max_iter=250, learning_rate=0.04, min_samples_leaf=40, l2_regularization=1.0,
-                                         random_state=0).fit(tr[feats], tr.peak >= 5)
-    te["score"] = gbm.predict_proba(te[feats])[:, 1]
+def simulate(db, df):
+    """Exit results of buying every checkpoint in df (independent of any scan), plus `peak24` (held high in 24 h)."""
     ids = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names WHERE kind = 'token'")}
     rows = []
-    for coin, t, score in zip(te.coin, te.ts, te.score):
+    for coin, t in zip(df.coin, df.ts):
         tr = db.execute("SELECT ts, side, usd, amount FROM trades WHERE token = ? AND usd > 0 AND amount > 0 "
                         "ORDER BY ts", (ids[coin],)).fetchall()
         ats = np.array([x[0] for x in tr], float)
@@ -109,27 +102,85 @@ def main():
         p_in = float(np.median(bpx[max(0, e - 2):e + 1])) * (1 + 1.5 * busd[e] / depth)
         bp, bt = path_after(bts, bpx, t_in, p_in)
         held = np.minimum(np.minimum(bp[:-1], bp[1:]), CAP) if len(bp) > 1 else np.array([])
+        h_t = bt[1:]
         allp, a_t = path_after(ats, apx, t_in, p_in)
-        rows.append({"coin": coin, "ts": t, "score": score, "depth": depth,
-                     "peak": held.max() if len(held) else 0.0,
-                     **exits(held, bt[1:], np.minimum(allp, CAP), a_t, t_in, depth)})
-    res = pd.DataFrame(rows)
-    rules = [c for c in res.columns if c not in ("coin", "ts", "score", "depth", "peak")]
-    days = (res.ts.max() - res.ts.min()) / 86400
-    print(f"Test dönemi {days:.1f} gün, {len(res)} coin (3. Fomo alıcısı). İşlem başı $ ($100, maliyetler dahil):\n")
+        day1 = held[h_t <= t_in + 86400]
+        rows.append({"depth": depth, "peak_in": held.max() if len(held) else 0.0,
+                     "peak24": day1.max() if len(day1) else 0.0,
+                     **exits(held, h_t, np.minimum(allp, CAP), a_t, t_in, depth)})
+    return pd.concat([df.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
+
+
+def report(res, rules, days):
     groups = [("Hepsi (seçimsiz)", res)] + [
-        (f"Taramanın en iyi %{q}'u", res[res.score >= np.percentile(res.score, 100 - q)]) for q in (5, 10, 20)]
+        (f"Taramanın en iyi %{q}'u", res[res.score >= res[f"bar{q}"]]) for q in (5, 10, 20)]
     for name, g in groups:
         day = (g.ts // 86400).astype(int)
-        print(f"== {name}: {len(g)} coin ({len(g) / days:.0f}/gün) · girişten sonra zirve ≥2x %{100 * (g.peak >= 2).mean():.0f}"
-              f" · ≥5x %{100 * (g.peak >= 5).mean():.0f} · ≥10x %{100 * (g.peak >= 10).mean():.0f}")
+        print(f"== {name}: {len(g)} coin ({len(g) / days:.0f}/gün) · girişten sonra zirve ≥2x %{100 * (g.peak_in >= 2).mean():.0f}"
+              f" · ≥5x %{100 * (g.peak_in >= 5).mean():.0f} · ≥10x %{100 * (g.peak_in >= 10).mean():.0f}")
         for r in rules:
             v = g[r].values
+            if len(v) < 5:
+                continue
             best_out = np.sort(v)[:-max(1, len(v) // 100)].mean()
-            pos_days = (g[r].groupby(day).mean() > 0).sum()
             se = v.std() / np.sqrt(len(v))
-            print(f"   {r:38} ort {v.mean():+6.1f}$ (±{1.64 * se:4.1f}) · en iyi %1 hariç {best_out:+6.1f}$ · medyan {np.median(v):+6.1f}$"
-                  f" · kârlı %{100 * (v > 0).mean():.0f} · artı gün {pos_days}/{day.nunique()}")
+            pos_days = (g[r].groupby(day).mean() > 0).sum()
+            print(f"   {r:38} ort {v.mean():+6.1f}$ (±{1.64 * se:4.1f}) · en iyi %1 hariç {best_out:+6.1f}$ · medyan "
+                  f"{np.median(v):+6.1f}$ · kârlı %{100 * (v > 0).mean():.0f} · artı gün {pos_days}/{day.nunique()}")
+
+
+def main():
+    db = sqlite3.connect(sys.argv[1])
+    df = pd.read_parquet(sys.argv[2])
+    df = df[df.k == 3].sort_values("ts").reset_index(drop=True)
+    feats_all = FLOW + [c for c in HOLD if c in df]
+    df[feats_all] = df[feats_all].astype(float)
+    mode = sys.argv[3] if len(sys.argv) > 3 else "0.65"
+    if mode != "kayan":
+        split = df.ts.quantile(float(mode))
+        tr, te = df[df.ts < split], df[df.ts >= split].copy()
+        gbm = HistGradientBoostingClassifier(max_iter=250, learning_rate=0.04, min_samples_leaf=40,
+                                             l2_regularization=1.0, random_state=0).fit(tr[feats_all], tr.peak >= 5)
+        te["score"] = gbm.predict_proba(te[feats_all])[:, 1]
+        for q in (5, 10, 20):
+            te[f"bar{q}"] = np.percentile(te.score, 100 - q)
+        res = simulate(db, te)
+        rules = [c for c in res.columns if "sat" in c or "stop" in c or "tut" in c or "iz süren" in c]
+        days = (res.ts.max() - res.ts.min()) / 86400
+        print(f"Test dönemi {days:.1f} gün, {len(res)} coin (3. Fomo alıcısı). İşlem başı $ ($100, maliyetler dahil):\n")
+        report(res, rules, days)
+        return
+    # walk-forward: each day's scan is trained only on checkpoints whose 24 h label was complete before the day;
+    # the day's bars are the percentiles of the new model's scores on the previous 2 days (known in advance)
+    sim = simulate(db, df)
+    sim["day"] = (sim.ts // 86400).astype(int)
+    last_full = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0] - 72 * 3600  # 72 h exits fit in the data
+    rules = [c for c in sim.columns if "sat" in c or "stop" in c or "tut" in c or "iz süren" in c]
+    days = sorted(sim.day.unique())
+    for name, feats in (("akış + holder", feats_all), ("sadece Fomo akışı", FLOW)):
+        parts = []
+        for d in days:
+            start = d * 86400
+            train = sim[sim.ts < start - 86400]
+            if train.ts.max() - train.ts.min() < 3 * 86400 if len(train) else True:
+                continue
+            gbm = HistGradientBoostingClassifier(max_iter=250, learning_rate=0.04, min_samples_leaf=40,
+                                                 l2_regularization=1.0, random_state=0).fit(train[feats], train.peak24 >= 5)
+            recent = sim[(sim.ts >= start - 2 * 86400) & (sim.ts < start)]
+            today = sim[(sim.day == d) & (sim.ts <= last_full)].copy()
+            if today.empty or recent.empty:
+                continue
+            s_recent = gbm.predict_proba(recent[feats])[:, 1]
+            today["score"] = gbm.predict_proba(today[feats])[:, 1]
+            for q in (5, 10, 20):
+                today[f"bar{q}"] = np.percentile(s_recent, 100 - q)
+            parts.append(today)
+        res = pd.concat(parts)
+        n_days = res.day.nunique()
+        print(f"\n######## Kayan pencere [{name}]: {n_days} test günü "
+              f"({pd.to_datetime(res.ts.min(), unit='s'):%d.%m}–{pd.to_datetime(res.ts.max(), unit='s'):%d.%m}), "
+              f"{len(res)} coin ########")
+        report(res, rules, n_days)
 
 
 if __name__ == "__main__":

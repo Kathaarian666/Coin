@@ -170,9 +170,17 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   +$11.5 ±7. En iyi %20 (~48-56/gün): +$21 ±8 / +$24.8 ±7 (7/7). En iyi %5: +$54 ±22 / +$48 ±16. 72 s tutmak, iz süren
   %50 ve "2x'te sat yoksa 72 s" kötü. İlk kez seçim + çıkış birlikte örnek dışı pozitif ve hata payı sıfırın üstünde.
   Eksikler: tek dönem (~1 hafta test), canlıda holder özellikleri için transfer okuma gerekir, iz süren stop gecikmesi.
+- **Kayan pencere doğrulaması (2 Ekim, `scan_trade.py <db> <winners_tx> kayan`)**: her gün tarama sadece etiketi
+  kesinleşmiş önceki günlerle yeniden eğitilir (etiket 24 s içinde ≥5x, 24 s boşluk), günün eşikleri önceki 2 günün
+  puan dağılımından; 7 test günü (22-28 Eyl, 72 s çıkışlar veriye sığan). Seçimsiz: yarısı 2x + %30 iz süren −$0.2.
+  **En iyi %10, yarısı 2x + kalanı %30 iz süren: akış + holder +$30.1 ±10 (38/gün), sadece Fomo akışı +$29.5 ±12
+  (32/gün), ikisi de 7/7 artı gün**; en iyi %20: +$18.8 ±6 / +$16.9 ±6. "2x'te sat yoksa 6 s çık" en iyi %10: +$15.7 /
+  +$6.6. → **Sadece Fomo akışı özellikleri neredeyse aynı iyi** (canlıda transfer okumaya gerek yok). 1 Ekim 15:00
+  sonrası veri hiç kullanılmadı → yeni günler indirilip tamamen taze test yapılabilir.
 
 ## Sıradaki işler
-1. Tarama + "yarısı 2x, kalanı %30 iz süren stop" (yukarıda) daha sağlam doğrulanacak: gün gün kayan pencere,
-   sadece Fomo akışı özellikleriyle (canlıda kolay) karşılaştırma; kullanıcı X API'yi (pahalı) şimdilik istemedi.
+1. Tarama (sadece Fomo akışı, 3. alıcı, en iyi %10) + "yarısı 2x, kalanı %30 iz süren stop" kayan pencerede de pozitif.
+   Sıradaki: 1 Ekim sonrası yeni günleri indirip (`fomo_download.py`) hiç görülmemiş veride son test; sonra bota önce
+   bildirimsiz kayıt. Kullanıcı X API'yi (pahalı) şimdilik istemedi.
 2. Bulunan kural bota "hızlı bildirim" olarak (flow.py) + Fomo fiyatlarıyla canlı ölçüm (önce bildirimsiz kayıt).
 3. Sonraki aşama (kullanıcı onayıyla): pozisyon/risk, gerçek işlem takibi, Twitter/X (ücretli, önce fiyat sor), Solana.
