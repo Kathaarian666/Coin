@@ -77,6 +77,30 @@ Bunlar yön gösterir; 2x tanımı (bildirim fiyatından, süresiz) ile 2. adım
 
 - Daha erken an (zincirde 5.–40. curve alıcısı) isabeti artırmıyor; Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç.
 
+### 4.1 Güvenlik ölçümü (1. adım, `scripts/security_study.py`, 2 Ekim)
+18 Eylül–1 Ekim, Fomo'da 3. alıcıya ulaşan 7.714 yeni coin (en az 24 saat izlenmiş). Tuzak oranı %3,6 (rug %1,9,
+satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı).
+
+| Kontrol (3. alıcı anında) | Coin | Tuzak | Diğerleri |
+|---|---|---|---|
+| Pons değil | 2.371 | %7,6 | %1,8 |
+| Fomo'da 2+ farklı satıcı | 945 | %0,4 | %4,0 |
+| Nadir kontrat (aynı fonksiyon seti < 5 coinde) | 378 | %15,3 | %3,0 |
+| Proxy (yükseltilebilir) | 35 | %31 | %3,5 |
+| Sahibi var (owner) | 747 | %11 | %2,8 |
+| mint fonksiyonu | 26 | %15 | %3,5 |
+| trading aç/kapa fonksiyonu | 54 | %44 | %3,3 |
+| Geliştirici 3+/10+ coin | 1.022 / 733 | %2,1 / %2,3 | %3,8 / %3,7 (ayırmıyor) |
+| Fomo churn ≥ %40 | 75 | %2,7 | %3,6 (ayırmıyor) |
+
+- Bir Pons dışı launchpad şablonu (53 coin) %23 satılamayan; 342 farklı kontrat şablonu var, 253'ü tek coinlik.
+- "trading aç/kapa" coinleri %65 2x görünüyor ama %44'ü tuzak: satılamayan coinin 2x'i anlamsız.
+- Fomo'da erken satış olan coinlerde 2x oranı düşük (%13 vs %30): güvenlik değil, 2. adım için not.
+- Ölçülmedi (henüz): holder dağılımı, geliştirici payı/satışı, bundle/sniper, likidite, LP kilidi, V4 hook — zincirden
+  transfer/havuz verisi gerekir. Dış kaynaklar (GoPlus/GeckoTerminal) geçmiş an için ölçülemez (bugünkü durumu verir).
+- **Botta bulunan açık (4. adımda düzeltilecek):** `checks/contract.py` sadece 45 baytlık EIP-1167 klonu tanıyor;
+  44 baytlık PUSH0 türü (714 coin, 33 asıl kontrat) tanınmıyor, kontrol klonun kendisine bakıyor.
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
@@ -134,6 +158,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
+| Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
 
 **Git dalları:**
 

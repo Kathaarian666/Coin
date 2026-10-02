@@ -13,10 +13,11 @@ the last 3 buy prices. Everything after that moment is only used for the labels:
 Checks known at the moment: Pons launch, Fomo sellers so far, Fomo churn (rhscanner.checks.wash), launcher
 history (launches table, scripts/pons_launches.py), and contract facts read from the chain now (bytecode does
 not change): size, function-set fingerprint (template), risky admin functions, EIP-1967 proxy, owner().
-Contract facts are cached in the DB table `contracts`.
+Contract facts are cached in the DB table `contracts`; clones are read through to their implementation.
 """
 
 import json
+import re
 import sqlite3
 import sys
 import time
@@ -53,6 +54,13 @@ def rpc_batch(calls):
             print("retry", exc, flush=True)
             time.sleep(2 + 3 * attempt)
     raise RuntimeError("RPC refused")
+
+
+def rpc_many(calls, size=40):
+    out = []
+    for n in range(0, len(calls), size):
+        out += rpc_batch(calls[n:n + size])
+    return out
 
 
 def selectors(code: str) -> str:
@@ -94,6 +102,35 @@ def contract_facts(db, tokens):
         if n % 500 == 0:
             print(f"  {n + len(part)}/{len(todo)}", flush=True)
     return pd.read_sql("SELECT * FROM contracts", db).set_index("token")
+
+
+CLONE = re.compile(r"73([0-9a-f]{40})5af4")  # minimal proxies (EIP-1167 and the shorter PUSH0 variant)
+
+
+def resolve_clones(db):
+    """Clones hold no logic of their own: read the implementation's code for the function set and risky functions."""
+    cols = [r[1] for r in db.execute("PRAGMA table_info(contracts)")]
+    if "impl" not in cols:
+        db.execute("ALTER TABLE contracts ADD COLUMN impl TEXT")
+    todo = db.execute("SELECT token FROM contracts WHERE size <= 60 AND impl IS NULL").fetchall()
+    if not todo:
+        return
+    codes = rpc_many([("eth_getCode", [t, "latest"]) for (t,) in todo])
+    impl_of = {}
+    for (t,), code in zip(todo, codes):
+        m = CLONE.search((code or "").lower())
+        impl_of[t] = "0x" + m.group(1) if m else ""
+    impls = sorted({i for i in impl_of.values() if i})
+    impl_code = dict(zip(impls, rpc_many([("eth_getCode", [i, "latest"]) for i in impls]) if impls else []))
+    print(f"klon: {len(todo)} coin, {len(impls)} farklı asıl kontrat", flush=True)
+    for t, i in impl_of.items():
+        code = impl_code.get(i) or "0x"
+        if i:
+            db.execute("UPDATE contracts SET impl=?, fp=?, risky=? WHERE token=?",
+                       (i, "clone:" + selectors(code), ",".join(sorted(find_risky_functions(code))), t))
+        else:
+            db.execute("UPDATE contracts SET impl='' WHERE token=?", (t,))
+    db.commit()
 
 
 def two_in_row(px, cond):
@@ -213,6 +250,8 @@ def main():
     df = pd.DataFrame(rows)
     print(f"{len(df)} coin (3. alıcı anı)", flush=True)
     facts = contract_facts(db, df.token.tolist())
+    resolve_clones(db)
+    facts = pd.read_sql("SELECT * FROM contracts", db).set_index("token")
     df = df.join(facts, on="token")
     fp_count = df.groupby("fp").token.transform("count")
     df["template_n"] = fp_count
