@@ -15,6 +15,7 @@ test = from CUT on (days no criterion was chosen on).
 """
 
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -67,9 +68,11 @@ def load(winners, security, k):
     w["hit2x"] = w.t2x_h.notna()
     w["hour"] = (w.ts % DAY) // 3600
     w["day"] = (w.ts // DAY).astype(int)
-    if k == 3:
-        s = pd.read_parquet(security, columns=["token", "top10_pct", "largest_pct", "dev_pct", "sniper_pct", "depth_usd"])
-        w = w.merge(s.rename(columns={"token": "coin"}), on="coin", how="left")
+    if k == 3 and security and Path(security).exists():  # holder columns: scripts/security_extra.py
+        cols = ["token", "top10_pct", "largest_pct", "dev_pct", "sniper_pct"]
+        s = pd.read_parquet(security)
+        s = s[[c for c in cols if c in s]].rename(columns={"token": "coin"})
+        w = w.merge(s, on="coin", how="left")
     return w[w.obs_h >= OBS_MIN]
 
 

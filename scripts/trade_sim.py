@@ -40,6 +40,7 @@ BARS = (0.10, 0.05, 0.02, 0.01)
 RULES = ("iz", "24s", "tut")
 CAP = 100.0
 DELAYS = (0, 10, 20, 30, 60, 180)  # seconds between the alert and the user's buy
+WEEKLY_DELAY = 30  # the user's reaction time (PROJE.md §1)
 
 
 def two_in_row(mask):
@@ -119,6 +120,24 @@ def simulate(alerts, rule, bank0, costs):
     return bank
 
 
+def weekly_view(alerts, days):
+    """Each test week simulated alone from a fresh bankroll, so a hot early market cannot compound into later
+    weeks; rule "iz", WEEKLY_DELAY seconds."""
+    first = min(a["t_in"] for a in alerts)
+    weeks = {}
+    for a in alerts:
+        weeks.setdefault(int((a["t_in"] - first) // (7 * 86400)), []).append(a)
+    line = []
+    for wk, al in sorted(weeks.items()):
+        start = pd.to_datetime(first + wk * 7 * 86400, unit="s")
+        n_days = min(7.0, (max(a["t_in"] for a in al) - (first + wk * 7 * 86400)) / 86400 + 1)
+        if n_days < 3:
+            continue  # a stub of a week says nothing
+        g, gc = simulate(al, "iz", 1000, False) / 1000, simulate(al, "iz", 1000, True) / 1000
+        line.append(f"{start:%d %b}: brüt {g:.2f}x, masraflı $1000 {gc:.2f}x ({len(al)} işlem)")
+    print(f"{'hafta hafta (iz, ' + str(WEEKLY_DELAY) + ' sn)':>24} " + " · ".join(line))
+
+
 def main():
     db_path, winners, security = sys.argv[1], sys.argv[2], sys.argv[3]
     if len(sys.argv) > 4:
@@ -177,6 +196,8 @@ def main():
                         g = simulate(al, rule, bank0, costs) / bank0
                         cells.append(f"{g:5.2f}x (hf {g ** (7 / days) if g > 0 else 0:4.2f}x)")
                     print(f"{label:>24} " + " ".join(f"{c:>16}" for c in cells))
+            if delay == WEEKLY_DELAY:  # the honest view: every week on its own, bankroll reset to $1000
+                weekly_view(alerts, days)
         print()
 
 

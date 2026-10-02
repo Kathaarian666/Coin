@@ -9,7 +9,7 @@ of the checkpoint price (the last buy price). The 2x label of the plan (PROJE.md
 after the checkpoint. Coins first traded 17 Sep 18:41 - 28 Sep (72 h fit).
 Features follow the signals the public research and scanners use: speed of money and buyers, trade sizes and
 the largest buy, buyer diversity, early holders still holding, fresh wallets, smart wallets, runup, FDV,
-Pons launch age and the launcher's history.
+Pons launch age and the launcher's history, pool depth from the buys' price steps (security_extra.depth_at).
 """
 
 import bisect
@@ -17,9 +17,13 @@ import sqlite3
 import sys
 import time
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from security_extra import depth_at  # noqa: E402
 
 KS = (3, 5, 10, 20)
 HORIZON = 72 * 3600
@@ -107,7 +111,7 @@ def main():
         bidx = np.nonzero(buy)[0]
         if len(bidx) < 2:
             continue
-        bts, bpx = ts[bidx], px[bidx]
+        bts, bpx, busd = ts[bidx], px[bidx], usd[bidx]
         held = np.minimum(bpx[:-1], bpx[1:])
         addr = names[tok]
         launch = launches.get(addr)
@@ -160,6 +164,7 @@ def main():
                 "runup": float(p_now / bpx[0]),
                 "off_high": float(p_now / held[:max(1, nb - 1)].max()) if nb > 2 else 1.0,
                 "fdv": p_now * supply[addr] if addr in supply else np.nan,
+                "depth_usd": depth_at(bpx[:nb], busd[:nb], bts[:nb], t),
                 "is_pons": launch is not None,
                 "launch_age_min": (t - launch[0]) / 60 if launch else np.nan,
                 "launcher_prior": bisect.bisect_left(launcher_times[launch[1]], launch[0]) if launch else np.nan,

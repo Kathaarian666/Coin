@@ -164,6 +164,31 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   Holder kriterleri (ilk 10 cüzdan, en büyük cüzdan, derinlik) 1-5 puan katıyor. 6 test günü az; üst dilimlerde hata
   payı büyük.
 
+### 4.3 Genişletilmiş veri ve simülasyon (3. adım, 2 Ekim akşam)
+- 3-17 Eylül boşluğu indirildi (`data_merge.py --fill`): 19,2 milyon işlem, 3 Eylül–1 Ekim aralıksız, 27.265 yeni coin.
+  Lansman zamanları boşluk doldurulunca işlemlerden yeniden hesaplandı (eski interpolasyon 6-18 dk kaymıştı; yeni
+  boşluk doldurulursa aynısı yapılmalı). 4 Eylül 13:08'de 9 dk işlem yok (Fomo duruşu ya da kayıp, önemsiz).
+- **Piyasa soğuyor:** Fomo hacmi Eylül başında günde $280-500M, Eylül sonunda ~$50M. Seçimsiz 2x oranı haftalık
+  %31 → %30 → %28 → %26.
+- Model (17 kriterden 15'i; holder kriterleri RPC kısıtlaması yüzünden bu turda yok), 10 Eylül–1 Ekim, 22 test günü:
+  en iyi %10 → günde 69 bildirim, 2x %50 (±3) · %5 → 33, %52 (±4) · %2 → 14, %55 (±6) · %1 → 8, %58 (±7).
+- Kriterler büyük veride: alım $ (son 10 dk, işlem başı, toplam, en büyük), 3. alıcıya hız, fiyat yükselişi, zirveden
+  uzaklık güçlü; satış payı/satıcılar, derinlik, son 5 dk alıcı, geliştirici coin sayısı orta; lansman yaşı ilk
+  haftada etkisiz ama sonraki günlerde tutuyor; FDV tutmuyor (arz verisi eksik: boşluk döneminde %61).
+- **Simülasyon (`trade_sim.py`):** 22 günlük bileşik sonuç yanıltıcı (sıcak Eylül başı katlanıyor: brüt 100x'ler).
+  Dürüst görünüm hafta hafta, kasa her hafta $1.000'dan, 30 sn gecikme, "iz" kuralı, **masraflı**:
+
+| Seçim | 10-16 Eylül (sıcak) | 17-23 Eylül | 24-30 Eylül |
+|---|---|---|---|
+| En iyi %10 (günde ~69) | 12,9x | 0,94x | 0,57x |
+| En iyi %5 (~33) | 10,9x | 1,16x | 1,15x |
+| En iyi %2 (~14) | 5,6x | 1,02x | 1,51x |
+| En iyi %1 (~8) | 3,5x | 1,11x | 1,36x |
+
+  Bugünkü piyasada beklenen: haftada yaklaşık **+%0-50**, hedef 2x değil; sıcak piyasada çok daha fazla. İşlem başına
+  medyan zararda, kârı az sayıda büyük kazanan getiriyor (piyango yapısı). Gecikme kritik: 60 sn üstünde kâr hızla
+  eriyor. Çok bildirim (en iyi %10) masrafta eriyor.
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
@@ -224,6 +249,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 | Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |
+| Simülasyon (3. adım) | `trade_sim.py` | Kullanıcının kurallarıyla işlem simülasyonu: gecikme, masraf, şans kontrolü, hafta hafta |
 | Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
 | Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
 
