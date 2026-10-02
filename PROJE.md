@@ -174,6 +174,15 @@ Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir.
 | Betimleyici | `coin_lifecycle.py` | Coin yaşam döngüsü istatistikleri |
 | Yardımcı | `rise_build.py` | Maliyet/kayma/havuz derinliği fonksiyonları (diğer betikler kullanıyor); kendi tablosu eski "2x olur mu" çalışmasından |
 
+**Git dalları:**
+
+| Dal | Ne |
+|---|---|
+| `claude/fomo-coin-scanner-app-mhz9rk` | **Asıl proje dalı.** Sunucu buradan kurulur, bütün geçmiş burada. |
+| `ccr-...` / `claude/...` | Claude Code'un her oturum için otomatik açtığı dallar. Her değişiklik bunlara ve asıl dala birlikte gönderilir; asıl dalda olmayan bir şey içermezler. Kullanıcı kararı: silinmiyorlar. |
+| `veri` | Araştırma verisinin arşivi (günlük parquet). Kod değil, kalmalı. |
+| `main` | GitHub'ın depo açılışındaki boş dal, kullanılmıyor. |
+
 **Çalışma sırası (güncel boru hattı):**
 ```
 winner_study.py fomo.db winners.parquet

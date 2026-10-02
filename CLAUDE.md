@@ -13,9 +13,11 @@ bildirim gönderen bot + yükselecek coinleri erken bulma araştırması. Proje 
 - Sadece ücretsiz kaynaklar. Ücretli bir şey (ör. Twitter API) önce fiyatıyla birlikte sorulur.
 - Kullanım limiti önemli: gereksiz canlı test / uzun keşif yapma; bir iş beklenmedik uzarsa dur ve sor.
 - Kullanıcıdan bulabileceğin bilgiyi isteme (ör. coin adresleri: GeckoTerminal/DexScreener aramasıyla bul).
-- Branch: `claude/fomo-coin-scanner-app-mhz9rk` — sunucunun `install.sh`'ı bunu kurar. Oturum başka bir branch
-  atarsa (ör. `claude/claude-md-durum-check-f88n39`) ikisine de push et (kullanıcı izin verdi), ikisi aynı kalsın.
-  PR açma (kullanıcı istemedikçe).
+- Branch: `claude/fomo-coin-scanner-app-mhz9rk` = **asıl proje dalı** (sunucunun `install.sh`'ı bunu kurar). Oturum başka
+  bir branch atarsa (`ccr-...` / `claude/...`) ikisine de push et (kullanıcı izin verdi), ikisi aynı kalsın. PR açma
+  (kullanıcı istemedikçe). Diğer dallar (`PROJE.md` §6): `veri` = veri arşivi (kalmalı), `main` = GitHub'ın boş ilk
+  dalı (kullanılmıyor), eski oturum dalları = asıl dalda olmayan bir şey içermeyen kopyalar (kullanıcı "kalsın" dedi).
+  Yeni oturumda dal sorulursa bunu açıkla.
 - **Push'tan önce testler mutlaka geçmeli** (`python -m pytest -q`; komut zincirinde sonucu kontrol et).
 - Telegram mesajları HTML: metinde çıplak `<` olursa Telegram mesajı reddeder ve komut sessizce cevapsız kalır
   → `escape()` / `&lt;` kullan; `tests/test_telegram_html.py` bütün rapor biçimlerini bu yüzden kontrol ediyor.
