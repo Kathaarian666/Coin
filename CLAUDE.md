@@ -31,7 +31,8 @@ taramasını geçemeyenleri sessizce eler, kalanları **güven puanı + 2x ihtim
 bildirim fiyatının **brüt 2x**'ine ulaşınca "2x oldu" der. Alım-satım kararı kullanıcının; bot işlem yapmaz.
 **Adım adım ilerlenir, her adım sonunda kullanıcıyla durulur** (`PROJE.md` §2): 0 temizlik · 1 güvenlik kriterleri ·
 2 yükseliş kriterleri (backtest) · 3 simülasyon (karar kapısı) · 4 bot · 5 canlı izleme. Adımı atlama, hızlıca sonuca
-koşma; kriterler kesinleşmeden bota dokunma. "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
+koşma; kriterler kesinleşmeden bota dokunma. **Kapsam şimdilik sadece Robinhood Chain**; Fomo'nun diğer zincirleri
+(Solana/pump.fun, BNB, Base) 6. adım — kullanıcı istedi: **her adım sonunda bunu hatırlat** (kısıtlı havuza bakıyoruz). "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
 ## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte sonuç üretti; ayrıntı `PROJE.md` §6)
