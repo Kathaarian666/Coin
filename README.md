@@ -1,5 +1,7 @@
 # Fomo · Robinhood Chain Token Tarayıcı (Telegram Botu)
 
+> Projenin amacı, durumu, araştırma bulguları ve yol haritası: [`PROJE.md`](PROJE.md).
+
 **Fomo** uygulamasında Robinhood Chain'de alınıp satılan coinleri canlı izler. Bir coini kısa
 sürede yeterince farklı Fomo kullanıcısı almaya başlayınca güvenlik kontrollerini yapar ve
 sonucu **0–100 arası bir güven skoruyla** Telegram'a gönderir.
