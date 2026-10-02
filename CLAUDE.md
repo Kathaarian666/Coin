@@ -159,11 +159,20 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   satış payı, alım büyüklüğü. Sonuç: **Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç**; en iyi tarama anı Fomo 3.
   alıcısı (en iyi %10: ≥2x %54 · ≥5x %29 · ≥10x %16). Not: mezuniyet sonrası Fomo'da işlem görmeyen coinlerde zirve
   eksik ölçülür (curve fiyatı biter) → oranlar alt sınır.
+- **Taramayla işlem simülasyonu (2 Ekim, `scripts/scan_trade.py <db> <winners_tx> [eğitim payı]`)**: Fomo 3. alıcısında
+  gradient boosting taraması (≥5x, akış + holder özellikleri) dönemin ilk %65'inde (ve ayrıca %50'sinde) eğitilir, kalan
+  günlerde işlem: +30 sn, havuz fiyatı, $100, Fomo ücreti (min $0.95), kayma (derinlik bilinmiyorsa kötümser $3k). **Ölçüm
+  dersleri**: çıkış/düşüş fiyatı sadece alımlardan okununca kaybedenler iyi görünüyor (çöküş satışlarla olur) → düşüş ve
+  süre sonu için tüm işlemler, ölü coin (6 s işlem yok) yarı fiyat; süreli çıkış değeri alımlarla tutulan en yüksek ve
+  hedefle sınırlı (tek bozuk satış basımı). Sonuç (test %35 / %50): **seçimsiz** her kuralda eksi ya da ~0 (en iyisi
+  "yarısı 2x + kalanı zirveden %30 düşüşte" ~$0; 72 s tut −$41). **Taramanın en iyi %10'u (~24-28/gün)**: yarısı 2x +
+  kalanı iz süren %30 **+$26.5 ±13 / +$31.9 ±10**, artı gün 6/6 ve 7/7; "2x'te sat yoksa 1 s sonra çık" +$14.6 ±8 /
+  +$11.5 ±7. En iyi %20 (~48-56/gün): +$21 ±8 / +$24.8 ±7 (7/7). En iyi %5: +$54 ±22 / +$48 ±16. 72 s tutmak, iz süren
+  %50 ve "2x'te sat yoksa 72 s" kötü. İlk kez seçim + çıkış birlikte örnek dışı pozitif ve hata payı sıfırın üstünde.
+  Eksikler: tek dönem (~1 hafta test), canlıda holder özellikleri için transfer okuma gerekir, iz süren stop gecikmesi.
 
 ## Sıradaki işler
-1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
-   aday coin için güven/lansman özelliklerini (geliştirici geçmişi, dev payı, sniper/bundle, holder, likidite, hook,
-   satılabilirlik) bildirim göndermeden kaydetsin; etiket zincirden (`rise_build` mantığı) → 1-2 hafta sonra güven +
-   akış özellikleriyle aynı gün gün test.
+1. Tarama + "yarısı 2x, kalanı %30 iz süren stop" (yukarıda) daha sağlam doğrulanacak: gün gün kayan pencere,
+   sadece Fomo akışı özellikleriyle (canlıda kolay) karşılaştırma; kullanıcı X API'yi (pahalı) şimdilik istemedi.
 2. Bulunan kural bota "hızlı bildirim" olarak (flow.py) + Fomo fiyatlarıyla canlı ölçüm (önce bildirimsiz kayıt).
 3. Sonraki aşama (kullanıcı onayıyla): pozisyon/risk, gerçek işlem takibi, Twitter/X (ücretli, önce fiyat sor), Solana.
