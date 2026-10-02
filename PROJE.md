@@ -1,7 +1,7 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
 Son güncelleme: 2 Ekim. Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
-neyi denedik ve bıraktık, sırada ne var. Ayrıntılı tarihçe git geçmişinde (`git log`).
+neyi denedik ve bıraktık, sırada ne var. Ayrıntılı tarihçe ve silinen eski betikler (`rise_model`, `copy_study`, `ride_test`, `winner_report`) git geçmişinde.
 
 ## 1. Amaç
 
@@ -144,10 +144,7 @@ Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir.
 | **Güncel** | `scan_trade.py` | Tarama + çıkış kuralları, maliyetli işlem simülasyonu (`kayan` modu) |
 | Güncel (olumsuz sonuç) | `curve_study.py` / `curve_report.py` | Zincirde çok erken an testi |
 | Betimleyici | `coin_lifecycle.py` | Coin yaşam döngüsü istatistikleri |
-| Eski, kısmen hatalı | `rise_build.py` / `rise_model.py` | İlk "2x olur mu" çalışması (giriş gelecekteki alıma bağlı). `rise_build` içindeki maliyet fonksiyonları başka betiklerce kullanılıyor |
-| Eski, hatalı | `copy_study.py` | Cüzdan kopyalama (son düzeltilmiş sürüm çalıştırılmadı) |
-| Eski, iyimser | `ride_test.py` | Kazananı koşturma testi (çıkışlar sadece alım fiyatından) |
-| Eski | `winner_report.py` | `rise_detect.py`'nin ilk hali |
+| Yardımcı | `rise_build.py` | Maliyet/kayma/havuz derinliği fonksiyonları (diğer betikler kullanıyor); kendi tablosu eski "2x olur mu" çalışmasından |
 
 **Çalışma sırası (güncel boru hattı):**
 ```
@@ -165,4 +162,3 @@ scan_trade.py fomo.db winners_tx.parquet kayan
    göndermeden kaydedilsin. Sonuç zincirden ölçülsün.
 3. Tutarsa: bildirim (puan, kriterler, "yarısı 2x, kalanı iz süren stop" hatırlatması).
 4. Sonraki aşama (kullanıcı onayıyla): pozisyon büyüklüğü ve risk yönetimi, gerçek işlem takibi, canlı işlem.
-5. Eski/hatalı betiklerin temizliği (kullanıcı onayıyla).
