@@ -132,7 +132,7 @@ def main():
     db = sqlite3.connect(sys.argv[1], timeout=300)
     path = sys.argv[2]
     df = pd.read_parquet(path)
-    names = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names")}
+    names = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names WHERE kind = 'token'")}
     ids = [names[t] for t in df.token]
     q = f"SELECT token, block, ts, side, usd, amount FROM trades WHERE token IN ({','.join(map(str, ids))}) ORDER BY token, ts"
     tr = pd.read_sql(q, db)
