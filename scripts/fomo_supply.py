@@ -31,7 +31,7 @@ def batch(calls):
 
 
 def main():
-    db = sqlite3.connect(sys.argv[1])
+    db = sqlite3.connect(sys.argv[1], timeout=300)  # other scripts may use the DB meanwhile
     db.execute("CREATE TABLE IF NOT EXISTS supply (addr TEXT PRIMARY KEY, raw REAL)")
     have = {a for (a,) in db.execute("SELECT addr FROM supply")}
     # coins with a few trades never make a candidate: skip them (the public RPC is shared with downloads)
