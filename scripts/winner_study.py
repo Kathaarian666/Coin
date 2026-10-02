@@ -1,6 +1,6 @@
 """What do coins that later rose 5x / 10x look like at the moment they became noticeable? (No costs yet.)
 
-  python scripts/winner_study.py <trades.db> <out.parquet>
+  python scripts/winner_study.py <trades.db> <out.parquet> [<first trade from> <until>]
 
 Checkpoints: the moment a coin's k-th distinct Fomo buyer arrives (k in KS). At each checkpoint only what was
 known then is used; the label is the highest price held for two buys in a row in the next 72 h, as a multiple
@@ -30,7 +30,10 @@ WIN = 10.0  # a "winner" wallet trade: its first buy in a coin that later held 1
 
 
 def main():
+    global START, END
     db_path, out = sys.argv[1], sys.argv[2]
+    if len(sys.argv) > 4:  # a different window of first Fomo trades, e.g. fresh days
+        START, END = pd.Timestamp(sys.argv[3]).value / 1e9, pd.Timestamp(sys.argv[4]).value / 1e9
     t0 = time.time()
     db = sqlite3.connect(db_path)
     names = {i: a.lower() for i, a in db.execute("SELECT id, addr FROM names")}

@@ -1,8 +1,9 @@
 """Trading the scan: coins picked at their 3rd Fomo buyer, with entry, exit rules and costs.
 
-  python scripts/scan_trade.py <trades.db> <winners_with_transfers.parquet> [<train share>=0.65 | kayan]
+  python scripts/scan_trade.py <trades.db> <winners_with_transfers.parquet> [<train share>=0.65 | kayan | taze <fresh.parquet>]
 
 `kayan`: walk-forward, a new scan every day from the earlier days only (label: 5x within 24 h).
+`taze`: train on the whole main table, trade a table of later, never used days (Fomo flow features only).
 
 The scan (gradient boosting on >= 5x, Fomo flow + holder features, scripts/rise_detect.py) is trained on the
 first 65% of the period; trades are simulated on the last 35% only. Entry 30 s after the checkpoint at the pool
@@ -25,6 +26,7 @@ from rise_build import depth_at, depth_prefix, money_back, needed  # noqa: E402
 from rise_detect import FLOW, HOLD  # noqa: E402
 
 DELAY, HORIZON, CAP, UNKNOWN_DEPTH, POS = 30, 72 * 3600, 100.0, 3000.0, 100.0
+DATA_END = float("inf")  # positions still open when the data ends are valued at the last prices
 
 
 def path_after(ts, px, t_in, p_in):
@@ -41,6 +43,7 @@ def exits(held, h_t, allp, a_t, t_in, depth):
 
     def at(T, cap=np.inf):
         """Value at T, never above what buys held so far (or `cap`): a lone sell print above it is a data error."""
+        T = min(T, DATA_END)
         k = bisect.bisect_right(a_t, T)
         if k == 0:
             return 1.0
@@ -136,6 +139,29 @@ def main():
     feats_all = FLOW + [c for c in HOLD if c in df]
     df[feats_all] = df[feats_all].astype(float)
     mode = sys.argv[3] if len(sys.argv) > 3 else "0.65"
+    if mode == "taze":
+        # train on everything in the main table (72 h labels complete), trade the fresh table only
+        global DATA_END
+        DATA_END = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0]
+        fresh = pd.read_parquet(sys.argv[4])
+        fresh = fresh[fresh.k == 3].sort_values("ts").reset_index(drop=True)
+        fresh[FLOW] = fresh[FLOW].astype(float)
+        last2 = df[df.ts >= df.ts.max() - 2 * 86400]
+        for name, feats in (("sadece Fomo akışı", FLOW),):
+            gbm = HistGradientBoostingClassifier(max_iter=250, learning_rate=0.04, min_samples_leaf=40,
+                                                 l2_regularization=1.0, random_state=0).fit(df[feats], df.peak >= 5)
+            te = fresh.copy()
+            te["score"] = gbm.predict_proba(te[feats])[:, 1]
+            s_recent = gbm.predict_proba(last2[feats])[:, 1]
+            for q in (5, 10, 20):
+                te[f"bar{q}"] = np.percentile(s_recent, 100 - q)
+            res = simulate(db, te)
+            rules = [c for c in res.columns if "sat" in c or "stop" in c or "tut" in c or "iz süren" in c]
+            hours = (DATA_END - res.ts.min()) / 3600
+            print(f"######## TAZE VERİ [{name}]: {len(res)} coin, {pd.to_datetime(res.ts.min(), unit='s'):%d.%m %H:%M}–"
+                  f"{pd.to_datetime(DATA_END, unit='s'):%d.%m %H:%M} ({hours:.0f} saat; açık pozisyonlar son fiyattan) ########")
+            report(res, rules, hours / 24)
+        return
     if mode != "kayan":
         split = df.ts.quantile(float(mode))
         tr, te = df[df.ts < split], df[df.ts >= split].copy()
