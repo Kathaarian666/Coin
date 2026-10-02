@@ -48,7 +48,7 @@ def logs(token, lo, hi):
 
 
 def main():
-    db = sqlite3.connect(sys.argv[1])
+    db = sqlite3.connect(sys.argv[1], timeout=300)  # other scripts may read the same DB meanwhile
     hours = float(sys.argv[3]) if len(sys.argv) > 3 else 1
     limit = int(sys.argv[4]) if len(sys.argv) > 4 else None
     db.executescript("""CREATE TABLE IF NOT EXISTS transfers (token TEXT, block INTEGER, li INTEGER, src TEXT, dst TEXT,

@@ -41,11 +41,11 @@ OWNER = "0x8da5cb5b"
 ZERO_OWNERS = {"0x" + "0" * 40, "0x000000000000000000000000000000000000dead"}
 
 
-def rpc_batch(calls):
+def rpc_batch(calls, urls=URLS):
     body = [{"jsonrpc": "2.0", "id": i, "method": m, "params": p} for i, (m, p) in enumerate(calls)]
-    for attempt in range(8):
+    for attempt in range(10):
         try:
-            req = urllib.request.Request(URLS[attempt % len(URLS)], json.dumps(body).encode(),
+            req = urllib.request.Request(urls[attempt % len(urls)], json.dumps(body).encode(),
                                          {"content-type": "application/json", "user-agent": "Mozilla/5.0"})
             out = json.load(urllib.request.urlopen(req, timeout=60))
             res = {r["id"]: r.get("result") for r in out}
@@ -56,10 +56,10 @@ def rpc_batch(calls):
     raise RuntimeError("RPC refused")
 
 
-def rpc_many(calls, size=40):
+def rpc_many(calls, size=40, urls=URLS):
     out = []
     for n in range(0, len(calls), size):
-        out += rpc_batch(calls[n:n + size])
+        out += rpc_batch(calls[n:n + size], urls)
     return out
 
 
@@ -159,6 +159,25 @@ def flags(df):
     }
     for grp in ("mint", "blacklist", "fees", "pause", "limits", "trading", "upgrade"):
         out[f"Fonksiyon: {grp}"] = df.risky.fillna("").str.split(",").apply(lambda xs, g=grp: g in xs)
+    if "top10_pct" in df:  # scripts/security_extra.py; NaN (not measured) counts as not flagged, see coverage
+        out.update({
+            "İlk 10 cüzdan > %30": df.top10_pct > 30,
+            "İlk 10 cüzdan > %50": df.top10_pct > 50,
+            "Tek cüzdan > %15": df.largest_pct > 15,
+            "Geliştirici > %5": df.dev_pct > 5,
+            "Geliştirici > %10": df.dev_pct > 10,
+            "Geliştirici ilk aldığının yarısını sattı": df.dev_sold == True,  # noqa: E712
+            "Bundle > %10": df.bundle_pct > 10,
+            "Sniper > %10": df.sniper_pct > 10,
+            "Sniper > %25": df.sniper_pct > 25,
+            "Likidite < $1k (Fomo fiyat etkisinden)": 2 * df.depth_usd < 1000,
+            "Likidite < $5k": 2 * df.depth_usd < 5000,
+            "Hook yok": df.hook == "0x" + "0" * 40,
+            "Hook: Pons": df.hook_named,
+            "Hook: başka (Pons değil)": df.hook.str.startswith("0x") & (df.hook != "0x" + "0" * 40) & ~df.hook_named,
+            "Hook nadir (< 40 coinde)": df.hook.str.startswith("0x") & (df.hook != "0x" + "0" * 40) & (df.hook_coins < 40),
+            "Hook yükseltilebilir": df.hook_upgradeable,
+        })
     return out
 
 
@@ -169,6 +188,10 @@ def report(path):
     print(f"{len(df)} coin (en az 24 saat izlenmiş), 3. Fomo alıcısı anı")
     print(f"tuzak {pct(df.trap)} (rug {pct(df.rug)}, satılamayan {pct(df.unsellable)}) · sessiz {pct(df.quiet)} · "
           f"2x {pct(df.hit2x)}\n")
+    if "top10_pct" in df:
+        print(f"ölçülebilen: holder {df.top10_pct.notna().sum()} · geliştirici {df.dev_pct.notna().sum()} · "
+              f"bundle/sniper {df.sniper_pct.notna().sum()} · likidite {df.depth_usd.notna().sum()} · "
+              f"hook bulunan {(df.hook != '').sum()} / {len(df)}\n")
     print(f"{'kontrol':48} {'coin':>6} {'pay':>6} {'tuzak':>7} {'diğer':>7} {'2x':>7} {'diğer':>7}")
     for name, m in flags(df).items():
         m = m.fillna(False).astype(bool)
