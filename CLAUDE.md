@@ -36,7 +36,7 @@ koşma; kriterler kesinleşmeden bota dokunma. **Kapsam şimdilik sadece Robinho
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
 ## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte sonuç üretti; ayrıntı `PROJE.md` §6)
-Gelecek bilgisi yok · bildirim fiyatı o anda bilinen fiyat (gelecekteki işleme bağlanmaz) · "ileride Fomo'ya gelen
+Gelecek bilgisi yok · bildirim fiyatı o anda bilinen son alım fiyatı (gelecekteki işleme bağlanmaz; son 3 alımın ortancası 2x'i şişirir) · "ileride Fomo'ya gelen
 coinler" gibi evren seçimi yok · 2x iki ardışık alımla, coin başı tavan 100x · düşüş/son değer tüm işlemlerden, ölü coin
 yarı fiyat · yol sırası · süresiz 2x'te veri sonunda yeterince izlenmeyen coin "olmadı" sayılmaz · kayan pencere, gün
 gün, "en iyi %1 hariç" kontrolü · başarı brüt (komisyon/kayma sadece 3. adımda, kararlaştırılırsa). Sonuç fazla iyiyse

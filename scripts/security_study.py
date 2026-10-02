@@ -3,8 +3,8 @@
   python scripts/security_study.py <trades.db> <out.parquet>
   python scripts/security_study.py report <out.parquet>
 
-Moment: every new coin's 3rd distinct Fomo buyer (the alert moment the research used). Price there = median of
-the last 3 buy prices. Everything after that moment is only used for the labels:
+Moment: every new coin's 3rd distinct Fomo buyer (the alert moment the research used). Price there = the last
+buy price. Everything after that moment is only used for the labels:
 - hit2x: two buys in a row at >= 2x the moment's price, any time until the data ends (obs_h = hours observed)
 - rug: before any 2x, within 60 min, two trades in a row (buys or sells) at <= 0.1x
 - unsellable: in the next 24 h at least 5 new Fomo buyers and not a single Fomo sell
@@ -233,7 +233,7 @@ def main():
         pre_buys = px[:i0 + 1][(side[:i0 + 1] == 1) & np.isfinite(px[:i0 + 1])]
         if not len(pre_buys):
             continue
-        p0 = float(np.median(pre_buys[-3:]))
+        p0 = float(pre_buys[-1])  # the last price, as the alert shows it
         after = slice(i0 + 1, None)
         a_ts, a_side, a_px, a_tr = ts[after], side[after], px[after], trader[after]
         bmask = (a_side == 1) & np.isfinite(a_px)

@@ -7,7 +7,8 @@ OBS_MIN hours of data after the moment so "never" means never (rule 7, PROJE.md 
 test = from CUT on (days no criterion was chosen on).
 1. moments: 3rd / 5th / 10th distinct Fomo buyer: coins per day, 2x rate, minutes after the first Fomo trade.
 2. single criteria at moment k: 2x rate in the bottom and top fifth (cut points from the train days), train and
-   test side by side; "tutuyor" = same direction in test and at least half the train gap.
+   test side by side. güçlü / orta = same direction in test with at least half the train gap and >= 10 / 5
+   points; etkisiz = under 5 points even on the train days; tutmuyor = the test days disagree.
 3. all criteria together (reference): gradient boosting retrained every day on the days before it (walk-forward);
    only labels known when the day began; the day's score bars come from the model's scores on the 2 days before.
    Per bar: alerts per day, their 2x rate with a 95% margin, and the worst / best test day.
@@ -99,10 +100,15 @@ def single(df):
             r += [x[x[col] <= q[0]].hit2x.mean(), x[x[col] >= q[1]].hit2x.mean()]
         gap_tr, gap_te = r[1] - r[0], r[3] - r[2]
         holds = np.sign(gap_tr) == np.sign(gap_te) and abs(gap_te) >= abs(gap_tr) / 2
-        rows.append((abs(gap_te) if holds else -1, name, r, holds))
-    for _, name, r, holds in sorted(rows, key=lambda x: -x[0]):
-        print(f"{name:36} {100 * r[0]:6.0f}%/{100 * r[1]:3.0f}% {100 * r[2]:6.0f}%/{100 * r[3]:3.0f}%  "
-              f"{'tutuyor' if holds else 'tutmuyor'}")
+        if abs(gap_tr) < 0.05:
+            verdict = "etkisiz"  # under 5 points apart even on the days it was measured on
+        elif not holds:
+            verdict = "tutmuyor"
+        else:
+            verdict = "güçlü" if abs(gap_te) >= 0.10 else "orta"
+        rows.append((abs(gap_te) if holds and verdict != "etkisiz" else -1 + abs(gap_tr), name, r, verdict))
+    for _, name, r, verdict in sorted(rows, key=lambda x: -x[0]):
+        print(f"{name:36} {100 * r[0]:6.0f}%/{100 * r[1]:3.0f}% {100 * r[2]:6.0f}%/{100 * r[3]:3.0f}%  {verdict}")
     print()
 
 

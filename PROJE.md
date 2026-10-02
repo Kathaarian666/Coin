@@ -38,8 +38,8 @@ bırakıldı.
 | Adım | Ne | Durum |
 |---|---|---|
 | **0** | Temizlik + bu belge + veri arşivini güncelleme | **bu adım** |
-| **1** | **Güvenlik kriterleri (birlikte).** Her kontrol için: ne kontrol ediyor, neyi eliyor, geçmiş veride kaç coini eledi, elenenler gerçekten kötü müydü. Ekle/çıkar; hangisi **eler**, hangisi raporda **yazar**. | **sürüyor**: kararlar §1'de; sırada ölçüm |
-| **2** | **Yükseliş kriterleri (backtest ile, birlikte).** Aday kriterler tek tek: 2x oranını ne kadar artırıyor, görmediği günlerde tutuyor mu. Bildirim anı karşılaştırması (Fomo'da 3./5./10. alıcı). Kriter listesi + model. | bekliyor |
+| **1** | **Güvenlik kriterleri (birlikte).** Her kontrol için: ne kontrol ediyor, neyi eliyor, geçmiş veride kaç coini eledi, elenenler gerçekten kötü müydü. Ekle/çıkar; hangisi **eler**, hangisi raporda **yazar**. | bitti (2 Ekim): §1 kararlar, §4.1 ölçüm |
+| **2** | **Yükseliş kriterleri (backtest ile, birlikte).** Aday kriterler tek tek: 2x oranını ne kadar artırıyor, görmediği günlerde tutuyor mu. Bildirim anı karşılaştırması (Fomo'da 3./5./10. alıcı). Kriter listesi + model. | **sürüyor**: ilk ölçüm §4.2 |
 | **3** | **Simülasyon (karar kapısı).** Güvenlik elemesi + model uçtan uca geçmiş veride: günde kaç bildirim, kaçı 2x, girseydik sonuç ne olurdu. "Yeterince kâr" tanımı ve 2x olmayanların nasıl sayılacağı bu adımda birlikte belirlenir. Yetmezse 1/2'ye dönülür. | bekliyor |
 | **4** | **Bot.** Bildirim (güven + 2x ihtimali + nedenler), "2x oldu" haberi, karne. Kriterler kesinleşmeden bota dokunulmaz. | bekliyor |
 | **5** | **Canlı izleme.** Karne (bildirimlerin kaçı 2x yaptı) simülasyonla karşılaştırılır. | bekliyor |
@@ -128,6 +128,24 @@ satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı)
 - **Botta bulunan açık (4. adımda düzeltilecek):** `checks/contract.py` sadece 45 baytlık EIP-1167 klonu tanıyor;
   44 baytlık PUSH0 türü (714 coin, 33 asıl kontrat) tanınmıyor, kontrol klonun kendisine bakıyor.
 
+### 4.2 Yükseliş ölçümü (2. adım, `scripts/rise_study.py`, 2 Ekim)
+18 Eylül–1 Ekim, en az 24 saat izlenmiş yeni coinler. 2x = bildirimdeki son alım fiyatının 2 katı, iki ardışık alımla,
+süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün).
+- 2x'e ulaşma (3. alıcıdan): medyan 17 dk, %71'i ilk 1 saatte, %3'ü 24 saatten sonra.
+- Bildirim anı: 3. alıcı (527 coin/gün, 2x %26, ilk Fomo işleminden 3 dk sonra) · 5. alıcı (385, %30, 6,5 dk) ·
+  10. alıcı (265, %34, 12,5 dk). Aynı sayıda bildirimde model sonuçları benzer (günde ~20-30: %51 / %49 / %47) →
+  en erken an olan 3. alıcı kaybettirmiyor.
+- Tek tek kriterler (en kötü / en iyi beşte birlik dilimde 2x, test günleri): **güçlü** — lansmandan bu yana dakika
+  (%36 / %9, genç coin iyi), 3. alıcıya kadar dakika (%40 / %14, hızlı iyi), son 10 dk alım $ (%16 / %36), işlem başına $
+  (%17 / %36), FDV (%18 / %36), toplam alım $, en büyük alım $, son 5 dk alıcı, işlem sayısı (az iyi), havuz derinliği,
+  ilk 10 cüzdan payı (%22 / %9), satış $ payı, ilk alıcılardan satanlar, satıcı sayısı, ilk alımdan bu yana fiyat,
+  zirveden uzaklık; **orta** — en büyük cüzdan payı; **etkisiz** — geliştirici geçmişi/payı, akıllı cüzdan, saat, sniper,
+  yeni cüzdan oranı, tekrar alım, en büyük alıcının payı, piyasanın genel hareketi.
+- Hepsi birlikte (her gün önceki günlerle eğitilen model, sadece o gün bilinen 2x'lerle): en iyi %10 → günde 42
+  bildirim, 2x %46 (±6) · en iyi %5 → 21, %51 (±9) · en iyi %2 → 8, %57 (±14) · en iyi %1 → 3, %58 (±22). Taban %24.
+  Holder kriterleri (ilk 10 cüzdan, en büyük cüzdan, derinlik) 1-5 puan katıyor. 6 test günü az; üst dilimlerde hata
+  payı büyük.
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
@@ -145,7 +163,9 @@ satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı)
 ## 6. Ölçüm kuralları (her biri bir kez sahte sonuç üretti)
 
 1. **Gelecek bilgisi yok:** Kriter sadece bildirim anına kadarki veriden hesaplanır.
-2. **Bildirim fiyatı o anda bilinen fiyattır.** Gelecekteki bir işleme bağlanmaz ("sonraki alımın fiyatı" değil).
+2. **Bildirim fiyatı o anda bilinen son fiyattır** (son alım). Gelecekteki bir işleme bağlanmaz ("sonraki alımın
+   fiyatı" değil). Son 3 alımın ortancası da olmaz: yükselen coinde son fiyatın gerisinde kalır ve 2x'i şişirir
+   (2 Ekim: %28,5 → gerçek %25,9; hızlı yükselenlerde %36 → %31).
 3. **Evren seçimi yok:** "İleride Fomo'ya gelen / en az N alım daha gelen coinler" gibi bir seçim gelecek bilgisidir.
    O anda bilinen bütün coinler sayılır.
 4. **2x iki ardışık alımla tutulmalı.** Fomo toplu işlemlerinde ~%5 satış fiyatı bozuk; tek basım 2x sayılmaz. Coin
@@ -185,6 +205,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
+| Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
 | Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
 
 **Git dalları:**

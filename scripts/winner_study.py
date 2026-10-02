@@ -4,7 +4,7 @@
 
 Checkpoints: the moment a coin's k-th distinct Fomo buyer arrives (k in KS). At each checkpoint only what was
 known then is used; the label is the highest price held for two buys in a row in the next 72 h, as a multiple
-of the checkpoint price (median of the last 3 buys). The 2x label of the plan (PROJE.md §1, no time limit):
+of the checkpoint price (the last buy price). The 2x label of the plan (PROJE.md §1, no time limit):
 `t2x_h` = hours until two buys in a row at >= 2x the checkpoint price (NaN if never), `obs_h` = hours of data
 after the checkpoint. Coins first traded 17 Sep 18:41 - 28 Sep (72 h fit).
 Features follow the signals the public research and scanners use: speed of money and buyers, trade sizes and
@@ -124,7 +124,7 @@ def main():
             nb = bisect.bisect_right(bts, t)  # buys up to now
             if nb < 2:
                 continue  # (no condition on later trades: a coin nobody buys again is still a checkpoint)
-            p_now = float(np.median(bpx[max(0, nb - 3):nb]))
+            p_now = float(bpx[nb - 1])  # the alert shows the last price (a median of 3 lags a rising coin: fake 2x)
             end = bisect.bisect_right(bts, t + HORIZON)
             fut = held[nb:end - 1] if end - 1 > nb else np.array([0.0])
             hit = np.flatnonzero(held[nb:] >= 2 * p_now)  # held[j] = min of buys j, j+1, both after the checkpoint
