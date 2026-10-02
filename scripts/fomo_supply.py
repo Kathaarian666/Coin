@@ -10,24 +10,32 @@ import sqlite3
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
-URL = "https://rpc.mainnet.chain.robinhood.com"
+URLS = ["https://robinhood.drpc.org", "https://rpc.mainnet.chain.robinhood.com"]  # dRPC first: the public node is busy with log downloads
 TOTAL_SUPPLY = "0x18160ddd"
 
 
-def batch(calls):
-    body = [{"jsonrpc": "2.0", "id": i, "method": "eth_call", "params": [{"to": a, "data": TOTAL_SUPPLY}, "latest"]}
-            for i, a in enumerate(calls)]
-    for attempt in range(8):
+def one(addr):
+    """totalSupply over dRPC (its free tier refuses batched eth_calls, the public node is busy with log downloads)."""
+    body = {"jsonrpc": "2.0", "id": 1, "method": "eth_call", "params": [{"to": addr, "data": TOTAL_SUPPLY}, "latest"]}
+    for attempt in range(6):
         try:
-            req = urllib.request.Request(URL, json.dumps(body).encode(),
+            req = urllib.request.Request(URLS[attempt % 2], json.dumps(body).encode(),
                                          {"content-type": "application/json", "user-agent": "curl/8.0"})
-            res = json.load(urllib.request.urlopen(req, timeout=120))
-            return {r["id"]: r.get("result") for r in res}
+            res = json.load(urllib.request.urlopen(req, timeout=60))
+            if "error" in res and "revert" not in str(res["error"]).lower():
+                raise RuntimeError(res["error"])
+            return res.get("result") or "0x"
         except Exception as exc:
             print("retry", exc, flush=True)
             time.sleep(2 ** attempt)
-    return {}
+    return None  # refused: not stored, asked again on the next run
+
+
+def batch(calls):
+    with ThreadPoolExecutor(8) as pool:
+        return {i: v for i, v in enumerate(pool.map(one, calls)) if v is not None}
 
 
 def main():
@@ -44,7 +52,9 @@ def main():
         res = batch(chunk)
         rows = []
         for i, addr in enumerate(chunk):
-            value = res.get(i)
+            if i not in res:
+                continue  # refused: not stored, asked again on the next run
+            value = res[i]
             rows.append((addr, float(int(value, 16)) if value and value != "0x" else None))
         db.executemany("INSERT OR REPLACE INTO supply VALUES (?, ?)", rows)
         db.commit()
