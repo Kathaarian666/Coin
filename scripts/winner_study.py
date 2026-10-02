@@ -4,7 +4,9 @@
 
 Checkpoints: the moment a coin's k-th distinct Fomo buyer arrives (k in KS). At each checkpoint only what was
 known then is used; the label is the highest price held for two buys in a row in the next 72 h, as a multiple
-of the checkpoint price (median of the last 3 buys). Coins first traded 17 Sep 18:41 - 28 Sep (72 h fit).
+of the checkpoint price (median of the last 3 buys). The 2x label of the plan (PROJE.md §1, no time limit):
+`t2x_h` = hours until two buys in a row at >= 2x the checkpoint price (NaN if never), `obs_h` = hours of data
+after the checkpoint. Coins first traded 17 Sep 18:41 - 28 Sep (72 h fit).
 Features follow the signals the public research and scanners use: speed of money and buyers, trade sizes and
 the largest buy, buyer diversity, early holders still holding, fresh wallets, smart wallets, runup, FDV,
 Pons launch age and the launcher's history.
@@ -68,6 +70,7 @@ def main():
         v.sort()
     tr = pd.read_sql("SELECT ts, token, side, trader, usd, amount FROM trades ORDER BY token, ts", db)
     print(f"{len(tr):,} işlem ({time.time() - t0:.0f} sn)", flush=True)
+    data_end = tr.ts.max()
 
     # wallet facts known over time: first ever Fomo trade; early buys in coins that later held 10x
     first_seen = tr.groupby("trader").ts.min().to_dict()
@@ -124,6 +127,7 @@ def main():
             p_now = float(np.median(bpx[max(0, nb - 3):nb]))
             end = bisect.bisect_right(bts, t + HORIZON)
             fut = held[nb:end - 1] if end - 1 > nb else np.array([0.0])
+            hit = np.flatnonzero(held[nb:] >= 2 * p_now)  # held[j] = min of buys j, j+1, both after the checkpoint
             past = slice(0, i + 1)
             b_usd = usd[past][side[past] == 1]
             b_who = who[past][side[past] == 1]
@@ -136,6 +140,8 @@ def main():
             rows.append({
                 "coin": addr, "k": k, "ts": t,
                 "peak": float(fut.max() / p_now),
+                "t2x_h": (bts[nb + hit[0] + 1] - t) / 3600 if len(hit) else np.nan,
+                "obs_h": (data_end - t) / 3600,
                 "mins_to_k": (t - ts[0]) / 60,
                 "trades_to_k": i + 1,
                 "usd_all": float(b_usd.sum()),
