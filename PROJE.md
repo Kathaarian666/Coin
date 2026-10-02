@@ -96,8 +96,35 @@ satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı)
 - Bir Pons dışı launchpad şablonu (53 coin) %23 satılamayan; 342 farklı kontrat şablonu var, 253'ü tek coinlik.
 - "trading aç/kapa" coinleri %65 2x görünüyor ama %44'ü tuzak: satılamayan coinin 2x'i anlamsız.
 - Fomo'da erken satış olan coinlerde 2x oranı düşük (%13 vs %30): güvenlik değil, 2. adım için not.
-- Ölçülmedi (henüz): holder dağılımı, geliştirici payı/satışı, bundle/sniper, likidite, LP kilidi, V4 hook — zincirden
-  transfer/havuz verisi gerekir. Dış kaynaklar (GoPlus/GeckoTerminal) geçmiş an için ölçülemez (bugünkü durumu verir).
+- Holder/lansman/likidite/hook (`scripts/security_extra.py`; holder 6.422 coinde ölçülebildi = transfer kaydı
+  lansmandan başlayanlar). Pons ve Pons dışı ayrı bakıldı (Pons'ta tuzak %1,8, değilde %8):
+
+| Kontrol | Pons: tuzak (işaretli / diğer) | Pons değil: tuzak (işaretli / diğer) |
+|---|---|---|
+| İlk 10 cüzdan > %50 | %0,5 / %2,3 | %7,0 / %8,3 |
+| Tek cüzdan > %15 | %1,0 / %2,1 | %7,4 / %8,3 |
+| Geliştirici > %5 | %2,0 / %2,0 | **%14 / %6,9** |
+| Geliştirici ilk aldığının yarısını sattı | %1,8 / %2,1 | %4,1 / %8,6 |
+| Bundle > %10 / Sniper > %25 | ayırmıyor | az coin, ayırmıyor |
+| Likidite < $1k (Fomo fiyat etkisinden) | %2,5 / %0,9 | %7,4 / %10 (karışık) |
+| Hook yok (düz V4 havuzu) | — | **%14,6 / %4,8** |
+| Pons hook'u (Pons V2 listesinde olmayan Pons coinleri, 497) | — | **%0 / %12** |
+| Başka hook / yükseltilebilir hook | — | %9,1 / %8,4 · %2,9 / %8,7 (ayırmıyor) |
+
+  Klasik rug işaretleri (yoğun holder, bundle, sniper, geliştirici satışı) bu erken anda tuzağı **ayırmıyor**. Ama
+  yükselişi ayırıyor: ilk 10 cüzdan > %50 olanlarda 2x %4,8 (diğerleri %31), tek cüzdan > %15'te %15 (%30) → 2. adım.
+- **Güven puanı denemesi:** ayıran kontrollerle lojistik model, 26 Eylül öncesiyle eğitildi, sonrasında (2.732 coin)
+  sınandı. AUC 0,83. Puan = 100 × (1 − tuzak olasılığı / 0,5):
+
+| Puan | Coin | Tuzak | 2x |
+|---|---|---|---|
+| 0-49 | 37 | %59 | %40 |
+| 50-69 | 16 | %19 | %44 |
+| 70-84 | 281 | %7,1 | %30 |
+| 85-100 | 2.398 | %1,3 | %26 |
+
+  En çok etki edenler: Pons hook'u ve Fomo'da 2+ satıcı (güven artırır); kontratın sahibi olması, trading aç/kapa,
+  başka hook ya da hook yok, nadir kontrat (güven düşürür).
 - **Botta bulunan açık (4. adımda düzeltilecek):** `checks/contract.py` sadece 45 baytlık EIP-1167 klonu tanıyor;
   44 baytlık PUSH0 türü (714 coin, 33 asıl kontrat) tanınmıyor, kontrol klonun kendisine bakıyor.
 
