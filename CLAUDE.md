@@ -149,6 +149,16 @@ başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=exe
   ≥10x %16 · ≥100x %1.2 (taban %37 · %14 · %7 · %0.4) → ~2 kat seçicilik, tavan gibi duruyor. En etkili: FDV (küçük),
   top10 payı, transfer yoğunluğu, sniper payı. Kazananlarda dev payı 0 (Pons şablonu), sniper payı biraz yüksek.
   Muhtemel eksik: sosyal sinyaller (X/Telegram/KOL; ücretli) ve Fomo dışı alımlarla tanımlanan daha erken an.
+- **Daha erken an: zincirdeki k. curve alıcısı (2 Ekim, `curve_download.py all` → `curve_study.py` → `curve_report.py`)**:
+  17-28 Eyl tüm Pons lansmanlarının ilk 6 saatlik curve işlemleri (106.7k coin, 5.5M işlem; zincir geneli sorgu 30k
+  blok sınırı, ~15 dk). Fiyat: curve (ETH/USD veriden ~$2.679) + curve ile uyumlu Fomo alımları (12.8k'nın 10k'sı).
+  **Uyarı**: sadece ileride Fomo'ya gelen coinlerle bakınca oranlar şişiyor (5. alıcıda ≥5x %39!) = gelecek seçimi; tüm
+  lansmanlarla dürüst taban: 5./10./20./40. alıcı (lansmandan 0.1-1 dk, mcap $6-13k) sonra ≥2x %23-28 · ≥5x %6 · ≥10x
+  %1.5-2. Model en iyi %10: ≥5x %9-18, ≥10x %2-5 (AUC 0.65-0.72) → ~2-3 kat seçicilik ama mutlak oranlar Fomo 3.
+  alıcısından düşük (çöp lansmanlar çok). En etkili: en büyük alıcının payı, dev'in kendi alımı, curve doluluk,
+  satış payı, alım büyüklüğü. Sonuç: **Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç**; en iyi tarama anı Fomo 3.
+  alıcısı (en iyi %10: ≥2x %54 · ≥5x %29 · ≥10x %16). Not: mezuniyet sonrası Fomo'da işlem görmeyen coinlerde zirve
+  eksik ölçülür (curve fiyatı biter) → oranlar alt sınır.
 
 ## Sıradaki işler
 1. Fomo akışı tek başına yetmedi (yukarıdaki son madde). Önerilen sıradaki adım (kullanıcı onayı bekliyor): bot her
