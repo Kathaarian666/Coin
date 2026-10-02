@@ -175,19 +175,21 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 - Kriterler büyük veride: alım $ (son 10 dk, işlem başı, toplam, en büyük), 3. alıcıya hız, fiyat yükselişi, zirveden
   uzaklık güçlü; satış payı/satıcılar, derinlik, son 5 dk alıcı, geliştirici coin sayısı orta; lansman yaşı ilk
   haftada etkisiz ama sonraki günlerde tutuyor; FDV tutmuyor (arz verisi eksik: boşluk döneminde %61).
-- **Simülasyon (`trade_sim.py`):** 22 günlük bileşik sonuç yanıltıcı (sıcak Eylül başı katlanıyor: brüt 100x'ler).
-  Dürüst görünüm hafta hafta, kasa her hafta $1.000'dan, 30 sn gecikme, "iz" kuralı, **masraflı**:
+- **Sızıntı düzeltmesi (2 Ekim gece, ölçüm kuralı 10):** arz sadece 20+ işlemli coinler için çekildiğinden FDV'nin boş
+  olması "coin ölecek" demekti. Düzeltilince model: en iyi %50 → 2x %36 (önce %44) · %10 → %46 (%50) · %5 → %50 (%52)
+  · %2 → %58 · %1 → %57 (seçici eşikler sağlam). FDV gerçekten güçlü bir kriter (yüksek FDV → daha çok 2x).
+- **Simülasyon (`trade_sim.py`), sızıntısız:** 22 günlük bileşik sonuç yanıltıcı; dürüst görünüm hafta hafta, kasa her
+  hafta $1.000'dan, 30 sn gecikme, "iz" kuralı, **masraflı** (sızıntılı eski tablo sıcak haftada 10x gösteriyordu):
 
-| Seçim | 10-16 Eylül (sıcak) | 17-23 Eylül | 24-30 Eylül |
+| Seçim | 10-16 Eylül | 17-23 Eylül | 24-30 Eylül |
 |---|---|---|---|
-| En iyi %10 (günde ~69) | 12,9x | 0,94x | 0,57x |
-| En iyi %5 (~33) | 10,9x | 1,16x | 1,15x |
-| En iyi %2 (~14) | 5,6x | 1,02x | 1,51x |
-| En iyi %1 (~8) | 3,5x | 1,11x | 1,36x |
+| En iyi %10 (günde ~69) | 0,76x | 0,27x | 0,47x |
+| En iyi %5 (~34) | 0,77x | 0,95x | 1,06x |
+| **En iyi %2 (~14)** | **1,10x** | **1,11x** | **1,65x** |
+| En iyi %1 (~7) | 1,08x | 0,86x | 1,32x |
 
-  Bugünkü piyasada beklenen: haftada yaklaşık **+%0-50**, hedef 2x değil; sıcak piyasada çok daha fazla. İşlem başına
-  medyan zararda, kârı az sayıda büyük kazanan getiriyor (piyango yapısı). Gecikme kritik: 60 sn üstünde kâr hızla
-  eriyor. Çok bildirim (en iyi %10) masrafta eriyor.
+  En iyi %2'de: 2x %53, %50 zarar-kes %36. Beklenen: haftada yaklaşık **+%10-65**, hedef 2x değil. Çok bildirim
+  masrafta eriyor. Holder kriterleri (transfer verisi) henüz eklenmedi.
 
 ## 5. Denenip bırakılanlar (neden)
 
