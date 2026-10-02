@@ -34,10 +34,11 @@ def main():
     db = sqlite3.connect(sys.argv[1], timeout=300)  # other scripts may use the DB meanwhile
     db.execute("CREATE TABLE IF NOT EXISTS supply (addr TEXT PRIMARY KEY, raw REAL)")
     have = {a for (a,) in db.execute("SELECT addr FROM supply")}
-    # coins with a few trades never make a candidate: skip them (the public RPC is shared with downloads)
+    # every coin that reaches an alert moment (3 distinct buyers). Not "20 trades in total": whether a coin trades on
+    # is future knowledge, and a missing FDV would then tell the model the coin dies (found 2 Oct)
     todo = [a for (a,) in db.execute(
-        "SELECT n.addr FROM names n JOIN (SELECT token, COUNT(*) c FROM trades GROUP BY token) t ON t.token = n.id "
-        "WHERE n.kind = 'token' AND t.c >= 20") if a not in have]
+        "SELECT n.addr FROM names n JOIN (SELECT token, COUNT(DISTINCT trader) c FROM trades WHERE side = 1 "
+        "GROUP BY token) t ON t.token = n.id WHERE n.kind = 'token' AND t.c >= 3") if a not in have]
     for k in range(0, len(todo), 50):
         chunk = todo[k:k + 50]
         res = batch(chunk)

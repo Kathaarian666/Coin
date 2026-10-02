@@ -221,6 +221,9 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
    şans kontrolü. Sonuç fazla iyiyse önce hata aranır.
 9. **Başarı brüttür** (kullanıcı kararı). Komisyon/kayma sadece 3. adımda "girseydik sonuç ne olurdu" için, kullanıcıyla
    birlikte kararlaştırılırsa.
+10. **Eksik veri de bilgi taşır.** Bir özelliğin dolu ya da boş olması gelecekteki bir koşula bağlı olmamalı. Örnek
+   (2 Ekim): arz sadece "toplam 20+ işlem gören" coinler için çekilmişti → FDV'nin boş olması "bu coin ölecek"
+   demekti, modele gelecek sızıyordu. Arz artık 3 alıcıya ulaşan her coin için çekiliyor.
 
 ## 7. Veri ve araçlar
 

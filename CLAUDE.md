@@ -39,7 +39,7 @@ Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazı
 Gelecek bilgisi yok · bildirim fiyatı o anda bilinen son alım fiyatı (gelecekteki işleme bağlanmaz; son 3 alımın ortancası 2x'i şişirir) · "ileride Fomo'ya gelen
 coinler" gibi evren seçimi yok · 2x iki ardışık alımla, coin başı tavan 100x · düşüş/son değer tüm işlemlerden, ölü coin
 yarı fiyat · yol sırası · süresiz 2x'te veri sonunda yeterince izlenmeyen coin "olmadı" sayılmaz · kayan pencere, gün
-gün, "en iyi %1 hariç" kontrolü · başarı brüt (komisyon/kayma sadece 3. adımda, kararlaştırılırsa). Sonuç fazla iyiyse
+gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula bağlı olmasın (arz sadece "20+ işlemli" coinlerde = sızıntı) · başarı brüt (komisyon/kayma sadece 3. adımda, kararlaştırılırsa). Sonuç fazla iyiyse
 önce hata ara.
 
 ## Sunucu
