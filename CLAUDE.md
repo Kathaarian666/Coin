@@ -25,13 +25,13 @@ bildirim gönderen bot + yükselecek coinleri erken bulma araştırması. Proje 
 betiklerin durumu ve yol haritası orada (tek özet; bu dosyada tekrarlanmaz). Her önemli bulgu/karar sonrası
 `PROJE.md` güncellenir.
 Kısaca (2 Ekim): hedef yeni coinlerde güvenli olanları ve ciddi yükselecekleri erken yakalamak. Güven taraması hazır.
-Yükseliş için en iyi aday "Fomo 3. alıcısında tarama (en iyi %10) + yarısı 2x'te, kalanı zirveden %30 düşüşte sat",
-kayan pencerede +$30/işlem. Sıradaki: taze veriyle son sınav, sonra bota bildirimsiz kayıt modu.
+Yükseliş için en iyi aday: "Fomo 3. alıcısında tarama (en iyi %10) + 1 saat tut" (kayan pencerede, dürüst çıkış
+seçimiyle +$50/işlem; kârı ~%5 büyük kazanan getiriyor). Sıradaki: bota bildirimsiz kayıt modu.
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
 ## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte kâr üretti; ayrıntı `PROJE.md` §5)
 Gelecek bilgisi yok (havuz derinliği dahil) · giriş gelecekteki bir işleme bağlanmaz · "ileride Fomo'ya gelen coinler"
-gibi evren seçimi yok · düşüş/çıkış fiyatı tüm işlemlerden (sadece alım değil), ölü coin yarı fiyat · yükseliş iki
+gibi evren seçimi yok · yol sırası (stop hedeften önce geldiyse stop) · düşüş/çıkış fiyatı tüm işlemlerden (sadece alım değil), ölü coin yarı fiyat · yükseliş iki
 ardışık alımla, coin başı tavan 100x · Fomo komisyonu en az $0.95 + kayma · ayrı test dönemi / kayan pencere, "en
 iyi %1 hariç" kontrolü. Sonuç fazla iyiyse önce hata ara.
 

@@ -57,8 +57,9 @@ def exits(held, h_t, allp, a_t, t_in, depth):
         k = np.nonzero(held >= m)[0]
         return h_t[k[0]] if len(k) and h_t[k[0]] <= until else None
 
-    def trail_exit(x, since):
-        """Sell when a trade prints (1 - x) under the high held since `since` (at least the entry)."""
+    def trail_exit(x, since, when=False):
+        """Sell when a trade prints (1 - x) under the high held since `since` (at least the entry); with `when`,
+        also the time it fired (inf if never)."""
         run = np.maximum.accumulate(np.where(h_t >= since, held, 1.0)) if len(held) else held
         for t, p in zip(a_t, allp):
             if t < since:
@@ -66,8 +67,8 @@ def exits(held, h_t, allp, a_t, t_in, depth):
             k = bisect.bisect_right(h_t, t) - 1
             high = max(1.0, run[k]) if k >= 0 else 1.0
             if p <= (1 - x) * high:
-                return min(p, high) * 0.95
-        return at(t_in + HORIZON)
+                return (min(p, high) * 0.95, t) if when else min(p, high) * 0.95
+        return (at(t_in + HORIZON), np.inf) if when else at(t_in + HORIZON)
 
     out, end = {}, t_in + HORIZON
     two = needed(round(depth, -2), 2.0)  # price multiple that returns 2x the money after costs
@@ -78,11 +79,13 @@ def exits(held, h_t, allp, a_t, t_in, depth):
         out[f"2x'te sat, yoksa {hours} s sonra çık"] = (
             val(two) if first_hit(two, t_in + hours * 3600) else val(at(t_in + hours * 3600, two)))
     for x in (0.3, 0.5):
-        out[f"iz süren stop %{x * 100:.0f}"] = val(trail_exit(x, t_in))
+        full, t_full = trail_exit(x, t_in, when=True)
+        out[f"iz süren stop %{x * 100:.0f}"] = val(full)
         t2 = first_hit(two)
+        # the stop runs on the whole position from the entry: if it fires before 2x, there is no half sale
         out[f"yarısı 2x + kalanı iz süren %{x * 100:.0f}"] = (
             (money_back(two, depth) + money_back(min(trail_exit(x, t2), CAP), depth)) / 2 - POS
-            if t2 else out[f"iz süren stop %{x * 100:.0f}"])
+            if t2 and t2 < t_full else out[f"iz süren stop %{x * 100:.0f}"])
     out["72 saat tut"] = val(at(end))
     return out
 

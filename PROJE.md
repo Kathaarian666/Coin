@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 2 Ekim (taze veri testi). Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
+Son güncelleme: 2 Ekim (çıkış stratejisi ızgarası). Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
 neyi denedik ve bıraktık, sırada ne var. Ayrıntılı tarihçe ve silinen eski betikler (`rise_model`, `copy_study`, `ride_test`, `winner_report`) git geçmişinde.
 
 ## 1. Amaç
@@ -28,7 +28,7 @@ yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven taramas
 - Silinenler (git geçmişinde): momentum, rug riski, ÇIK/DİKKAT, erken sinyal, DexScreener tabanlı bütün ölçüm komutları.
 - **Açık nokta:** sadeleştirilmiş sürüm sunucuya kuruldu mu, bildirimler kapalı mı (`/durdur`), kullanıcıyla teyit edilmeli.
 
-**Araştırma:** İlk kez örnek dışı pozitif bir **tarama + çıkış kuralı** bulundu (bölüm 3.3). Henüz bota eklenmedi.
+**Araştırma:** Örnek dışı pozitif bir strateji bulundu: tarama + 1 saat tut (bölüm 3.3). Kârı az sayıda büyük işlem getiriyor. Henüz bota eklenmedi.
 
 ## 3. Kanıtlanmış bulgular (zincir verisi, 17–28 Eylül)
 
@@ -63,30 +63,40 @@ Seçicilik 2-3 kat. Fomo 3. alıcısında, taramanın en iyi %10'u:
 Daha erken an (zincirde 5.–40. curve alıcısı, lansmandan saniyeler sonra) isabeti artırmıyor. Mutlak oranlar daha
 düşük, çünkü çöp lansman çok. **Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç.**
 
-### 3.3 Kârlı görünen tek yapı: tarama + "yarısı 2x, kalanı iz süren stop"
-`scripts/scan_trade.py`
+### 3.3 Strateji: tarama + "1 saat tut"
+`scripts/exit_search.py`. Eski `scan_trade.py` sonuçları geçersiz, aşağıya bak.
 
-- **Giriş:** Fomo'da 3. alıcıdan 30 sn sonra, havuz fiyatından, $100 ile. Komisyon ve kayma dahil; derinlik
-  bilinmiyorsa kötümser $3k.
-- **Seçim:** gradient boosting puanı en yüksek %10.
-- **Çıkış:** paranın yarısı net 2x olunca satılır, kalanı fiyat zirveden %30 düşünce satılır.
+**Kurulum:**
+- **Seçim:** Fomo'da 3. alıcı anında, sadece Fomo akışı özellikleriyle gradient boosting puanı. Her gün sadece önceki
+  günlerle yeniden eğitilir (kayan pencere). Günün eşikleri önceki 2 günün puanlarından.
+- **Giriş:** 30 sn sonra havuz fiyatından, $100 ile. Komisyon ve kayma dahil.
+- **Izgara:** 915 çıkış stratejisi denendi: kademeli kâr alma, iz süren stop %20-60, zarar-kes 0,5x/0,7x, en uzun
+  tutma 1 saat - 7 gün. Test günleri 22 Eylül - 2 Ekim (9 gün, taze veri dahil).
+- **Çıkış seçimi de dürüst:** her gün önceki günlerde en iyi olan strateji uygulandı.
 
-| Test | Seçimsiz | En iyi %10 (günde ~25-38 coin) | En iyi %20 |
-|---|---|---|---|
-| İlk %65'te eğit, son %35'te dene | ~$0 | +$26,5 ±13 (6/6 gün artı) | +$21 ±8 |
-| Yarı yarıya | ~$0 | +$31,9 ±10 (7/7) | +$24,8 ±7 |
-| **Kayan pencere** (her gün sadece geçmişle), akış + holder | −$0,2 | **+$30,1 ±10 (7/7)** | +$18,8 ±6 |
-| **Kayan pencere, sadece Fomo akışı** | −$0,2 | **+$29,5 ±12 (7/7)** | +$16,9 ±6 |
-| **Taze veri** (1 Ekim 15:18 – 2 Ekim 08:34, hiç kullanılmamış; sadece Fomo akışı; açık pozisyonlar son fiyattan) | −$5,5 ±8 | **+$26,7 ±25** (26 coin) | **+$24,4 ±15** (70 coin) |
+**Sonuç:** Bu seçim neredeyse her gün "**hiç kısmi satış yok, stop yok, 1 saat tut, sonra sat**" oldu.
 
-- Sadece Fomo akışı da neredeyse aynı iyi: canlıda transfer okumaya gerek yok.
-- Kötü çıkışlar: 72 saat tutmak, %50 iz süren stop, "2x'te sat, olmazsa 72 saat bekle".
+| Grup | Dürüst (kayan) seçim | 1 saat tut | En iyi %5 hariç | Medyan | Kârlı | Taze dönem |
+|---|---|---|---|---|---|---|
+| Taramanın en iyi %10'u (237 işlem) | **+$50 ±35** | +$67,8 (9/9 gün artı) | +$9 | −$8 | %40 | +$76 (15 işlem) |
+| Taramanın en iyi %20'si (682 işlem) | **+$27 ±14** | +$35,7 (9/9 gün artı) | −$5 | −$13 | %37 | +$33 (61 işlem) |
+
+En iyi %10'da tutma süresine göre: 15 dk +$40 · 30 dk +$62 · **60 dk +$68** · 2 saat +$57 · 6 saat +$46. 24 saatten
+uzun tutmak +$20 civarına düşüyor.
+
+**Yorum:**
+- Bu bir **"piyango" yapısı**. İşlemlerin çoğu küçük zararla kapanıyor (medyan −$8). Kârı, seçilenlerin ~%5'i
+  getiriyor: ilk saat içinde 15-25x yapan coinler, işlem başı +$1.000-2.400.
+- En iyi %5 çıkarılınca en iyi %10 hâlâ +$9, en iyi %20 −$5.
+- Kademeli satış, iz süren stop ve zarar-kes bu büyük kazananları erken kestiği için ortalamayı düşürüyor.
+- Seçimsiz girmek her kuralda eksi.
 - **Sınırlar:**
-  - Test sadece 7 gün.
-  - İşlemlerin yarısından fazlası zararla kapanıyor; kâr az sayıda büyük yükselişten geliyor.
-  - İz süren stopun gerçek doluşu daha kötü olabilir.
-  - Taze veri testi (2 Ekim) aynı yönde ve büyüklükte çıktı. Ama sadece 17 saat ve 26-70 işlem; en iyi %10'un
-    hata payı sıfıra dokunuyor, en iyi %20'ninki sıfırın üstünde.
+  - Örnek 9 gün. Sonuç az sayıda büyük işleme bağlı; kötü bir hafta olabilir.
+  - Sığ havuzda 15-25x'te satışın gerçek kayması tahminden kötü olabilir.
+
+**Düzeltilen hata (2 Ekim):** `scan_trade.py`'deki "yarısı 2x + kalanı iz süren stop" hesabı, fiyat 2x'e varmadan %30
+düşse bile pozisyonun 2x'e kadar tutulduğunu varsayıyordu (gelecek bilgisi). Daha önce raporlanan +$26-32 bu yüzden
+şişmişti; doğru simülasyonda aynı kural −$1 ile −$3 arası. Kod düzeltildi.
 
 ## 4. Denenip bırakılanlar (neden)
 
@@ -113,10 +123,12 @@ Her biri bir kez sahte kâr üretti:
    lansmanlar kullanılır.
 4. **Düşüşler ve çıkış değeri tüm işlemlerden okunur.** Coinler satışlarla çöker; sadece alım fiyatı kaybı gizler.
    Ölü coin (6 saat işlem yok) yarı fiyat.
-5. **Yükseliş iki ardışık alımla tutulmalı.** Fomo toplu işlemlerinde ~%5 satış fiyatı bozuk; tek basım hedefi
+5. **Yol sırası korunur:** Bir kural iki olayı içeriyorsa (ör. 2x'te sat + iz süren stop) hangisi önce olduysa o
+   uygulanır. "Sonunda 2x'e ulaştı" diye önceki stopu yok saymak gelecek bilgisidir.
+6. **Yükseliş iki ardışık alımla tutulmalı.** Fomo toplu işlemlerinde ~%5 satış fiyatı bozuk; tek basım hedefi
    geçemez, coin başına tavan 100x.
-6. **Komisyon en az $0,95** (%0,5 değil). Kayma hesaba katılır.
-7. **Doğrulama:** Ayrı test dönemi, kayan pencere, gün gün artı/eksi ve hata payı. "En iyi %1 hariç" ile şans kontrolü.
+7. **Komisyon en az $0,95** (%0,5 değil). Kayma hesaba katılır.
+8. **Doğrulama:** Ayrı test dönemi, kayan pencere, gün gün artı/eksi ve hata payı. "En iyi %1 hariç" ile şans kontrolü.
 
 ## 6. Veri ve araçlar
 
@@ -143,7 +155,8 @@ Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir.
 | **Güncel** | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | **Güncel** | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | **Güncel** | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
-| **Güncel** | `scan_trade.py` | Tarama + çıkış kuralları, maliyetli işlem simülasyonu (`kayan` modu) |
+| **Güncel** | `exit_search.py` | Kayan pencereli tarama + 915 çıkış stratejisi ızgarası, dürüst çıkış seçimi |
+| Güncel | `scan_trade.py` | Tarama + birkaç çıkış kuralı (`kayan`, `taze` modları); 2 Ekim'de iz süren stop sırası düzeltildi |
 | Güncel (olumsuz sonuç) | `curve_study.py` / `curve_report.py` | Zincirde çok erken an testi |
 | Betimleyici | `coin_lifecycle.py` | Coin yaşam döngüsü istatistikleri |
 | Yardımcı | `rise_build.py` | Maliyet/kayma/havuz derinliği fonksiyonları (diğer betikler kullanıyor); kendi tablosu eski "2x olur mu" çalışmasından |
@@ -154,7 +167,7 @@ winner_study.py fomo.db winners.parquet
 transfer_download.py fomo.db winners.parquet
 transfer_features.py fomo.db winners.parquet winners_tx.parquet
 rise_detect.py winners_tx.parquet
-scan_trade.py fomo.db winners_tx.parquet kayan
+exit_search.py fomo.db winners_tx.parquet [taze_winners.parquet]
 ```
 
 ## 7. Yol haritası
