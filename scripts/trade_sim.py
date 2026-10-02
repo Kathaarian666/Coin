@@ -64,7 +64,8 @@ def path_events(ts, px, side, t_in, p_in, p_alert, data_end):
         i = np.searchsorted(ts, t, side="right") - 1
         if i < 0:
             return p_in
-        return px[i] / 2 if t - ts[i] > DEAD else px[i]  # dead coin: half price (PROJE.md §6)
+        p = float(np.median(px[max(0, i - 4):i + 1]))  # median of the last 5 trades: ~5 % of sell prices are broken
+        return p / 2 if t - ts[i] > DEAD else p  # dead coin: half price (PROJE.md §6)
 
     end = (data_end, 1.0, price_at(data_end))
     if tstop < t2x:  # the stop came first: everything out

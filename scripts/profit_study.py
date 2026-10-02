@@ -75,8 +75,10 @@ def trade_return(o, depth, cutoff=np.inf):
             open_share += share
     if open_share:
         i = np.searchsorted(o["ts"], cutoff, side="right") - 1
-        p = o["px"][i] if i >= 0 and np.isfinite(o["px"][i]) else o["p_in"]
-        if cutoff - o["ts"][i] > trade_sim.DEAD:
+        last = o["px"][max(0, i - 4):i + 1] if i >= 0 else []
+        last = last[np.isfinite(last)] if len(last) else last
+        p = float(np.median(last)) if len(last) else o["p_in"]  # median of the last 5: broken sell prices
+        if i >= 0 and cutoff - o["ts"][i] > trade_sim.DEAD:
             p /= 2
         total += leg_value(coins * open_share, min(p, trade_sim.CAP * o["p_in"]), depth)
     return total / STAKE - 1
@@ -143,9 +145,14 @@ def main():
                 al = [a for a, t in zip(alerts, sel.ts) if first + wk * 7 * DAY <= t < first + (wk + 1) * 7 * DAY]
                 if len(al) >= 10 and (sel.ts.max() - first - wk * 7 * DAY) >= 3 * DAY:
                     weeks.append(f"{trade_sim.simulate(al, 'iz', 1000, True) / 1000:.2f}x")
+            keep = sel.ret < sel.ret.quantile(0.99)  # luck check: without the best 1 % of the trades
+            lucky = [a for a, k in zip(alerts, keep) if k]
+            luck = trade_sim.simulate(lucky, "iz", 1000, True) / 1000
             print(f"  en iyi %{100 * bar:g}: günde {len(sel) / days:5.1f} · 2x %{100 * sel.hit2x.mean():.0f} · "
                   f"getiri ort {sel.ret.mean():+.2f} medyan {sel.ret.median():+.2f} · kârlı %{100 * (sel.ret > 0).mean():.0f}"
-                  f" · hafta hafta ($1000, masraflı): {' / '.join(weeks)}")
+                  f" · hafta hafta ($1000, masraflı): {' / '.join(weeks)} · 22 gün en iyi %1 hariç {luck:.2f}x "
+                  f"(hepsi {trade_sim.simulate(alerts, 'iz', 1000, True) / 1000:.2f}x)")
+            sel.assign(model=m, bar=bar).to_parquet(f"/tmp/claude-0/data/profit_{m.replace('>', '')}_{bar}.parquet")
         print()
 
 
