@@ -49,10 +49,18 @@ def main():
     starts = [x for x in range(lo, hi, STEP) if x not in done]
     t0 = time.time()
 
+    def chain_logs(a, b):
+        try:
+            return rpc("eth_getLogs", [{"fromBlock": hex(a), "toBlock": hex(b), "topics": [[CURVE_BUY, CURVE_SELL]]}])
+        except RuntimeError:
+            if b - a < 10:
+                raise
+            mid = (a + b) // 2
+            return chain_logs(a, mid) + chain_logs(mid + 1, b)
+
     def fetch(start):
         rows = []
-        for e in rpc("eth_getLogs", [{"fromBlock": hex(start), "toBlock": hex(start + STEP - 1),
-                                      "topics": [[CURVE_BUY, CURVE_SELL]]}]):
+        for e in chain_logs(start, start + STEP - 1):
             hit = curves.get(e["address"].lower())
             blk = int(e["blockNumber"], 16)
             if not hit or blk > hit[1] + hours * 36000:
