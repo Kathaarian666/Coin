@@ -95,8 +95,8 @@ class Path_:
         return cash + left * money_back(min(m_out, CAP), self.depth) - POS
 
 
-def picks(db, df):
-    """The walk-forward scan's top-20% picks with their day bars, and each pick's price path."""
+def paths_and_peak24(db, df):
+    """Each checkpoint's price path after a 30 s entry, and the highest multiple held within 24 h (the label)."""
     ids = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names WHERE kind = 'token'")}
     data_end = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0]
     paths, peak24 = {}, {}
@@ -120,6 +120,12 @@ def picks(db, df):
         paths[(coin, t)] = Path_(held, h_t, np.minimum(apx[la:ha] / p_in, CAP), ats[la:ha], t_in, depth, data_end)
         d1 = held[h_t <= t_in + 86400]
         peak24[(coin, t)] = d1.max() if len(d1) else 0.0
+    return paths, peak24
+
+
+def picks(db, df):
+    """The walk-forward scan's top-20% picks with their day bars, and each pick's price path."""
+    paths, peak24 = paths_and_peak24(db, df)
     df = df.assign(peak24=[peak24[(c, t)] for c, t in zip(df.coin, df.ts)], day=(df.ts // 86400).astype(int))
     out = []
     for d in sorted(df.day.unique()):

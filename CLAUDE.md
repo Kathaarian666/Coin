@@ -26,7 +26,8 @@ betiklerin durumu ve yol haritası orada (tek özet; bu dosyada tekrarlanmaz). H
 `PROJE.md` güncellenir.
 Kısaca (2 Ekim): hedef yeni coinlerde güvenli olanları ve ciddi yükselecekleri erken yakalamak. Güven taraması hazır.
 Yükseliş için en iyi aday: "Fomo 3. alıcısında tarama (en iyi %10) + 1 saat tut" (kayan pencerede, dürüst çıkış
-seçimiyle +$50/işlem; kârı ~%5 büyük kazanan getiriyor). Sıradaki: bota bildirimsiz kayıt modu.
+seçimiyle +$28/işlem; kârı ~%5 büyük kazanan getiriyor). Bot bunu **kayıt modunda** çalıştırıyor (bildirim yok,
+`/kayit`); sıradaki: birkaç gün canlı sonuçlara bakmak.
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
 ## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte kâr üretti; ayrıntı `PROJE.md` §5)
@@ -71,12 +72,13 @@ iyi %1 hariç" kontrolü. Sonuç fazla iyiyse önce hata ara.
 `bot.py` Telegram + akış (Fomo'da 10 dk'da `/minalici` alıcı ve `/minhacim` $ → güven taraması → skor ≥ `/minskor`
 ise bildirim) · `fomo.py` Fomo işlemleri · `analyzer.py`/`checks/`/`scoring.py` güven skoru (Fomo churn = sahte
 hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches.py` Pons lansman indeksi
-(geliştirici geçmişi) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
+(geliştirici geçmişi) · `scan.py` + `scan_model.json` kayıt modu (yeni coinleri 3. Fomo alıcısında puanlar, 1 s sonra
+ölçer; tablolar `scan_log`, `scan_known`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — hangisinin güncel/eski olduğu ve çalışma sırası `PROJE.md` §6'da.
 
 ## Telegram komutları (hepsi bot.py HELP'te)
-`/check <adres>` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum`
+`/check <adres>` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum` `/kayit [saat]`
 
 ## Veri (araştırma)
 **Veri arşivi: GitHub `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; 1-3 Eylül + 17 Eylül-1 Ekim; 3-17 Eylül

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from html import escape
 
@@ -15,8 +16,9 @@ from .checks.wash import fomo_churn
 from .config import Settings
 from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
-from .report import format_report
+from .report import format_report, format_scan_log
 from .rpc import RpcClient
+from .scan import ScanLog, ScanModel, Scanner, Trade, checkpoint_features, evaluate, summary
 from .sources import Blockscout, DexScreener
 from .storage import Storage
 
@@ -34,6 +36,7 @@ HELP = (
     "/durdur — otomatik bildirimleri durdur\n"
     "/devam — otomatik bildirimleri aç\n"
     "/durum — tarayıcı durumu\n"
+    "/kayit [saat] — kayıt modu: yükseliş taramasının puanladığı coinler ve 1 saat sonraki sonuçları (bildirim yok)\n"
 )
 
 
@@ -57,6 +60,11 @@ class ScannerApp:
             self.storage,
         )
         self.tracker = FomoTracker()
+        # record mode of the rise scan (PROJE.md §3.3): scores new coins, measures them an hour later, sends nothing
+        self.scan_model = ScanModel.load()
+        self.scan_log = ScanLog(self.storage.db)
+        known, since = self.scan_log.known()
+        self.scanner = Scanner(known, since, on_new=self.scan_log.remember)
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
@@ -89,6 +97,14 @@ class ScannerApp:
 
     # --- sources ---
     async def on_fomo_trades(self, trades: list[FomoTrade], warmup: bool = False):
+        if self.scan_model:
+            for t in sorted(trades, key=lambda x: x.block):
+                trade = Trade(t.timestamp, t.block, int(t.side == "buy"), t.trader, t.usd or 0.0, t.amount or 0)
+                idx = self.scanner.add(t.token, trade)
+                if idx is not None:
+                    task = asyncio.create_task(self.score_checkpoint(t.token, idx))
+                    self.tasks.append(task)
+                    task.add_done_callback(lambda done: self.tasks.remove(done) if done in self.tasks else None)
         for token in {t.token for t in trades if t.side == "buy"}:
             stats = self.tracker.stats(token, self.fomo_window)
             rising = stats["buyers"] >= self.min_buyers and stats["buy_usd"] >= self.min_buy_usd
@@ -99,6 +115,49 @@ class ScannerApp:
                     continue
                 log.info("%s is rising on Fomo: %s", token, stats)
                 await self.queue.put(Job(token, from_fomo=True))
+
+    # --- record mode of the rise scan ---
+    async def score_checkpoint(self, token: str, idx: int):
+        """A new coin's 3rd distinct Fomo buyer: compute the research features, score them and record the row."""
+        try:
+            coin = self.scanner.coins[token.lower()]
+            trades = coin.trades[:idx + 1]
+            supply = await self.rpc.try_call_fn(token, "totalSupply()", ["uint256"])
+            index = self.analyzer.launches
+            row = index.db.execute("SELECT block, launcher FROM pons_launches WHERE token = ?",
+                                   (token.lower(),)).fetchone() if index else None
+            launch = (row[0], index.launches_since(row[1], 0, row[0] - 1)) if row else None
+            features = checkpoint_features(trades, idx, 3, float(supply[0]) if supply else None, launch)
+            if features is None:
+                return
+            score = self.scan_model.score(features)
+            bar10, bar20 = self.scan_log.bars(self.scan_model, time.time())
+            self.scan_log.add(token, trades[-1].ts, score, bar10, bar20, features)
+            if score >= bar10:
+                log.info("scan: %s in the top 10%% (score %.3f)", token, score)
+        except Exception:
+            log.exception("scan scoring failed for %s", token)
+
+    def measure_due(self, now: float):
+        """Reads the hour of the checkpoints that are due, then forgets the trades no longer needed."""
+        for token, ts in self.scan_log.due(now):
+            coin = self.scanner.coins.get(token)
+            res = evaluate(coin.trades, ts) if coin else None
+            if res:
+                self.scan_log.close(token, *res)
+            else:
+                self.scan_log.close(token)  # restarted meanwhile, or no entry price: unmeasured
+        self.scanner.prune(now)
+
+    async def scan_loop(self):
+        while True:
+            try:
+                self.measure_due(time.time())
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("scan measuring failed")
+            await asyncio.sleep(60)
 
     # --- analysis ---
     def fomo_stats(self, token: str) -> dict | None:
@@ -238,6 +297,18 @@ class ScannerApp:
             self.storage.set_state("alerts_on", "1")
             await update.message.reply_text("▶️ Otomatik bildirimler açıldı.")
 
+    async def cmd_record(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        if not self.scan_model:
+            await update.message.reply_text("Kayıt modu kapalı: model dosyası (rhscanner/scan_model.json) yok.")
+            return
+        hours = float(context.args[0]) if context.args and context.args[0].replace(".", "", 1).isdigit() else 24.0
+        rows = self.scan_log.rows(time.time() - hours * 3600)
+        top = [r for r in rows if r["score"] >= r["bar10"]][-8:]
+        recent = [(await self.symbol(r["token"]), r["score"], r["result"], r["high"]) for r in reversed(top)]
+        await update.message.reply_html(format_scan_log(hours, summary(rows), recent, self.scan_model.trained_until))
+
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -248,7 +319,12 @@ class ScannerApp:
             f"Analiz kuyruğu: {self.queue.qsize()}\n"
             f"Pons lansman indeksi: {self.analyzer.launches.count():,} coin\n"
             f"Bildirimler: {'açık' if self.alerts_on else 'kapalı'} · Min. skor: {self.min_score} · "
-            f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk"
+            f"Min. alıcı: {self.min_buyers} · Min. hacim: ${self.min_buy_usd:,.0f} / {self.settings.fomo_window_min:g} dk\n"
+            f"Kayıt modu: {'açık' if self.scan_model else 'kapalı (model yok)'}"
+            f"{' (ilk 24 saat: eski coinleri öğreniyor)' if self.scanner.known_since and time.time() - self.scanner.known_since < 86400 else ''}"
+            f" · izlenen yeni coin "
+            f"{sum(c.eligible for c in self.scanner.coins.values())} · son 24 saatte puanlanan "
+            f"{len(self.scan_log.rows(time.time() - 86400))}"
         )
 
     # --- lifecycle ---
@@ -258,6 +334,8 @@ class ScannerApp:
             self.tasks.append(asyncio.create_task(watcher.run(self.on_fomo_trades)))
             self.tasks.append(asyncio.create_task(REGISTRY.run(self.rpc, self.settings.v4_pool_manager)))
         self.tasks.append(asyncio.create_task(self.launch_loop()))
+        if self.scan_model:
+            self.tasks.append(asyncio.create_task(self.scan_loop()))
         for _ in range(self.settings.analysis_workers):
             self.tasks.append(asyncio.create_task(self.worker()))
 
@@ -288,4 +366,5 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("durdur", self.cmd_pause))
         self.app.add_handler(CommandHandler("devam", self.cmd_resume))
         self.app.add_handler(CommandHandler("durum", self.cmd_status))
+        self.app.add_handler(CommandHandler("kayit", self.cmd_record))
         self.app.run_polling()

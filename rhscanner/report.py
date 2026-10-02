@@ -1,5 +1,6 @@
 """Formats a report as a Telegram HTML message (Turkish)."""
 
+import time
 from html import escape
 
 from .config import DEXSCREENER_CHAIN
@@ -99,4 +100,32 @@ def format_report(report: dict, blockscout_url: str, header: str = "") -> str:
     links.append(f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>')
     lines += ["", " · ".join(links)]
     lines.append("<i>Yatırım tavsiyesi değildir. Otomatik kontroller her riski yakalayamaz.</i>")
+    return "\n".join(lines)
+
+
+def _money(value) -> str:
+    return "–" if value is None else f"{value:+.1f}$"
+
+
+def format_scan_log(hours: float, s: dict, recent: list[tuple[str, float, float | None, float | None]],
+                    trained_until: float | None) -> str:
+    """/kayit: the record mode's results (no alerts are sent for it). `recent`: (symbol, score, $ result, high)."""
+    lines = [f"📒 <b>Kayıt modu</b> — son {hours:g} saat (bildirim gönderilmez)",
+             "Fomo'da 3. alıcıya ulaşan her yeni coin puanlanır; 1 saat sonra \"30 sn sonra $100 alıp 1 saat "
+             "tutsaydık\" sonucu ölçülür (komisyon ve kayma dahil).", "",
+             f"Puanlanan: {s['scored']} · ölçülen {s['measured']} · bekleyen {s['pending']} · ölçülemeyen {s['unmeasured']}"]
+    for key, name in (("top10", "🔝 En iyi %10"), ("top20", "En iyi %20"), ("all", "Hepsi (seçimsiz)")):
+        g = s[key]
+        if not g["n"]:
+            lines.append(f"{name}: henüz ölçülen yok ({g['pending']} bekliyor)")
+            continue
+        lines.append(f"{name}: {g['n']} işlem · ort <b>{_money(g['mean'])}</b> · medyan {_money(g['median'])} · "
+                     f"kârlı %{100 * g['win']:.0f} · toplam {_money(g['total'])} · en iyi {_money(g['best'])}")
+    if recent:
+        lines += ["", "Son en iyi %10 seçimleri:"]
+        for symbol, score, result, high in recent:
+            res = f"{_money(result)} (zirve {high:.1f}x)" if result is not None else "ölçüm bekliyor"
+            lines.append(f"• {escape(symbol, quote=False)} — puan {score:.3f} · {res}")
+    if trained_until:
+        lines.append(f"\n<i>Model {time.strftime('%d.%m', time.gmtime(trained_until))} tarihine kadarki veriyle eğitildi.</i>")
     return "\n".join(lines)

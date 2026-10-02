@@ -82,6 +82,7 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/minhacim 500` | Bildirim için 10 dakikada gereken en az Fomo alım hacmi ($) |
 | `/durdur` / `/devam` | Otomatik bildirimleri kapat / aç |
 | `/durum` | Son taranan blok, izlenen coin sayısı, kuyruk, ayarlar |
+| `/kayit 24` | Kayıt modu: yükseliş taramasının puanladığı yeni coinler ve 1 saat sonraki sonuçları (bildirim yok) |
 
 Botu açmadan terminalden de kullanabilirsiniz:
 ```bash
@@ -127,7 +128,8 @@ rhscanner/
   checks/           contract, honeypot, liquidity, holders, launch, deployer, wash kontrolleri
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   hooks.py          Uniswap V4 hook kayıt defteri (yaygın launchpad hook'u mu?)
-  flow.py           bir coinin Fomo işlemlerinden akış özellikleri (araştırma ve ileride canlı kural)
+  flow.py           bir coinin Fomo işlemlerinden akış özellikleri (araştırma)
+  scan.py           kayıt modu: yeni coinleri 3. Fomo alıcısında puanlar, 1 saat sonra ölçer (scan_model.json)
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı
   bot.py            Telegram botu + tarayıcı döngüsü

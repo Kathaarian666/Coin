@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 2 Ekim (çıkış stratejisi ızgarası). Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
+Son güncelleme: 2 Ekim (kayıt modu kuruldu). Bu belge projenin tek özetidir: ne yapmak istiyoruz, nerede duruyoruz, neyi kanıtladık,
 neyi denedik ve bıraktık, sırada ne var. Ayrıntılı tarihçe ve silinen eski betikler (`rise_model`, `copy_study`, `ride_test`, `winner_report`) git geçmişinde.
 
 ## 1. Amaç
@@ -28,7 +28,12 @@ yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven taramas
 - Silinenler (git geçmişinde): momentum, rug riski, ÇIK/DİKKAT, erken sinyal, DexScreener tabanlı bütün ölçüm komutları.
 - **Açık nokta:** sadeleştirilmiş sürüm sunucuya kuruldu mu, bildirimler kapalı mı (`/durdur`), kullanıcıyla teyit edilmeli.
 
-**Araştırma:** Örnek dışı pozitif bir strateji bulundu: tarama + 1 saat tut (bölüm 3.3). Kârı az sayıda büyük işlem getiriyor. Henüz bota eklenmedi.
+**Kayıt modu (2 Ekim):** Bot, Fomo'da 3. alıcısına ulaşan her **yeni** coini puanlıyor ve 1 saat sonra "30 sn
+sonra $100 alıp 1 saat tutsaydık" sonucunu ölçüyor. **Bildirim göndermiyor.** Sonuçlar `/kayit [saat]` ile görülüyor.
+- Model: `rhscanner/scan_model.json` (`scripts/scan_export.py` ile eğitilir).
+- "Yeni coin" = Fomo'da daha önce hiç işlem görmemiş. Bot gördüğü coinleri kalıcı tutuyor; sıfırdan kurulumda ilk 24
+  saat sadece öğreniyor, kayıt tutmuyor.
+- Eşikler: başta modelden, ~100 puanlamadan sonra botun son 2 günlük kendi puanlarından.
 
 ## 3. Kanıtlanmış bulgular (zincir verisi, 17–28 Eylül)
 
@@ -64,39 +69,46 @@ Daha erken an (zincirde 5.–40. curve alıcısı, lansmandan saniyeler sonra) i
 düşük, çünkü çöp lansman çok. **Fomo'da alıcı gelmesi kendisi güçlü bir süzgeç.**
 
 ### 3.3 Strateji: tarama + "1 saat tut"
-`scripts/exit_search.py`. Eski `scan_trade.py` sonuçları geçersiz, aşağıya bak.
+`scripts/exit_search.py`. Veri 17 Eylül - 2 Ekim, 11 test günü, taze dönem dahil.
 
 **Kurulum:**
-- **Seçim:** Fomo'da 3. alıcı anında, sadece Fomo akışı özellikleriyle gradient boosting puanı. Her gün sadece önceki
-  günlerle yeniden eğitilir (kayan pencere). Günün eşikleri önceki 2 günün puanlarından.
+- **Seçim:** Fomo'da 3. alıcı anında, sadece Fomo akışı ve lansman özellikleriyle gradient boosting puanı. Her gün
+  sadece önceki günlerle yeniden eğitilir (kayan pencere). Günün eşikleri önceki 2 günün puanlarından.
 - **Giriş:** 30 sn sonra havuz fiyatından, $100 ile. Komisyon ve kayma dahil.
-- **Izgara:** 915 çıkış stratejisi denendi: kademeli kâr alma, iz süren stop %20-60, zarar-kes 0,5x/0,7x, en uzun
-  tutma 1 saat - 7 gün. Test günleri 22 Eylül - 2 Ekim (9 gün, taze veri dahil).
+- **Izgara:** 915 çıkış stratejisi denendi: kademeli kâr alma, iz süren stop %20-60, zarar-kes, tutma 1 saat - 7 gün.
 - **Çıkış seçimi de dürüst:** her gün önceki günlerde en iyi olan strateji uygulandı.
 
 **Sonuç:** Bu seçim neredeyse her gün "**hiç kısmi satış yok, stop yok, 1 saat tut, sonra sat**" oldu.
 
-| Grup | Dürüst (kayan) seçim | 1 saat tut | En iyi %5 hariç | Medyan | Kârlı | Taze dönem |
-|---|---|---|---|---|---|---|
-| Taramanın en iyi %10'u (237 işlem) | **+$50 ±35** | +$67,8 (9/9 gün artı) | +$9 | −$8 | %40 | +$76 (15 işlem) |
-| Taramanın en iyi %20'si (682 işlem) | **+$27 ±14** | +$35,7 (9/9 gün artı) | −$5 | −$13 | %37 | +$33 (61 işlem) |
+| Grup | Dürüst (kayan) seçim | 1 saat tut | En iyi %5 hariç | Medyan | Taze dönem |
+|---|---|---|---|---|---|
+| Taramanın en iyi %10'u (540 işlem) | **+$28 ±18** | +$38 (10/11 gün artı) | −$9 | −$18 | +$59 (26 işlem) |
+| Taramanın en iyi %20'si (1.219 işlem) | **+$24 ±11** | +$27 (10/11 gün artı) | −$12 | −$20 | +$40 (59 işlem) |
 
-En iyi %10'da tutma süresine göre: 15 dk +$40 · 30 dk +$62 · **60 dk +$68** · 2 saat +$57 · 6 saat +$46. 24 saatten
-uzun tutmak +$20 civarına düşüyor.
+En iyi %10'da tutma süresine göre: 15 dk +$24 · 30 dk +$36 · **60 dk +$38** · 6 saat +$25 · 24 saat ve üstü ~+$10.
+
+**Canlı prova:** Botun kendi kodu (`rhscanner/scan.py`) taze dönemde canlıymış gibi çalıştırıldı. Model bu dönemi
+hiç görmedi.
+- Seçimsiz: −$8.
+- En iyi %20: 53 işlem, +$21.
+- **En iyi %10: 22 işlem, +$42; en iyi %5 hariç +$18.**
 
 **Yorum:**
-- Bu bir **"piyango" yapısı**. İşlemlerin çoğu küçük zararla kapanıyor (medyan −$8). Kârı, seçilenlerin ~%5'i
-  getiriyor: ilk saat içinde 15-25x yapan coinler, işlem başı +$1.000-2.400.
-- En iyi %5 çıkarılınca en iyi %10 hâlâ +$9, en iyi %20 −$5.
-- Kademeli satış, iz süren stop ve zarar-kes bu büyük kazananları erken kestiği için ortalamayı düşürüyor.
-- Seçimsiz girmek her kuralda eksi.
+- Bu bir **"piyango" yapısı**. İşlemlerin çoğu küçük zararla kapanıyor; kârı seçilenlerin ~%5'i getiriyor (ilk
+  saatte 15-25x yapanlar).
+- Kademeli satış, iz süren stop ve zarar-kes bu büyükleri erken kestiği için ortalamayı düşürüyor.
 - **Sınırlar:**
-  - Örnek 9 gün. Sonuç az sayıda büyük işleme bağlı; kötü bir hafta olabilir.
+  - 11 gün kısa.
+  - Sonuç az sayıda büyük işleme bağlı.
   - Sığ havuzda 15-25x'te satışın gerçek kayması tahminden kötü olabilir.
 
-**Düzeltilen hata (2 Ekim):** `scan_trade.py`'deki "yarısı 2x + kalanı iz süren stop" hesabı, fiyat 2x'e varmadan %30
-düşse bile pozisyonun 2x'e kadar tutulduğunu varsayıyordu (gelecek bilgisi). Daha önce raporlanan +$26-32 bu yüzden
-şişmişti; doğru simülasyonda aynı kural −$1 ile −$3 arası. Kod düzeltildi.
+**Düzeltilen hatalar (2 Ekim):**
+1. `scan_trade.py`'de iz süren stop, fiyat 2x'e varmadan tetiklense bile yok sayılıyordu. Eski "+$26-32" sonucu bu
+   yüzden şişmişti; doğru simülasyonda −$1 ile −$6 arası.
+2. `winner_study.py`, 3. alıcıdan sonra en az 2 alım daha gelmeyen coinleri (%25) tablodan atıyordu (gelecek seçimi).
+   Kaldırıldı.
+3. Taze dönemin Pons lansmanları indirilmemişti. Taze coinler "Pons değil" görünüyordu (Pons oranı %2'ye karşı %61).
+   Lansmanlar tamamlandı, tablolar yeniden kuruldu. Yukarıdaki rakamlar düzeltilmiş halleri.
 
 ## 4. Denenip bırakılanlar (neden)
 
@@ -155,6 +167,7 @@ Araştırma için venv'e `numpy pandas pyarrow scikit-learn` gerekir.
 | **Güncel** | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | **Güncel** | `transfer_features.py` | Bu anlara holder özellikleri ekler |
 | **Güncel** | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
+| **Bot** | `scan_export.py` | Taramayı eğitip bot için JSON'a aktarır (sklearn ile birebir kontrol) |
 | **Güncel** | `exit_search.py` | Kayan pencereli tarama + 915 çıkış stratejisi ızgarası, dürüst çıkış seçimi |
 | Güncel | `scan_trade.py` | Tarama + birkaç çıkış kuralı (`kayan`, `taze` modları); 2 Ekim'de iz süren stop sırası düzeltildi |
 | Güncel (olumsuz sonuç) | `curve_study.py` / `curve_report.py` | Zincirde çok erken an testi |
@@ -175,7 +188,8 @@ exit_search.py fomo.db winners_tx.parquet [taze_winners.parquet]
 1. ~~Taze veriyle son sınav~~ (2 Ekim: yön tuttu, örnek küçük). Birkaç gün sonra aynı testi daha uzun taze
    veriyle tekrarlamak: `fomo_download.py` → `data_merge.py` → `winner_study.py ... <başlangıç> <bitiş>` →
    `scan_trade.py ... taze <yeni.parquet>`.
-2. **Bota "kayıt modu":** Fomo 3. alıcısında tarama puanı (sadece akış özellikleri, `flow.py`) hesaplansın, bildirim
-   göndermeden kaydedilsin. Sonuç zincirden ölçülsün.
-3. Tutarsa: bildirim (puan, kriterler, "yarısı 2x, kalanı iz süren stop" hatırlatması).
+2. ~~Bota kayıt modu~~ (2 Ekim kuruldu). Birkaç gün çalışsın, `/kayit 72` ile en iyi %10'un gerçek sonuçlarına
+   bakılsın.
+3. Tutarsa: en iyi %10'a bildirim (puan, "1 saat tut" hatırlatması), güven taramasıyla birlikte.
+   Model ara ara yeni veriyle yeniden eğitilmeli (`scan_export.py`).
 4. Sonraki aşama (kullanıcı onayıyla): pozisyon büyüklüğü ve risk yönetimi, gerçek işlem takibi, canlı işlem.

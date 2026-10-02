@@ -80,7 +80,7 @@ def main():
         px = np.where((g.usd > 0) & (g.amount > 0), g.usd / g.amount.replace(0, np.nan), np.nan)
         buy = (side == 1) & ~np.isnan(px)
         bidx = np.nonzero(buy)[0]
-        if len(bidx) < 4:
+        if len(bidx) < 2:
             continue
         bts, bpx = ts[bidx], px[bidx]
         held = np.minimum(bpx[:-1], bpx[1:])
@@ -97,11 +97,11 @@ def main():
             i = order[k - 1]
             t = ts[i]
             nb = bisect.bisect_right(bts, t)  # buys up to now
-            if nb < 2 or nb >= len(bpx) - 1:
-                continue
+            if nb < 2:
+                continue  # (no condition on later trades: a coin nobody buys again is still a checkpoint)
             p_now = float(np.median(bpx[max(0, nb - 3):nb]))
             end = bisect.bisect_right(bts, t + HORIZON)
-            fut = held[nb:end - 1] if end - 1 > nb else np.array([1e-30])
+            fut = held[nb:end - 1] if end - 1 > nb else np.array([0.0])
             past = slice(0, i + 1)
             b_usd = usd[past][side[past] == 1]
             b_who = who[past][side[past] == 1]
