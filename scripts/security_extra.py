@@ -21,6 +21,7 @@ import sqlite3
 import sys
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -107,13 +108,19 @@ def is_contract(db, addrs):
     known = dict(db.execute("SELECT addr, contract FROM codes"))
     todo = sorted(set(addrs) - set(known))
     print(f"kontrat mı: {len(todo)} adres", flush=True)
-    for n in range(0, len(todo), 400):
-        part = todo[n:n + 400]
-        codes = rpc_many([("eth_getCode", [a, "latest"]) for a in part], size=40)
-        rows = [(a, int(len(c or "0x") > 2)) for a, c in zip(part, codes) if c is not None]
-        db.executemany("INSERT OR REPLACE INTO codes VALUES (?, ?)", rows)
-        db.commit()
-        known.update(rows)
+    def fetch(job):  # spread over both endpoints: each alone is slow (429 / 500)
+        n, part = job
+        return part, rpc_many([("eth_getCode", [a, "latest"]) for a in part], size=20, urls=URLS[n % 2:] + URLS[:n % 2])
+
+    jobs = list(enumerate(todo[n:n + 100] for n in range(0, len(todo), 100)))
+    with ThreadPoolExecutor(4) as pool:
+        for k, (part, codes) in enumerate(pool.map(fetch, jobs)):
+            rows = [(a, int(len(c or "0x") > 2)) for a, c in zip(part, codes) if c is not None]
+            db.executemany("INSERT OR REPLACE INTO codes VALUES (?, ?)", rows)
+            db.commit()
+            known.update(rows)
+            if k % 50 == 0:
+                print(f"  {k * 100}/{len(todo)}", flush=True)
     return known
 
 
