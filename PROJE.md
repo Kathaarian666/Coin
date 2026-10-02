@@ -29,6 +29,10 @@ yüksek → kasanın %4'ü, orta → %2, düşük → %1 (kullanıcı değiştir
 %50 düşünce sat / 24 saat sonra sat / hiç satma. **Bildirimden sonra "⚠️ likidite çekiliyor" uyarısı da olacak**
 (kullanıcı istedi; 4. adım).
 
+**2. adım kararları (2 Ekim):** bildirim anı = Fomo'da **3. alıcı** · modelde **17 kriter** (§4.2'deki güçlü/orta olanlar;
+etkisiz 9'u çıktı) · tutar kasanın %4 / %2 / %1'i (2x ihtimaline göre) · kullanıcının **tepki süresi ~30 sn** (simülasyonun
+asıl ölçüsü; 60 sn üstü zararlı çıktı → bildirim hızlı olmalı, Fomo'da coini açan link) · otomatik alım **yok**.
+
 **Kapsam (2 Ekim):** şimdilik **sadece Robinhood Chain**. Fomo'da Solana (pump.fun), BNB, Base vb. zincirlerden de coin
 var; bunları görmüyoruz, yani kısıtlı bir havuza bakıyoruz. Robinhood Chain'de sistem kanıtlanınca aynı yöntem diğer
 zincirlere taşınacak. **Kullanıcı istedi: her adım sonunda bunu hatırlat.**
