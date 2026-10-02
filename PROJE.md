@@ -22,6 +22,10 @@ bulur, güvenlik taramasından geçemeyenleri sessizce eler, kalanları kullanı
 | Kriterler | Model puanı kullanılabilir; kullanıcı puanın detayını görür. |
 | Veri | Her kriter **gerçek Fomo zincir verisiyle** backtest edilir; DexScreener vb. tahmini veri karar ölçüsü olmaz. |
 
+**3. adım (simülasyon) kararları (2 Ekim):** tutar güvene / 2x ihtimaline göre değişir · 2x'te **yarısı satılır**, kalanı
+devam eder · **%50 düşüşte satılır** (zarar-kes) · hedef **haftada kasayı 2x** (kasa belli değil → sonuç kasaya oranla) ·
+tablo **brüt ve masraflı** (Fomo komisyonu yön başına en az $0,95 + kayma) yan yana.
+
 **Kapsam (2 Ekim):** şimdilik **sadece Robinhood Chain**. Fomo'da Solana (pump.fun), BNB, Base vb. zincirlerden de coin
 var; bunları görmüyoruz, yani kısıtlı bir havuza bakıyoruz. Robinhood Chain'de sistem kanıtlanınca aynı yöntem diğer
 zincirlere taşınacak. **Kullanıcı istedi: her adım sonunda bunu hatırlat.**
