@@ -4,3 +4,4 @@ eth-utils>=5,<7
 eth-hash[pycryptodome]>=0.7
 python-telegram-bot>=21,<22
 python-dotenv>=1,<2
+websockets>=12,<18

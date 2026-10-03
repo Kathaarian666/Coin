@@ -54,7 +54,7 @@ bırakıldı.
 | **3** | **Simülasyon (karar kapısı).** Güvenlik elemesi + model uçtan uca geçmiş veride: günde kaç bildirim, kaçı 2x, girseydik sonuç ne olurdu. "Yeterince kâr" tanımı ve 2x olmayanların nasıl sayılacağı bu adımda birlikte belirlenir. Yetmezse 1/2'ye dönülür. | bekliyor |
 | **4** | **Bot.** Bildirim (güven + 2x ihtimali + nedenler), "2x oldu" haberi, karne. Kriterler kesinleşmeden bota dokunulmaz. | **sürüyor**: kâğıt test kuruldu (3 Ekim, §3) |
 | **5** | **Canlı izleme.** Karne (bildirimlerin kaçı 2x yaptı) simülasyonla karşılaştırılır. | bekliyor |
-| **6** | **Diğer zincirler** (Solana/pump.fun, BNB, Base…): Fomo'daki diğer zincirlere aynı yöntem; her zincir için ayrı veri ve güvenlik kontrolleri. | bekliyor (kullanıcıya her adım sonunda hatırlat) |
+| **6** | **Diğer zincirler** (Solana/pump.fun, BNB, Base…): Fomo'daki diğer zincirlere aynı yöntem; her zincir için ayrı veri ve güvenlik kontrolleri. | **sürüyor, öncelik pump.fun** (3 Ekim, kullanıcı: "pump.fun'da en az Robinhood kadar iyi"): canlı veri toplama başladı (§4.5); BNB/Base sonra |
 
 ## 3. Şu anki durum
 
@@ -260,6 +260,15 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   Raydium %3 · diğer %24. PumpSwap olayları da aynı yöntemle çözülebilir.
 - Geçmiş veri ücretsiz toplu olarak yok (Bitquery/Helius ücretli ya da kısıtlı; Dune ücretsiz hesapla mümkün ama
   gecikmeli). Yol: şimdiden canlı toplamaya başlamak; ~1 hafta sonra Robinhood'daki aynı araştırma.
+- **Toplayıcı (`rhscanner/solana.py`, sunucuda systemd servisi `fomosol`, DB `~/Coin/solana.db`):** websocket'ten
+  gelen her Fomo işleminden pump.fun curve `TradeEvent` (coin, SOL, miktar, alım/satım, kullanıcı, zaman, curve'ün
+  sanal rezervleri → fiyat) ve PumpSwap `BuyEvent`/`SellEvent` (havuzun coini `getAccountInfo` ile bir kez okunur)
+  kaydedilir; Meteora/Raydium/diğer sadece dakikalık sayımda (`stats`). SOL/USD 5 dk'da bir (CoinGecko). Tuzaklar:
+  u64 tutarlar SQLite tamsayısına sığmıyor → REAL; Anchor olay adı başka programlarda da aynı (aynı ayırt edici) →
+  olay sadece o an çalışan program pump.fun/PumpSwap ise alınır (ilk denemede curve satırlarının %7'si başka
+  programdandı, tarihleri bozuktu). Hacim: ~570 bin satır/gün, ~200 MB/gün ham SQLite.
+- Eksikler (araştırmadan önce): coinin oluşturulma anı (pump.fun `CreateEvent` Fomo dışından geliyor; ilk Fomo
+  işlemi ≠ lansman), geliştirici/holder bilgisi, mezuniyet anı. Araştırma kuralları (§6) aynen geçerli.
 
 ## 5. Denenip bırakılanlar (neden)
 

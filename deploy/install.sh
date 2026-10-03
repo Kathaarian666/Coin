@@ -89,6 +89,27 @@ if ! systemctl is-active -q $SERVICE; then
     exit 1
 fi
 
+say "Pump.fun veri toplayıcı kuruluyor (Fomo'nun Solana işlemleri -> $APP_DIR/solana.db)..."
+sudo tee /etc/systemd/system/fomosol.service >/dev/null <<EOF
+[Unit]
+Description=Fomo Solana (pump.fun / PumpSwap) trade collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=$(id -un)
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana $APP_DIR/solana.db
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable -q fomosol
+sudo systemctl restart fomosol
+
 if ! grep -q '^TELEGRAM_CHAT_IDS=.\+' "$APP_DIR/.env"; then
     say "Son adım: Telegram'da botunuza /start yazın. Bot size 'Sohbet ID'niz: ...' diye bir sayı söyleyecek."
     chat=""

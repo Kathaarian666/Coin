@@ -47,6 +47,8 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - Cloud Shell'den bağlantı: `ssh -i ~/.ssh/fomo ubuntu@79.76.124.29`
 - Yapıştırma bozulmasın diye önce: `bind 'set enable-bracketed-paste off'`
 - Güncelleme: `bash ~/Coin/deploy/install.sh` (systemd servisi `rhscanner`, DB `~/Coin/rhscanner.db`)
+- İkinci servis `fomosol` = pump.fun/Solana veri toplayıcı (`rhscanner/solana.py` → `~/Coin/solana.db`); log:
+  `journalctl -u fomosol -n 20 --no-pager`.
 - Log: `journalctl -u rhscanner -n 50 --no-pager`; hata arama:
   `journalctl -u rhscanner --since "90 min ago" --no-pager | grep -i -E "traceback|error" | tail -25`
 - Tek seferlik iş sunucuda: `cd ~/Coin && .venv/bin/python -m rhscanner <komut>` (bot da aynı RPC'yi kullanır;
@@ -81,7 +83,7 @@ hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches
 (geliştirici geçmişi) · `paper.py` + `paper_model.json` + `paper_book.json` kâğıt test (5. alıcıda
 puan, en iyi %2'ye sanal işlem, `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
 `scripts/paper_export.py` ile) · `live.py` gerçek bildirim (`/canli`, kapalı; satılamama elemesi V4SellProbe ile,
-güven puanı `trust_model.json`, 2x ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
+güven puanı `trust_model.json`, 2x ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 
