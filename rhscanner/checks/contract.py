@@ -9,6 +9,24 @@ from . import DEAD_ADDRESSES, Finding
 EIP1967_IMPL_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
 EIP1967_BEACON_SLOT = "0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50"
 EIP1167_PREFIX = "363d3d373d3d3d363d73"
+# Minimal proxies (clones): EIP-1167 (45 bytes) and its PUSH0 variant (ERC-7511, 44 bytes), and close cousins.
+# Their whole code is a few dozen bytes that DELEGATECALL (f4) the address pushed by PUSH20 (73) before GAS (5a).
+CLONE_PREFIXES = (EIP1167_PREFIX, "365f5f375f5f365f73")
+CLONE_MAX_BYTES = 64
+
+
+def minimal_proxy_target(code: str) -> str | None:
+    """The implementation a minimal proxy (clone) forwards to, or None."""
+    body = code.lower().removeprefix("0x")
+    if len(body) > 2 * CLONE_MAX_BYTES:
+        return None
+    for prefix in CLONE_PREFIXES:
+        if body.startswith(prefix) and body[len(prefix) + 40: len(prefix) + 44] == "5af4":
+            return "0x" + body[len(prefix): len(prefix) + 40]
+    i = body.find("5af4")
+    if i >= 42 and body[i - 42: i - 40] == "73":  # PUSH20 <address> GAS DELEGATECALL
+        return "0x" + body[i - 40: i]
+    return None
 
 # Admin functions that let an owner hurt holders, grouped by what they allow.
 RISKY_FUNCTIONS = {
@@ -77,9 +95,8 @@ async def check_contract(rpc: RpcClient, blockscout: Blockscout | None, token: s
         return data, [Finding("critical", "no_code", "Adreste kontrat kodu yok")]
 
     analysed_code = code
-    body = code.lower().removeprefix("0x")
-    if body.startswith(EIP1167_PREFIX):
-        impl = "0x" + body[len(EIP1167_PREFIX): len(EIP1167_PREFIX) + 40]
+    impl = minimal_proxy_target(code)
+    if impl:
         data["clone_of"] = impl
         analysed_code = await rpc.get_code(impl)
         findings.append(Finding("info", "clone", "Standart bir şablonun klonu (değiştirilemez)"))

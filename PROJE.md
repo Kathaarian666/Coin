@@ -11,14 +11,12 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 
 | # | İş | Durum |
 |---|---|---|
-| A1 | Holder kriterleri: ölçüldü (§4.6: 2x isabeti +11 puan, kasa artmıyor). **Karar bekliyor:** kâğıt teste ikinci model olarak eklensin mi | kullanıcıda |
+| A1 | Holder kriterleri (§4.6): kullanıcı "ekle" dedi (3 Ekim) → kâğıt teste ikinci model (holder'lı) yan yana | **şimdi** |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
-| A3 | Bot hatası: `checks/contract.py` 44 baytlık PUSH0 EIP-1167 kopyayı tanımıyor | sırada |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
 | A5 | Pump.fun eksikleri: coinin oluşturulma anı, geliştirici, mezuniyet anı; 5-7 gün veri sonra araştırma | sırada |
 | A6 | Pump.fun gece gönderiminin ilk sonucu (4 Ekim) kontrol | 4 Ekim |
 | A7 | BNB ve Base zincirleri | sırada (pump.fun'dan sonra) |
-| K1 | Kullanıcı: sohbete yapıştırılan eski GitHub token'ı silindi mi (teyit) | kullanıcıda |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
