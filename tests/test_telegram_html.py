@@ -3,7 +3,8 @@ command then answers nothing. Only <b>, <i>, <code> and <a href> are used."""
 
 import re
 
-from rhscanner.report import format_paper, format_paper_alert, format_report
+from rhscanner.report import (format_2x, format_liquidity_warning, format_live_alert, format_paper,
+                              format_paper_alert, format_report, format_trust_reply)
 
 ALLOWED = re.compile(r"</?(b|i|code)>|<a href=\"[^\"]*\">|</a>")
 
@@ -32,3 +33,12 @@ def test_paper_reports_are_valid_telegram_html():
             ("E", {"ts": 1.79e9, "kind": "stop", "ret": -0.55, "closed": 1})]
     assert_valid([format_paper(24, s, rows, 1.79e9), format_paper(None, empty, [], None),
                   format_paper_alert("<X>", "0x" + "1" * 40, 1.2e-9, 0.61, 0.04, 7.0)])
+
+
+def test_live_messages_are_valid_telegram_html():
+    token = "0x" + "1" * 40
+    assert_valid([format_live_alert("<X>", token, 1.2e-9, 0.61, [("toplam alım", "$1,200"), ("a<b", "%5 <")],
+                                    ("ok", "satış simülasyonu geçti (vergi %0)"), 6.0),
+                  format_live_alert("Y&Z", token, 1e-9, None, [], ("bilinmiyor", "V4 havuzu <yok>"), 9.0),
+                  format_trust_reply("<b>rapor</b>", 87), format_trust_reply("x", None),
+                  format_2x("<X>", token, 14.0), format_liquidity_warning("<X>", token, 2)])

@@ -113,6 +113,8 @@ class Model:
         self.trees = data["trees"]  # each: list of nodes [feature, threshold, missing_left, left, right, leaf, value]
         self.bar = data["bar"]  # starting top-2 % bar, until the bot has its own 2 days of scores
         self.trained_until = data.get("trained_until")
+        self.medians = data.get("medians", {})  # typical values, for an alert's reasons (live.reasons)
+        self.top_hit_rate = data.get("top_hit_rate")  # what the top 2 % did in the walk-forward test
 
     @classmethod
     def load(cls, path: Path = MODEL_PATH) -> "Model | None":

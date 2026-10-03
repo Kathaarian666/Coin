@@ -84,6 +84,7 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/durum` | Son taranan blok, izlenen coin sayısı, kuyruk, ayarlar |
 | `/karne 24` | Kâğıt test: modelin seçtiği yeni coinler ve sanal işlemlerin sonucu (para harcanmaz) |
 | `/kagitbildirim ac` | Kâğıt testin her seçimi için mesaj (varsayılan kapalı) |
+| `/canli ac` | Gerçek bildirim: seçilen coin (satılamayanlar elenir) + güven raporu + "2x oldu" / likidite uyarısı (varsayılan kapalı) |
 
 Botu açmadan terminalden de kullanabilirsiniz:
 ```bash
@@ -130,6 +131,7 @@ rhscanner/
   launches.py       tüm Pons V2 lansmanlarının yerel indeksi (geliştirici geçmişi, curve → coin)
   hooks.py          Uniswap V4 hook kayıt defteri (yaygın launchpad hook'u mu?)
   flow.py           bir coinin Fomo işlemlerinden akış özellikleri (araştırma)
+  live.py           gerçek bildirim: satılamama elemesi, güven puanı, 2x / likidite takibi (/canli)
   paper.py          kâğıt test: 5. Fomo alıcısında puan, en iyi %2'ye sanal işlem (paper_model.json, paper_book.json)
   scoring.py        0–100 güven skoru
   report.py         Telegram mesaj formatı

@@ -70,6 +70,11 @@ bırakıldı.
   kriter kodu araştırma tablosuyla 300 coinde birebir); ilk alıcı geçmişi `paper_book.json`'dan başlar, canlıda büyür.
   Satış $'ı artık canlıda da USDG transferinden okunuyor (`fomo.fetch_sell_usd`). Yeniden başlatmada açık sanal
   işlemler kaybolur (sonuçsuz kapanır). Eski kayıt modu (`scan.py`, `/kayit`) silindi.
+- **Gerçek bildirim hazır, kapalı (3 Ekim, `live.py`, `/canli ac|kapat`):** kâğıt testin seçimi → satılamama elemesi
+  (Pons coini geçer; diğerleri V4 satış simülasyonu: geri dönerse ya da vergi ≥ %10 ise elenir; havuz/alıcı
+  bulunamazsa "⚠️ doğrulanamadı" ile gider; coin başına 5-12 sn) → hızlı mesaj (2x ihtimali ~%61, puanı en çok
+  yükselten 3 kriter, GeckoTerminal linki) → yanıt olarak güven raporu + model güven puanı (`trust_model.json`,
+  §4.1 tuzak modeli, AUC 0,84) → sonra "2x oldu" ve V4 havuzundan likidite çekilirse uyarı (ilk 6 saat).
 
 ## 4. Şimdiye kadar bilinenler (eski araştırma, 17–28 Eylül zincir verisi)
 

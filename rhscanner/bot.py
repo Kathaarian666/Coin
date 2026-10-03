@@ -1,6 +1,7 @@
 """Telegram bot: pushes a safety report for tokens rising on Fomo and answers /check requests."""
 
 import asyncio
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -16,7 +17,10 @@ from .checks.wash import fomo_churn
 from .config import Settings
 from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
-from .report import format_paper, format_paper_alert, format_report
+from . import live
+from .live import LiveLog
+from .report import (format_2x, format_liquidity_warning, format_live_alert, format_paper, format_paper_alert,
+                     format_report, format_trust_reply)
 from .rpc import RpcClient
 from . import paper
 from .paper import Book, Follower, Model, PaperLog, Trade
@@ -39,6 +43,8 @@ HELP = (
     "/durum — tarayıcı durumu\n"
     "/karne [saat] — kâğıt test: modelin seçtiği coinler ve sanal işlemlerin sonucu (para harcanmaz)\n"
     "/kagitbildirim ac|kapat — kâğıt testin seçtiği her coin için mesaj (varsayılan kapalı)\n"
+    "/canli ac|kapat — gerçek bildirim: seçilen coin (satılamayanlar elenir) + güven raporu + 2x / likidite "
+    "haberleri (varsayılan kapalı)\n"
 )
 
 
@@ -66,6 +72,7 @@ class ScannerApp:
         self.paper_model = Model.load()
         self.paper_log = PaperLog(self.storage.db)
         self.book = Book(self.storage.db)
+        self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
         self.follower = Follower(known, since, on_new=self.paper_log.remember)
         self.symbols: dict[str, str] = {}
@@ -127,6 +134,10 @@ class ScannerApp:
 
     # --- paper test ---
     @property
+    def live_on(self) -> bool:
+        return self.storage.get_state("live_alerts", "0") == "1"
+
+    @property
     def paper_notify(self) -> bool:
         return self.storage.get_state("paper_notify", "0") == "1"
 
@@ -157,11 +168,84 @@ class ScannerApp:
             if alert:
                 coin.keep_until = t + paper.MAX_HOLD + 3600
                 log.info("paper alert %s (score %.3f, bar %.3f, %.0f s after the 5th buyer)", token, score, bar, now - t)
-                if self.paper_notify:
+                if self.live_on:
+                    await self.send_live(token, t, trades[idx].block, p_now, features, row is not None, coin.buyers)
+                elif self.paper_notify:
                     await self.broadcast(format_paper_alert(await self.symbol(token), token, p_now, score, size,
                                                             now - t))
         except Exception:
             log.exception("paper scoring failed for %s", token)
+
+    async def send(self, text: str, reply_to: dict | None = None) -> dict:
+        """Sends to every chat; returns chat id -> message id (for replies)."""
+        sent = {}
+        for chat_id in self.settings.telegram_chat_ids:
+            try:
+                msg = await self.app.bot.send_message(chat_id, text, parse_mode=ParseMode.HTML,
+                                                      disable_web_page_preview=True,
+                                                      reply_to_message_id=(reply_to or {}).get(str(chat_id)))
+                sent[str(chat_id)] = msg.message_id
+            except Exception:
+                log.exception("could not send to %s", chat_id)
+        return sent
+
+    async def send_live(self, token: str, t: float, block: int, price: float, features: dict, pons: bool,
+                        buyers: list[str]):
+        """A real alert: elimination (unsellable), the fast message, then the safety report as a reply."""
+        pm = self.settings.v4_pool_manager
+        try:
+            status, detail, pool = await asyncio.wait_for(live.sell_gate(self.rpc, pm, token, pons, buyers), 20)
+        except Exception as exc:
+            status, detail, pool = "bilinmiyor", f"kontrol tamamlanamadı ({type(exc).__name__})", None
+        if status in ("honeypot", "vergi"):
+            log.info("live: %s dropped (%s)", token, detail)
+            return
+        symbol = await self.symbol(token)
+        msgs = await self.send(format_live_alert(symbol, token, price, self.paper_model.top_hit_rate,
+                                                 live.reasons(self.paper_model, features), (status, detail),
+                                                 time.time() - t))
+        self.live_log.add(token.lower(), t, price, block, pool, msgs, status)
+        try:
+            report = await self.analyzer.analyze(token, None, self.fomo_stats(token))
+            sellers = self.tracker.stats(token, 3600)["sellers"]
+            trust = live.trust_score(live.trust_flags(report, sellers, pons, features.get("depth_usd")))
+            await self.send(format_trust_reply(format_report(report, self.settings.blockscout_url), trust), msgs)
+        except Exception:
+            log.exception("live safety report failed for %s", token)
+
+    async def live_step(self, now: float):
+        """Follow-ups of sent alerts: '2x oldu' once, and a warning when liquidity leaves the coin's V4 pool."""
+        rows = self.live_log.open(now)
+        head = await self.rpc.block_number() if any(r["pool"] and not r["warned"] for r in rows) else None
+        pm = self.settings.v4_pool_manager
+        for r in rows:
+            token, reply = r["token"], json.loads(r["msg"] or "{}")
+            coin = self.follower.coins.get(token)
+            if coin and not r["sent_2x"]:
+                buys = [(x.ts, x.price) for x in coin.trades if x.side == 1 and x.price and x.ts > r["ts"]]
+                j = paper._two_in_row([p for _, p in buys], lambda p: p >= 2 * r["p_alert"])
+                if j is not None:
+                    await self.send(format_2x(await self.symbol(token), token, (buys[j][0] - r["ts"]) / 60), reply)
+                    self.live_log.mark(token, sent_2x=1)
+            if r["pool"] and not r["warned"] and head:
+                if now - r["ts"] > live.LIQ_WATCH:
+                    self.live_log.mark(token, warned=1)  # watched long enough
+                    continue
+                n = await live.liquidity_removed(self.rpc, pm, r["pool"], r["checked_block"] + 1, head)
+                self.live_log.mark(token, checked_block=head)
+                if n:
+                    await self.send(format_liquidity_warning(await self.symbol(token), token, n), reply)
+                    self.live_log.mark(token, warned=1)
+
+    async def live_loop(self):
+        while True:
+            try:
+                await self.live_step(time.time())
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("live step failed")
+            await asyncio.sleep(60)
 
     def paper_step(self, now: float):
         """Settles the first buyers' book, moves the open virtual trades on, forgets coins no longer needed."""
@@ -347,6 +431,17 @@ class ScannerApp:
         await update.message.reply_html(format_paper(hours, paper.summary(rows, self.paper_log.scored(since)), recent,
                                                      self.paper_model.trained_until))
 
+    async def cmd_live(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self._authorized(update):
+            return
+        arg = (context.args[0] if context.args else "").lower()
+        if arg not in ("ac", "aç", "kapat"):
+            await update.message.reply_text(f"Kullanım: /canli ac|kapat (şu an: {'açık' if self.live_on else 'kapalı'})")
+            return
+        self.storage.set_state("live_alerts", "0" if arg == "kapat" else "1")
+        await update.message.reply_text("✅ Gerçek bildirimler " + ("kapandı." if arg == "kapat" else
+                                        "açıldı: kâğıt testin seçtiği coinler satılabilirlik kontrolünden sonra gelecek."))
+
     async def cmd_paper_notify(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
             return
@@ -371,7 +466,8 @@ class ScannerApp:
             f"Kâğıt test: {'açık' if self.paper_model else 'kapalı (model yok)'}"
             f"{' (ilk 24 saat: eski coinleri öğreniyor)' if self.follower.known_since and time.time() - self.follower.known_since < 86400 else ''}"
             f" · izlenen yeni coin {sum(c.eligible for c in self.follower.coins.values())} · son 24 saatte puanlanan "
-            f"{self.paper_log.scored(time.time() - 86400)} · seçilen {len(self.paper_log.alerts(time.time() - 86400))}"
+            f"{self.paper_log.scored(time.time() - 86400)} · seçilen {len(self.paper_log.alerts(time.time() - 86400))}\n"
+            f"Gerçek bildirim: {'açık' if self.live_on else 'kapalı'}"
         )
 
     # --- lifecycle ---
@@ -383,6 +479,7 @@ class ScannerApp:
         self.tasks.append(asyncio.create_task(self.launch_loop()))
         if self.paper_model:
             self.tasks.append(asyncio.create_task(self.paper_loop()))
+            self.tasks.append(asyncio.create_task(self.live_loop()))
         for _ in range(self.settings.analysis_workers):
             self.tasks.append(asyncio.create_task(self.worker()))
 
@@ -415,4 +512,5 @@ class ScannerApp:
         self.app.add_handler(CommandHandler("durum", self.cmd_status))
         self.app.add_handler(CommandHandler("karne", self.cmd_karne))
         self.app.add_handler(CommandHandler("kagitbildirim", self.cmd_paper_notify))
+        self.app.add_handler(CommandHandler("canli", self.cmd_live))
         self.app.run_polling()

@@ -146,3 +146,39 @@ def format_paper_alert(symbol: str, token: str, price: float, score: float, size
             f"Bildirim fiyatı: {price:.3g} $/birim · 5. alıcıdan {delay:.0f} sn sonra\n"
             f"<code>{token}</code>\n"
             f"<i>Sadece test: gerçek alım önerisi değildir.</i>")
+
+
+def _gecko(token: str) -> str:
+    return f'<a href="https://www.geckoterminal.com/robinhood/tokens/{token}">GeckoTerminal</a>'
+
+
+def format_live_alert(symbol: str, token: str, price: float, chance: float | None, reasons: list[tuple[str, str]],
+                      gate: tuple[str, str], delay: float) -> str:
+    """The fast message of a real alert (/canli ac); the safety report follows as a reply."""
+    status, detail = gate
+    gate_line = ("✅ " if status == "ok" else "⚠️ Satılabilirlik doğrulanamadı: ") + escape(detail, quote=False)
+    lines = [f"🚀 <b>{escape(symbol, quote=False)}</b> — yeni coin, Fomo'da 5. alıcı",
+             f"2x ihtimali: <b>~%{100 * chance:.0f}</b> (geçmişte bu seviyedeki seçimler)" if chance else
+             "2x ihtimali: en iyi %2",
+             "Neden seçildi:"]
+    lines += [f"• {escape(name, quote=False)}: {escape(value, quote=False)}" for name, value in reasons] or ["• -"]
+    lines += [gate_line,
+              f"Bildirim fiyatı: {price:.3g} $/birim · 5. alıcıdan {delay:.0f} sn sonra",
+              f"<code>{token}</code> · {_gecko(token)}",
+              "<i>Güven raporu birazdan bu mesaja yanıt olarak gelecek. Karar senin.</i>"]
+    return "\n".join(lines)
+
+
+def format_trust_reply(report_text: str, trust: int | None) -> str:
+    head = f"🛡 <b>Güven puanı (model): {trust}/100</b>\n" if trust is not None else ""
+    return head + report_text
+
+
+def format_2x(symbol: str, token: str, minutes: float) -> str:
+    return (f"✅ <b>{escape(symbol, quote=False)}</b> bildirim fiyatının 2x'ine ulaştı ({minutes:.0f} dk sonra).\n"
+            f"Kısmi ya da tam satış kararı senin. <code>{token}</code> · {_gecko(token)}")
+
+
+def format_liquidity_warning(symbol: str, token: str, events: int) -> str:
+    return (f"⚠️ <b>{escape(symbol, quote=False)}</b>: havuzdan likidite çekiliyor ({events} işlem). "
+            f"Rug olabilir, dikkat.\n<code>{token}</code> · {_gecko(token)}")
