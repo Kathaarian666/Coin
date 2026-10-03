@@ -20,7 +20,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| D9 | Denetim: sunucu belleği (1 GB, 3 Python servisi + bot) hiç kontrol edilmedi → `free -m` | kullanıcıda |
+| D9 | Sunucu belleği (3 Ekim, güncellemeden sonra): 952 MB'ın 354'ü kullanımda, 597 MB boş, **swap yok** → yük artarsa servis bellek yetmezliğinden kapanabilir; 2 GB swap dosyası önerildi (disk 41 GB boş) | kullanıcıda (swap) |
 | D11 | Denetim: pump.fun'da PumpSwap havuzunun coini okunamazsa (429) işlem atlanıyor → A6'da `stats` sayımlarıyla kayıp ölçülecek | A6 ile |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
