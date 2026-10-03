@@ -5,7 +5,7 @@
   python -m rhscanner.solana_export <db> --out <dir>        writes the files to <dir>, no push
 
 Per day: solana/<day>/trades_<hh>.csv.gz (four 6-hour parts, ~15 MB each), stats.csv.gz, sol_price.csv.gz; and
-solana/pools.csv.gz (every pool so far). The push uses VERI_GITHUB_TOKEN from .env (a fine-grained token with
+solana/pools.csv.gz, solana/mints.csv.gz (every pool / coin so far, with creators and creation times). The push uses VERI_GITHUB_TOKEN from .env (a fine-grained token with
 Contents read/write on this repository only); it reaches git as an HTTP header through git's environment config,
 never on a command line or in .git/config. The clone is shallow and without file contents (only the new files are
 written), in a temporary folder that is deleted afterwards. A day is marked exported only after its push succeeded.
@@ -27,21 +27,28 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from . import solana
+
 log = logging.getLogger(__name__)
 
 REPO = "https://github.com/Kathaarian666/Coin.git"
 BRANCH = "veri"
 PART_HOURS = 6
-TRADE_COLS = "slot, ts, sig, venue, mint, side, user, lamports, tokens, vsol, vtok, pool"
+TRADE_COLS = ", ".join(solana.TRADE_COLS)
 README = """Fomo'nun Solana işlemleri (pump.fun curve + PumpSwap), sunucudaki rhscanner/solana.py toplayıcısından.
 Her gece rhscanner/solana_export.py ile gönderilir. Okumak için: scripts/solana_import.py.
 
 <gün>/trades_<ss>.csv.gz  UTC ss:00'dan 6 saatlik işlemler: slot, ts, sig, venue (1 curve, 2 pumpswap), mint,
                           side (1 alım, 0 satış), user, lamports (SOL*1e9), tokens (ham, 6 ondalık), vsol, vtok
-                          (curve sanal rezervleri), pool (pumpswap havuzu)
+                          (curve: sanal rezervler; pumpswap: işlemden sonra havuzun SOL / coin rezervi), pool,
+                          rsol, rtok (curve'ün gerçek rezervleri; rtok 0 = mezun; 3 Ekim öğleden önce boş)
 <gün>/stats.csv.gz        dakikalık Fomo işlem sayıları: minute, total, curve, pumpswap, other
 <gün>/sol_price.csv.gz    5 dakikada bir SOL/USD: ts, usd
-pools.csv.gz              PumpSwap havuzları: pool, base (coin), quote
+pools.csv.gz              PumpSwap havuzları: pool, base (coin), quote, created_ts (havuzun kuruluşu = mezuniyet),
+                          older_than (arama yarıda kaldıysa görülen en eski zaman; -1 bilinmiyor)
+mints.csv.gz              coinler: mint, creator (geliştirici), first_seen (Fomo'da ilk görülme), created_ts
+                          (oluşturulma), older_than, complete_ts (curve'ün boşaldığı ilk görülen işlem), curve (1:
+                          Fomo'da curve'de görüldü = mezuniyetten önce)
 """
 
 
@@ -64,6 +71,8 @@ def _write(path: Path, header: list[str], rows) -> int:
 
 def pending_days(db: sqlite3.Connection, now: float) -> list[str]:
     """Finished UTC days with trades that were not exported yet."""
+    solana.migrate(db)
+    db.executescript(solana.SCHEMA)
     db.execute("CREATE TABLE IF NOT EXISTS exports (day TEXT PRIMARY KEY, ts INTEGER, rows INTEGER)")
     first = db.execute("SELECT MIN(ts) FROM trades WHERE ts > 1600000000").fetchone()[0]
     if first is None:
@@ -90,7 +99,11 @@ def write_day(db: sqlite3.Connection, day: str, root: Path) -> int:
            db.execute("SELECT * FROM stats WHERE minute >= ? AND minute < ? ORDER BY minute", (start // 60, end // 60)))
     _write(folder / "sol_price.csv.gz", ["ts", "usd"],
            db.execute("SELECT * FROM sol_price WHERE ts >= ? AND ts < ? ORDER BY ts", (start, end)))
-    _write(root / "solana" / "pools.csv.gz", ["pool", "base", "quote"], db.execute("SELECT * FROM pools ORDER BY pool"))
+    _write(root / "solana" / "pools.csv.gz", ["pool", "base", "quote", "created_ts", "older_than"],
+           db.execute("SELECT pool, base, quote, created_ts, older_than FROM pools ORDER BY pool"))
+    _write(root / "solana" / "mints.csv.gz", ["mint", "creator", "first_seen", "created_ts", "older_than", "complete_ts",
+                                               "curve"],
+           db.execute("SELECT mint, creator, first_seen, created_ts, older_than, complete_ts, curve FROM mints ORDER BY mint"))
     return rows
 
 

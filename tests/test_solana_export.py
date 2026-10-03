@@ -12,11 +12,12 @@ def _db(path):
     db = sqlite3.connect(path)
     db.executescript(solana.SCHEMA)
     day = 1_759_449_600  # 2025-10-03 00:00 UTC
-    db.executemany("INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                   [(1, day + 60, "s1", 1, "M", 1, "U", 1e9, 1e12, 3e10, 1e15, None),
-                    (2, day + 7 * 3600, "s2", 2, "M", 0, "U", 5e8, 1e11, None, None, "P"),
-                    (3, day + 86400 + 5, "s3", 1, "M", 1, "U", 1.0, 1.0, 1.0, 1.0, None)])
-    db.execute("INSERT INTO pools VALUES ('P', 'M', 'W')")
+    db.executemany("INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   [(1, day + 60, "s1", 1, "M", 1, "U", 1e9, 1e12, 3e10, 1e15, None, 0.0, 7e14),
+                    (2, day + 7 * 3600, "s2", 2, "M", 0, "U", 5e8, 1e11, 9e10, 2e14, "P", None, None),
+                    (3, day + 86400 + 5, "s3", 1, "M", 1, "U", 1.0, 1.0, 1.0, 1.0, None, 1.0, 1.0)])
+    db.execute("INSERT INTO pools VALUES ('P', 'M', 'W', 123, NULL)")
+    db.execute("INSERT INTO mints VALUES ('M', 'C', 5, 4, NULL, 99, 1)")
     db.commit()
     return db, day
 
@@ -74,4 +75,5 @@ def test_import_reads_the_export_back(tmp_path):
     r = sqlite3.connect(tmp_path / "r.db")
     assert r.execute("SELECT * FROM trades ORDER BY slot").fetchall() == \
         db.execute("SELECT * FROM trades WHERE slot < 3 ORDER BY slot").fetchall()
-    assert r.execute("SELECT * FROM pools").fetchall() == [("P", "M", "W")]
+    assert r.execute("SELECT * FROM pools").fetchall() == [("P", "M", "W", 123, None)]
+    assert r.execute("SELECT * FROM mints").fetchall() == [("M", "C", 5, 4, None, 99, 1)]

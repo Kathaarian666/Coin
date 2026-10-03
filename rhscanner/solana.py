@@ -9,7 +9,16 @@ logsSubscribe(mentions=[FEE_PAYER]) streams them all for free. The logs carry th
   mint is read once per pool (getAccountInfo) and cached
 Other venues (Meteora, Raydium, ...) are counted but not stored yet. SOL/USD is sampled every 5 minutes.
 Table trades(slot, ts, sig, venue 1 curve / 2 pumpswap, mint, side 1 buy / 0 sell, user, lamports, tokens,
-vsol, vtok, pool); amounts are stored as REAL (u64 can exceed SQLite's integers). Tokens are raw units (pump.fun coins have 6 decimals), lamports = SOL * 1e9.
+vsol, vtok, pool, rsol, rtok); amounts are REAL (u64 can exceed SQLite's integers). Tokens are raw units (pump.fun
+coins have 6 decimals), lamports = SOL * 1e9. Curve rows: vsol/vtok = the curve's virtual reserves (price), rsol/rtok =
+its real reserves (rtok 0 = the curve is complete, the coin graduates). PumpSwap rows: vsol/vtok = the pool's
+SOL / coin reserves after the trade (liquidity, price).
+Table mints(mint, creator, first_seen, created_ts, older_than, complete_ts): the creator comes with every event;
+created_ts = time of the coin's oldest transaction (its Create), looked up slowly in the background (the free RPC
+limits getSignaturesForAddress); older_than = the oldest time seen when that search was cut short (MAX_PAGES);
+complete_ts = the first trade seen with an empty curve; curve = 1 once the coin was seen on its bonding curve
+(new coins: looked up first). Pools get created_ts / older_than the same way (a PumpSwap
+pool is created when its coin graduates).
 """
 
 import asyncio
@@ -34,6 +43,10 @@ WSOL = "So11111111111111111111111111111111111111112"
 WS_URL = "wss://api.mainnet-beta.solana.com"
 HTTP_URL = "https://api.mainnet-beta.solana.com"
 SOL_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+TRADE_COLS = ("slot", "ts", "sig", "venue", "mint", "side", "user", "lamports", "tokens", "vsol", "vtok", "pool", "rsol",
+              "rtok")
+MAX_PAGES = 3  # getSignaturesForAddress pages (1000 each) searched for an account's oldest transaction
+LOOKUP_GAP = 1.2  # s between those calls (the free RPC answers 429 when they come faster)
 
 
 def _disc(name: str) -> bytes:
@@ -44,9 +57,13 @@ TRADE, BUY, SELL = _disc("TradeEvent"), _disc("BuyEvent"), _disc("SellEvent")
 _B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 SCHEMA = """CREATE TABLE IF NOT EXISTS trades (slot INTEGER, ts INTEGER, sig TEXT, venue INTEGER, mint TEXT,
-            side INTEGER, user TEXT, lamports REAL, tokens REAL, vsol REAL, vtok REAL, pool TEXT);
+            side INTEGER, user TEXT, lamports REAL, tokens REAL, vsol REAL, vtok REAL, pool TEXT, rsol REAL, rtok REAL);
             CREATE INDEX IF NOT EXISTS trades_mint ON trades (mint, ts);
-            CREATE TABLE IF NOT EXISTS pools (pool TEXT PRIMARY KEY, base TEXT, quote TEXT);
+            CREATE TABLE IF NOT EXISTS pools (pool TEXT PRIMARY KEY, base TEXT, quote TEXT, created_ts INTEGER,
+                                              older_than INTEGER);
+            CREATE TABLE IF NOT EXISTS mints (mint TEXT PRIMARY KEY, creator TEXT, first_seen INTEGER,
+                                              created_ts INTEGER, older_than INTEGER, complete_ts INTEGER,
+                                              curve INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS sol_price (ts INTEGER PRIMARY KEY, usd REAL);
             CREATE TABLE IF NOT EXISTS stats (minute INTEGER PRIMARY KEY, total INTEGER, curve INTEGER,
                                               pumpswap INTEGER, other INTEGER);"""
@@ -79,25 +96,38 @@ def decode(logs: list[str]) -> list[dict]:
         except ValueError:
             continue
         if program == PUMP and b[:8] == TRADE and len(b) >= 121:
+            # TradeEvent: mint, sol, token, is_buy, user, timestamp, virtual sol/token, real sol/token reserves,
+            # fee recipient, fee bps, fee, creator, ... (offsets checked on live data: virtual - real = 30 SOL, 279.9M)
             sol, tok = struct.unpack_from("<QQ", b, 40)
             ts, vsol, vtok = struct.unpack_from("<qQQ", b, 89)
+            rsol, rtok = struct.unpack_from("<QQ", b, 113) if len(b) >= 129 else (None, None)
             out.append({"venue": 1, "mint": b58(b[8:40]), "side": 1 if b[56] else 0, "user": b58(b[57:89]),
-                        "lamports": sol, "tokens": tok, "ts": ts, "vsol": vsol, "vtok": vtok, "pool": None})
+                        "lamports": sol, "tokens": tok, "ts": ts, "vsol": vsol, "vtok": vtok, "pool": None,
+                        "rsol": rsol, "rtok": rtok, "creator": b58(b[177:209]) if len(b) >= 209 else None})
         elif program == PUMPSWAP and b[:8] in (BUY, SELL) and len(b) >= 184:
+            # Buy/SellEvent: timestamp, base amount, limit, user reserves, pool base/quote reserves, quote amount,
+            # fees..., pool, user, token accounts, protocol fee recipient (+ account), coin creator
             ts, base, _limit = struct.unpack_from("<qQQ", b, 8)
-            buy = b[:8] == BUY
-            quote = struct.unpack_from("<Q", b, 8 + 8 * 7)[0]  # quote_amount_in (buy) / quote_amount_out (sell)
-            out.append({"venue": 2, "mint": None, "side": 1 if buy else 0, "user": b58(b[152:184]),
-                        "lamports": quote, "tokens": base, "ts": ts, "vsol": None, "vtok": None,
-                        "pool": b58(b[120:152])})
+            pool_base, pool_quote, quote = struct.unpack_from("<QQQ", b, 48)  # quote: in (buy) / out (sell)
+            out.append({"venue": 2, "mint": None, "side": 1 if b[:8] == BUY else 0, "user": b58(b[152:184]),
+                        "lamports": quote, "tokens": base, "ts": ts, "vsol": pool_quote, "vtok": pool_base,
+                        "pool": b58(b[120:152]), "rsol": None, "rtok": None,
+                        "creator": b58(b[312:344]) if len(b) >= 344 else None})
     return out
 
 
 class Collector:
     def __init__(self, path: str):
         self.db = sqlite3.connect(path, timeout=60)
+        migrate(self.db)
         self.db.executescript(SCHEMA)
-        self.pools = {p: b for p, b, _ in self.db.execute("SELECT pool, base, quote FROM pools")}
+        self.pools = {p: b for p, b in self.db.execute("SELECT pool, base FROM pools")}
+        # coins seen before the mints table existed: their creation time is looked up too
+        self.db.execute("INSERT OR IGNORE INTO mints (mint, first_seen, curve) SELECT mint, MIN(ts), MAX(venue = 1) "
+                        "FROM trades GROUP BY mint")
+        self.db.commit()
+        self.mints = {m: c for m, c in self.db.execute("SELECT mint, creator FROM mints")}
+        self.curve_seen = {m for (m,) in self.db.execute("SELECT mint FROM mints WHERE curve = 1")}
         self.rows: list[tuple] = []
         self.minute = {"total": 0, "curve": 0, "pumpswap": 0, "other": 0}
         self.http = httpx.AsyncClient(timeout=20)
@@ -115,8 +145,23 @@ class Collector:
             log.debug("pool %s unreadable: %s", pool, exc)
             return None
         self.pools[pool] = base
-        self.db.execute("INSERT OR REPLACE INTO pools VALUES (?, ?, ?)", (pool, base, quote))
+        self.db.execute("INSERT OR IGNORE INTO pools (pool, base, quote) VALUES (?, ?, ?)", (pool, base, quote))
         return base
+
+    def note_mint(self, e: dict):
+        mint, creator = e["mint"], e.get("creator")
+        if mint not in self.mints:
+            self.mints[mint] = creator
+            self.db.execute("INSERT OR IGNORE INTO mints (mint, creator, first_seen) VALUES (?, ?, ?)",
+                            (mint, creator, e["ts"]))
+        elif creator and not self.mints[mint]:
+            self.mints[mint] = creator
+            self.db.execute("UPDATE mints SET creator = ? WHERE mint = ?", (creator, mint))
+        if e["venue"] == 1 and mint not in self.curve_seen:
+            self.curve_seen.add(mint)
+            self.db.execute("UPDATE mints SET curve = 1 WHERE mint = ?", (mint,))
+        if e["venue"] == 1 and e.get("rtok") == 0:
+            self.db.execute("UPDATE mints SET complete_ts = ? WHERE mint = ? AND complete_ts IS NULL", (e["ts"], mint))
 
     async def on_logs(self, slot: int, sig: str, logs: list[str]):
         events = decode(logs)
@@ -128,13 +173,16 @@ class Collector:
                 e["mint"] = await self.pool_mint(e["pool"])
                 if e["mint"] is None:
                     continue
+            self.note_mint(e)
             num = lambda x: None if x is None else float(x)  # noqa: E731  (u64 can exceed SQLite's integers)
             self.rows.append((slot, e["ts"], sig, e["venue"], e["mint"], e["side"], e["user"], num(e["lamports"]),
-                              num(e["tokens"]), num(e["vsol"]), num(e["vtok"]), e["pool"]))
+                              num(e["tokens"]), num(e["vsol"]), num(e["vtok"]), e["pool"], num(e["rsol"]),
+                              num(e["rtok"])))
 
     def flush(self):
         if self.rows:
-            self.db.executemany("INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", self.rows)
+            self.db.executemany(f"INSERT INTO trades ({', '.join(TRADE_COLS)}) VALUES ({', '.join('?' * len(TRADE_COLS))})",
+                                self.rows)
             self.rows = []
         self.db.commit()
 
@@ -173,9 +221,64 @@ class Collector:
                 log.debug("SOL price unavailable: %s", exc)
             await asyncio.sleep(300)
 
+    async def rpc(self, method: str, params: list):
+        """One call to the free RPC, waiting and retrying while it answers 429."""
+        for attempt in range(6):
+            res = (await self.http.post(HTTP_URL, json={"jsonrpc": "2.0", "id": 1, "method": method,
+                                                         "params": params})).json()
+            if "error" not in res:
+                return res["result"]
+            if res["error"].get("code") != 429:
+                raise RuntimeError(res["error"])
+            await asyncio.sleep(5 * (attempt + 1))
+        raise RuntimeError("429")
+
+    async def oldest(self, account: str) -> tuple[int | None, int | None]:
+        """(time of the account's oldest transaction, None) or (None, oldest time seen) when cut at MAX_PAGES."""
+        before, last = None, None
+        for _ in range(MAX_PAGES):
+            sigs = await self.rpc("getSignaturesForAddress", [account, {"limit": 1000, **({"before": before} if before else {})}])
+            await asyncio.sleep(LOOKUP_GAP)
+            if not sigs:
+                return (last, None) if last is not None else (None, None)
+            last = sigs[-1].get("blockTime")
+            if len(sigs) < 1000:
+                return last, None
+            before = sigs[-1]["signature"]
+        return None, last
+
+    async def lookup_loop(self):
+        """Creation times: coins seen on their curve (newest first), their pools (graduation), then the rest."""
+        while True:
+            todo = "created_ts IS NULL AND older_than IS NULL"
+            row = None
+            for sql in (f"SELECT 'mints', mint FROM mints WHERE curve = 1 AND {todo} ORDER BY first_seen DESC LIMIT 1",
+                        f"SELECT 'pools', pool FROM pools WHERE {todo} AND base IN (SELECT mint FROM mints WHERE curve = 1) "
+                        "LIMIT 1",
+                        f"SELECT 'mints', mint FROM mints WHERE {todo} ORDER BY first_seen DESC LIMIT 1",
+                        f"SELECT 'pools', pool FROM pools WHERE {todo} LIMIT 1"):
+                row = self.db.execute(sql).fetchone()
+                if row:
+                    break
+            if row is None:
+                await asyncio.sleep(10)
+                continue
+            table, account = row
+            key = "mint" if table == "mints" else "pool"
+            try:
+                created, older = await self.oldest(account)
+            except Exception as exc:
+                log.debug("lookup %s failed: %s", account, exc)
+                created, older = None, -1  # not retried (-1 = unknown)
+            if created is None and older is None:
+                older = -1
+            self.db.execute(f"UPDATE {table} SET created_ts = ?, older_than = ? WHERE {key} = ?", (created, older, account))
+            self.db.commit()
+
     async def run(self):
         asyncio.create_task(self.minute_loop())
         asyncio.create_task(self.price_loop())
+        asyncio.create_task(self.lookup_loop())
         while True:
             try:
                 await self.stream()
@@ -185,6 +288,18 @@ class Collector:
                 log.warning("websocket dropped (%s); reconnecting", exc)
                 self.flush()
                 await asyncio.sleep(5)
+
+
+def migrate(db: sqlite3.Connection):
+    """Columns added after the collector first ran on the server."""
+    for table, cols in (("trades", ("rsol REAL", "rtok REAL")), ("pools", ("created_ts INTEGER", "older_than INTEGER")),
+                        ("mints", ("curve INTEGER DEFAULT 0",))):
+        have = {r[1] for r in db.execute(f"PRAGMA table_info({table})")}
+        if have:
+            for c in cols:
+                if c.split()[0] not in have:
+                    db.execute(f"ALTER TABLE {table} ADD COLUMN {c}")
+    db.commit()
 
 
 def main():

@@ -14,7 +14,8 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
-| A5 | Pump.fun eksikleri: coinin oluşturulma anı, geliştirici, mezuniyet anı; 5-7 gün veri sonra araştırma | sırada |
+| A5 | Pump.fun eksikleri: **toplama tamam** (3 Ekim, §4.5: geliştirici, oluşturulma anı, mezuniyet, curve/havuz rezervleri); sunucu güncellemesi kullanıcıda | sunucu güncellemesi |
+| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test) — 5-7 gün veri birikince (~9-10 Ekim) | tarihi bekliyor |
 | A6 | Pump.fun gece gönderiminin ilk sonucu (4 Ekim) kontrol | 4 Ekim |
 | A7 | BNB ve Base zincirleri | sırada (pump.fun'dan sonra) |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
@@ -295,8 +296,17 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   koydu; sadece bu depo, Contents yazma). Klon sığ ve dosya içeriksiz, sadece yeni dosyalar eklenir. Okuma:
   `python scripts/solana_import.py /tmp/veri sol.db`. Elle deneme: `.venv/bin/python -m rhscanner.solana_export
   solana.db --check`.
-- Eksikler (araştırmadan önce): coinin oluşturulma anı (pump.fun `CreateEvent` Fomo dışından geliyor; ilk Fomo
-  işlemi ≠ lansman), geliştirici/holder bilgisi, mezuniyet anı. Araştırma kuralları (§6) aynen geçerli.
+- **Eksikler tamamlandı (3 Ekim, A5):** olaylardaki başka alanlar canlı veriyle doğrulandı (sanal − gerçek rezerv =
+  tam 30 SOL / 279,9M token): curve işlemlerinde gerçek rezervler (`rsol`, `rtok`; rtok 0 = curve doldu, mezuniyet)
+  ve geliştirici (`creator`); PumpSwap işlemlerinde havuzun SOL/coin rezervi (likidite, fiyat) ve coin geliştiricisi.
+  Yeni `mints` tablosu: geliştirici, Fomo'da ilk görülme, **oluşturulma anı** (coin adresinin en eski işlemi = Create;
+  `getSignaturesForAddress`, ücretsiz RPC 429 verdiği için arka planda 1,2 sn arayla, en çok 3 sayfa; yarıda kalırsa
+  `older_than`), curve'ün boşaldığı an, `curve` (Fomo'da curve'de görüldü mü). Havuzlar da oluşturulma anı alır
+  (mezuniyet). Öncelik: curve'de görülen coinler, sonra onların havuzları. Hız ~17 sorgu/dk (~24 bin/gün).
+  İlk gözlem: Fomo'da curve'de işlem gören coinlerin bir kısmı dakikalar, bir kısmı aylar önce oluşturulmuş →
+  "yeni coin" tanımı oluşturulma anından yapılmalı. 3 Ekim öğleden önceki işlemlerde rezerv sütunları boş.
+  Holder dağılımı henüz yok (Solana'da her coin için ayrı sorgu gerekir; araştırmada ihtiyaç çıkarsa).
+  Araştırma kuralları (§6) aynen geçerli.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki

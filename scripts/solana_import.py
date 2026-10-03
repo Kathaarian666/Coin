@@ -2,7 +2,8 @@
 
   python scripts/solana_import.py <veri folder> <db>
 
-Same tables as the collector (rhscanner/solana.py SCHEMA); days already in the database are skipped.
+Same tables as the collector (rhscanner/solana.py SCHEMA), filled by column name (older days have fewer columns);
+days already in the database are skipped; pools and mints are the latest snapshots.
 """
 
 import csv
@@ -14,16 +15,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from rhscanner.solana import SCHEMA  # noqa: E402
 
-NUM = {"slot", "ts", "venue", "side", "lamports", "tokens", "vsol", "vtok", "minute", "total", "curve", "pumpswap",
-       "other", "usd"}
+NUM = {"slot", "ts", "venue", "side", "lamports", "tokens", "vsol", "vtok", "rsol", "rtok", "minute", "total", "curve",
+       "pumpswap", "other", "usd", "first_seen", "created_ts", "older_than", "complete_ts", "curve"}
 
 
-def rows(path: Path):
+def read(path: Path) -> tuple[list[str], list[list]]:
     with gzip.open(path, "rt", newline="") as f:
         r = csv.reader(f)
         head = next(r)
-        for row in r:
-            yield [None if v == "" else (float(v) if h in NUM else v) for h, v in zip(head, row)]
+        return head, [[None if v == "" else (float(v) if h in NUM else v) for h, v in zip(head, row)] for row in r]
+
+
+def put(db, table: str, path: Path, verb: str = "INSERT"):
+    """Rows by column name (older files have fewer columns)."""
+    head, data = read(path)
+    db.executemany(f"{verb} INTO {table} ({', '.join(head)}) VALUES ({', '.join('?' * len(head))})", data)
+    return len(data)
 
 
 def main():
@@ -33,19 +40,16 @@ def main():
     for day in sorted(p.name for p in src.iterdir() if p.is_dir()):
         if day in done:
             continue
-        n = 0
-        for part in sorted((src / day).glob("trades_*.csv.gz")):
-            batch = list(rows(part))
-            db.executemany("INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", batch)
-            n += len(batch)
-        db.executemany("INSERT OR REPLACE INTO stats VALUES (?, ?, ?, ?, ?)", rows(src / day / "stats.csv.gz"))
-        db.executemany("INSERT OR REPLACE INTO sol_price VALUES (?, ?)", rows(src / day / "sol_price.csv.gz"))
+        n = sum(put(db, "trades", part) for part in sorted((src / day).glob("trades_*.csv.gz")))
+        put(db, "stats", src / day / "stats.csv.gz", "INSERT OR REPLACE")
+        put(db, "sol_price", src / day / "sol_price.csv.gz", "INSERT OR REPLACE")
         db.execute("INSERT INTO imported VALUES (?)", (day,))
         db.commit()
         print(f"{day}: {n} işlem")
-    if (src / "pools.csv.gz").exists():
-        db.executemany("INSERT OR REPLACE INTO pools VALUES (?, ?, ?)", rows(src / "pools.csv.gz"))
-        db.commit()
+    for table in ("pools", "mints"):
+        if (src / f"{table}.csv.gz").exists():
+            put(db, table, src / f"{table}.csv.gz", "INSERT OR REPLACE")
+    db.commit()
 
 
 if __name__ == "__main__":
