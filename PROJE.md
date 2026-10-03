@@ -17,7 +17,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A5 | Pump.fun eksikleri: **toplama tamam** (3 Ekim, §4.5: geliştirici, oluşturulma anı, mezuniyet, curve/havuz rezervleri); sunucu güncellemesi kullanıcıda | sunucu güncellemesi |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test) — 5-7 gün veri birikince (~9-10 Ekim) | tarihi bekliyor |
 | A6 | Pump.fun gece gönderiminin ilk sonucu (4 Ekim) kontrol | 4 Ekim |
-| A7 | BNB ve Base zincirleri | sırada (pump.fun'dan sonra) |
+| A7 | BNB ve Base: ön inceleme bitti (§4.5b). **Karar kullanıcıda:** BNB canlı toplama şimdi mi; Base geçmişi indirilsin mi, ne zaman | kullanıcıda |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
@@ -307,6 +307,21 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   "yeni coin" tanımı oluşturulma anından yapılmalı. 3 Ekim öğleden önceki işlemlerde rezerv sütunları boş.
   Holder dağılımı henüz yok (Solana'da her coin için ayrı sorgu gerekir; araştırmada ihtiyaç çıkarsa).
   Araştırma kuralları (§6) aynen geçerli.
+
+### 4.5b 6. adım ön incelemesi: BNB ve Base (3 Ekim, §0 A7)
+- **Fomo üç EVM zincirinde de aynı iki kontratla, aynı adreste ve aynı olayla çalışıyor** (entry `0xccc88a9d...`,
+  executor `0xb92fe925...`, olay `0xafbab204...`): Robinhood'daki okuma kodu (`fomo.py parse_fomo_logs`) nakit
+  token listesi değişerek kullanılabilir (Base: USDC `0x833589fc...` + ETH; BNB: USDC `0x8ac76a51...` + BNB).
+- **BNB:** ~139 Fomo işlemi/dk (15 dk örnek; Robinhood ~67/dk, Solana ~600/dk), 15 dk'da 804 farklı alıcı, 123 coin.
+  Coinlerin çoğu (90'ın 63'ü) "…7777" adresli = **flap.sh** launchpad'i (mezunlar PancakeSwap v2'de), az sayıda
+  four.meme ("…4444"). **Geçmiş veri ücretsiz değil**: publicnode sadece son saatler (eskisi 403), 48.club ~1 gün,
+  dRPC hemen 429, diğerleri getLogs vermiyor / 25 blok sınırı. → pump.fun gibi **şimdiden canlı toplama** gerekir
+  (publicnode, adres filtresiyle son bloklar).
+- **Base:** ~16 Fomo işlemi/dk (1 saat örnek; Robinhood'un ~1/4'ü), saatte ~460 alıcı, ~90 coin; havuzlar
+  Uniswap V4 ve Aerodrome. **Geçmiş veri ücretsiz** (`mainnet.base.org`, 30 gün önce dahil, 500 blokluk sorgu 0,5 sn)
+  → Robinhood gibi hemen indirilip araştırılabilir; ama havuz küçük.
+- Güvenlik tarafı zincire göre değişir (flap.sh/four.meme şablonları, PancakeSwap/Aerodrome havuzları için satış
+  simülasyonu yeniden yazılmalı).
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
