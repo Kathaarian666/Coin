@@ -107,25 +107,42 @@ def _money(value) -> str:
     return "–" if value is None else f"{value:+.1f}$"
 
 
-def format_scan_log(hours: float, s: dict, recent: list[tuple[str, float, float | None, float | None]],
-                    trained_until: float | None) -> str:
-    """/kayit: the record mode's results (no alerts are sent for it). `recent`: (symbol, score, $ result, high)."""
-    lines = [f"📒 <b>Kayıt modu</b> — son {hours:g} saat (bildirim gönderilmez)",
-             "Fomo'da 3. alıcıya ulaşan her yeni coin puanlanır; 1 saat sonra \"30 sn sonra $100 alıp 1 saat "
-             "tutsaydık\" sonucu ölçülür (komisyon ve kayma dahil).", "",
-             f"Puanlanan: {s['scored']} · ölçülen {s['measured']} · bekleyen {s['pending']} · ölçülemeyen {s['unmeasured']}"]
-    for key, name in (("top10", "🔝 En iyi %10"), ("top20", "En iyi %20"), ("all", "Hepsi (seçimsiz)")):
-        g = s[key]
-        if not g["n"]:
-            lines.append(f"{name}: henüz ölçülen yok ({g['pending']} bekliyor)")
-            continue
-        lines.append(f"{name}: {g['n']} işlem · ort <b>{_money(g['mean'])}</b> · medyan {_money(g['median'])} · "
-                     f"kârlı %{100 * g['win']:.0f} · toplam {_money(g['total'])} · en iyi {_money(g['best'])}")
+def _pct(x: float | None) -> str:
+    return "-" if x is None else f"{x * 100:+.0f}%"
+
+
+def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], trained_until: float | None) -> str:
+    """/karne: the paper test (nothing is bought). `recent`: (symbol, alert row)."""
+    span = f"son {hours:g} saat" if hours else "başından beri"
+    lines = [f"🧪 <b>Kâğıt test</b> — {span} (para harcanmaz)",
+             "Fomo'da 5. alıcıya ulaşan her yeni coin puanlanır; en iyi %2 seçilir. Her seçim için sanal işlem: "
+             "30 sn sonra alış, 2x'te yarısı satılır, kalan zirveden %50 düşünce, %50 zarar-kes; komisyon ve kayma dahil.",
+             "",
+             f"Puanlanan coin: {s['scored']} · seçilen: <b>{s['alerts']}</b> · kapanan işlem: {s['closed']}",
+             f"2x yapan: {s['x2']} · zarar-kese takılan: {s['stop']}"]
+    if s["mean"] is not None:
+        lines.append(f"İşlem başına net: ort <b>{_pct(s['mean'])}</b> · medyan {_pct(s['median'])} · "
+                     f"kârlı %{100 * s['win']:.0f}")
+    lines.append(f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${s['bank']:,.0f}</b> "
+                 f"({s['bank'] / 1000:.2f}x; açık işlemler son fiyatla)")
+    if s["latency"] is not None:
+        lines.append(f"Seçim gecikmesi (5. alıcıdan sonra, medyan): {s['latency']:.0f} sn")
     if recent:
-        lines += ["", "Son en iyi %10 seçimleri:"]
-        for symbol, score, result, high in recent:
-            res = f"{_money(result)} (zirve {high:.1f}x)" if result is not None else "ölçüm bekliyor"
-            lines.append(f"• {escape(symbol, quote=False)} — puan {score:.3f} · {res}")
+        lines += ["", "Son seçimler:"]
+        for symbol, r in recent:
+            state = {"2x": "2x ✅", "stop": "zarar-kes ❌", "yok": "bekliyor"}.get(r["kind"] or "", "giriş bekliyor")
+            res = f" · net {_pct(r['ret'])}{'' if r['closed'] else ' (açık)'}" if r["ret"] is not None else ""
+            when = time.strftime("%d.%m %H:%M", time.gmtime(r["ts"]))
+            lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {state}{res}")
     if trained_until:
         lines.append(f"\n<i>Model {time.strftime('%d.%m', time.gmtime(trained_until))} tarihine kadarki veriyle eğitildi.</i>")
     return "\n".join(lines)
+
+
+def format_paper_alert(symbol: str, token: str, price: float, score: float, size: float | None, delay: float) -> str:
+    """Optional message for each paper-test pick (/kagitbildirim ac)."""
+    return (f"🧪 <b>Kâğıt test seçimi: {escape(symbol, quote=False)}</b>\n"
+            f"Puan {score:.3f} (en iyi %2) · sanal tutar kasanın %{100 * (size or 0):.0f}'i\n"
+            f"Bildirim fiyatı: {price:.3g} $/birim · 5. alıcıdan {delay:.0f} sn sonra\n"
+            f"<code>{token}</code>\n"
+            f"<i>Sadece test: gerçek alım önerisi değildir.</i>")

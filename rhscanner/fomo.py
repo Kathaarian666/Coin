@@ -32,6 +32,8 @@ FOMO_EXECUTOR = "0xb92fe925dc43a0ecde6c8b1a2709c170ec4fff4f"
 FOMO_TRANSFER_TOPIC = "0xafbab204e8271965231d37baed9b1abca8725b7409c70314455f68bc89142b91"
 
 _USDG = USDG.lower()
+ERC20_TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+_TO_EXECUTOR = "0x" + "0" * 24 + FOMO_EXECUTOR[2:]
 _ETH = "0x" + "0" * 40
 # What Fomo pays and gets paid in; WETH shows up when a route goes through it.
 _CASH = {_USDG, _ETH, DEFAULT_WETH.lower()}
@@ -159,6 +161,23 @@ class FomoTracker:
         return [(to_checksum_address(t), s) for t, s in rows[:limit]]
 
 
+async def fetch_sell_usd(rpc: RpcClient, from_block: int, to_block: int) -> dict[str, float]:
+    """Fomo's own events carry no dollar amount for sells: the USDG the DEX pays the executor does (the research
+    data is built the same way, scripts/fomo_download.py). tx hash -> dollars."""
+    logs = await rpc.get_logs(from_block, to_block, [ERC20_TRANSFER, None, _TO_EXECUTOR], address=USDG)
+    paid: dict[str, float] = {}
+    for entry in logs:
+        tx = entry["transactionHash"]
+        paid[tx] = max(paid.get(tx, 0.0), int(entry["data"], 16) / 1e6)
+    return paid
+
+
+def set_sell_usd(trades: list[FomoTrade], paid: dict[str, float]):
+    for t in trades:
+        if t.side == "sell":
+            t.usd = paid.get(t.tx_hash)
+
+
 async def fetch_fomo_logs(rpc: RpcClient, from_block: int, to_block: int) -> list[dict]:
     """eth_getLogs for both Fomo contracts, halving the range when the node refuses it
     (the public RPC caps result size; dRPC's free tier only serves ~100 blocks)."""
@@ -200,6 +219,11 @@ class FomoWatcher:
                 while next_block <= head:
                     to_block = min(head, next_block + 2999)
                     trades = parse_fomo_logs(await self._fetch(next_block, to_block))
+                    if any(t.side == "sell" for t in trades):
+                        try:
+                            set_sell_usd(trades, await fetch_sell_usd(self.rpc, next_block, to_block))
+                        except Exception as exc:  # the trades still count, only sell dollars are missing
+                            log.debug("sell dollars for %d-%d unavailable: %s", next_block, to_block, exc)
                     stamp = await self.rpc.block_timestamp(to_block)
                     for trade in trades:
                         trade.timestamp = stamp

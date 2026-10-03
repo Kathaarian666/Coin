@@ -43,33 +43,37 @@ async def test_small_volume_does_not_alert(tmp_path):
     await app.rpc.close()
 
 
-async def test_record_mode_scores_a_new_coin_at_its_third_buyer_and_reads_its_hour(tmp_path):
+async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_virtual_trade(tmp_path):
+    from rhscanner import paper
     from rhscanner.fomo import FomoTrade
-    from rhscanner.scan import DELAY, HOLD, WARMUP_BLOCKS
 
     app = ScannerApp(Settings(db_path=str(tmp_path / "r.db"), fomo_min_buyers=99))
-    assert app.scan_model is not None
-    app.scanner.known_since = time.time() - 3 * 86400  # past the learning day
+    assert app.paper_model is not None
+    app.follower.known_since = time.time() - 3 * 86400  # past the learning day
+    app.paper_model.bar = 0.0  # every scored coin is a pick in this test
 
     async def supply(token, fn, out, *a, **k):
         return [10**27]
     app.rpc.try_call_fn = supply
     token = "0x" + "2" * 40
-    t0 = time.time() - DELAY - HOLD - 120
+    t0 = time.time() - 7200
 
-    def trade(who, ts, block, usd=50.0, side="buy"):
-        return FomoTrade("0x" + who * 64, block, token, side, who * 40, usd, timestamp=ts, amount=int(usd * 1e12))
+    def trade(who, ts, block, usd=50.0, amount=None, side="buy"):
+        return FomoTrade("0x" + who * 64, block, token, side, who * 40, usd, timestamp=ts,
+                         amount=amount or int(usd * 1e12))
 
     await app.on_fomo_trades([FomoTrade("0xaa", 1, "0x" + "3" * 40, "buy", "z" * 40, 5.0, t0 - 9999, 10**12)])
-    first = [trade(w, t0 + i, WARMUP_BLOCKS + 10 + i) for i, w in enumerate("abc")]
-    await app.on_fomo_trades(first)
+    first = [trade(w, t0 + 10 * i, paper.WARMUP_BLOCKS + 10 + 100 * i) for i, w in enumerate("abcde")]
+    for x in first:
+        await app.on_fomo_trades([x])
     await asyncio.gather(*list(app.tasks))
-    rows = app.scan_log.rows(0)
-    assert len(rows) == 1 and rows[0]["token"] == token and 0 < rows[0]["score"] < 1 and not rows[0]["done"]
-    later = [trade(w, t0 + DELAY + HOLD - 100 + i, WARMUP_BLOCKS + 5000 + i, 120.0) for i, w in enumerate("defg")]
+    rows = app.paper_log.alerts(0)
+    assert len(rows) == 1 and rows[0]["token"] == token and 0 < rows[0]["score"] < 1
+    # price doubles (two buys in a row at 2x the alert price), then the trade runs on
+    later = [trade(w, t0 + 600 + i, paper.WARMUP_BLOCKS + 9000 + i, 100.0, amount=int(50e12)) for i, w in enumerate("fg")]
     await app.on_fomo_trades(later)
-    app.measure_due(time.time())  # what the bot's minute loop does
-    row = app.scan_log.rows(0)[0]
-    assert row["done"] and row["result"] is not None and row["high"] > 0
-    assert -30 < row["result"] < 0  # flat price: the round trip costs fee and slippage
+    app.paper_step(time.time())  # what the bot's minute loop does
+    row = app.paper_log.alerts(0)[0]
+    # half sold at 2x; the open half is valued at the median of the last 5 prices (1x here): net about +35 %
+    assert row["kind"] == "2x" and not row["closed"] and 0.2 < row["ret"] < 0.5
     await app.rpc.close()

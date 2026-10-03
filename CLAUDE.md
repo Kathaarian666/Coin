@@ -78,13 +78,14 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 `bot.py` Telegram + akış (Fomo'da 10 dk'da `/minalici` alıcı ve `/minhacim` $ → güven taraması → skor ≥ `/minskor`
 ise bildirim) · `fomo.py` Fomo işlemleri · `analyzer.py`/`checks/`/`scoring.py` güven skoru (Fomo churn = sahte
 hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches.py` Pons lansman indeksi
-(geliştirici geçmişi) · `scan.py` + `scan_model.json` eski kayıt modu ("1 saat tut"; 4. adımda
-değişecek; tablolar `scan_log`, `scan_known`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
+(geliştirici geçmişi) · `paper.py` + `paper_model.json` + `paper_book.json` kâğıt test (5. alıcıda
+puan, en iyi %2'ye sanal işlem, `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
+`scripts/paper_export.py` ile) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 
 ## Telegram komutları (hepsi bot.py HELP'te)
-`/check <adres>` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum` `/kayit [saat]`
+`/check <adres>` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum` `/karne [saat]` `/kagitbildirim ac|kapat`
 
 ## Veri (araştırma)
 **Veri arşivi: GitHub `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; 1-3 Eylül + 17 Eylül'den bugüne; 3-17 Eylül

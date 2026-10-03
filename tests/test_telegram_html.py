@@ -3,7 +3,7 @@ command then answers nothing. Only <b>, <i>, <code> and <a href> are used."""
 
 import re
 
-from rhscanner.report import format_report, format_scan_log
+from rhscanner.report import format_paper, format_paper_alert, format_report
 
 ALLOWED = re.compile(r"</?(b|i|code)>|<a href=\"[^\"]*\">|</a>")
 
@@ -22,8 +22,13 @@ def test_alert_report_is_valid_telegram_html():
     assert_valid(format_report(report, "https://x", "🔥 <yükselen>"))
 
 
-def test_record_report_is_valid_telegram_html():
-    g = {"n": 3, "pending": 1, "mean": 12.5, "median": -3.0, "win": 0.33, "total": 37.5, "best": 90.0}
-    empty = {"n": 0, "pending": 2, "mean": None, "median": None, "win": None, "total": 0, "best": None}
-    s = {"scored": 10, "measured": 6, "pending": 3, "unmeasured": 1, "top10": g, "top20": empty, "all": g}
-    assert_valid(format_scan_log(24, s, [("A<B>", 0.12, 50.0, 3.2), ("C&D", 0.1, None, None)], 1.79e9))
+def test_paper_reports_are_valid_telegram_html():
+    s = {"scored": 700, "alerts": 14, "closed": 9, "x2": 7, "stop": 3, "mean": 0.42, "median": -0.2, "win": 0.5,
+         "bank": 1234.5, "latency": 6.0}
+    empty = {"scored": 0, "alerts": 0, "closed": 0, "x2": 0, "stop": 0, "mean": None, "median": None, "win": None,
+             "bank": 1000.0, "latency": None}
+    rows = [("A<B>", {"ts": 1.79e9, "kind": "2x", "ret": 0.8, "closed": 0}),
+            ("C&D", {"ts": 1.79e9, "kind": None, "ret": None, "closed": 0}),
+            ("E", {"ts": 1.79e9, "kind": "stop", "ret": -0.55, "closed": 1})]
+    assert_valid([format_paper(24, s, rows, 1.79e9), format_paper(None, empty, [], None),
+                  format_paper_alert("<X>", "0x" + "1" * 40, 1.2e-9, 0.61, 0.04, 7.0)])

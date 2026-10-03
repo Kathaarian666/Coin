@@ -58,13 +58,18 @@ bırakıldı.
 
 ## 3. Şu anki durum
 
-**Sunucudaki bot (`rhscanner/`, systemd servisi):** 4. adıma kadar olduğu gibi çalışıyor, değiştirilmeyecek.
+**Sunucudaki bot (`rhscanner/`, systemd servisi):**
 - Fomo işlemlerini izliyor. Bir coin 10 dakikada yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven
   taraması yapıyor, skor `/minskor` üstündeyse Telegram'a rapor gönderiyor.
 - Güven taraması: satılabilirlik, honeypot simülasyonu, kontrat, likidite, V4 hook, holder, geliştirici geçmişi,
   sniper/bundle, sahte hacim (Fomo churn). Ayrıntı: `README.md`. 1. adımda tek tek gözden geçirilecek.
-- Eski "kayıt modu" (`scan.py`, `/kayit`): yeni coinleri 3. Fomo alıcısında puanlıyor, "1 saat tutsaydık" sonucunu
-  kaydediyor, bildirim yok. Eski yaklaşım; 4. adımda yeni bildirimle değişecek.
+- **Kâğıt test (3 Ekim, `paper.py`, `/karne`, kullanıcı kararı "b"):** Fomo'da 5. alıcıya ulaşan her yeni coin 20
+  kriterle (§4.4 C+D) puanlanır; son 2 günün puanlarının en iyi %2'si seçilir; her seçim için sanal işlem (30 sn sonra
+  alış, 2x'te yarısı, iz kuralı, %50 zarar-kes, komisyon + kayma, $1.000 kasanın %4/%2/%1'i). Para harcanmaz, mesaj
+  yok (`/kagitbildirim ac` ile açılır). Model `scripts/paper_export.py` ile eğitilir (JSON = sklearn birebir; canlı
+  kriter kodu araştırma tablosuyla 300 coinde birebir); ilk alıcı geçmişi `paper_book.json`'dan başlar, canlıda büyür.
+  Satış $'ı artık canlıda da USDG transferinden okunuyor (`fomo.fetch_sell_usd`). Yeniden başlatmada açık sanal
+  işlemler kaybolur (sonuçsuz kapanır). Eski kayıt modu (`scan.py`, `/kayit`) silindi.
 
 ## 4. Şimdiye kadar bilinenler (eski araştırma, 17–28 Eylül zincir verisi)
 
