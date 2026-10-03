@@ -248,6 +248,19 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   karşılaştırıldı → en iyiyi seçmek şansı da seçer. Son sınav seçimde kullanılmamış yeni günlerde yapılmalı (2 Ekim
   sonrası; etiketler 24 saat sonra belli). Holder kriterleri (transfer indirmesi yavaş) hâlâ eklenmedi.
 
+### 4.5 6. adım fizibilitesi: Fomo'nun Solana tarafı (3 Ekim)
+- Fomo her Solana işlemini tek cüzdanla imzalayıp gas'ını ödüyor: `AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51`
+  (ücret hesabı `HrTf9CzXR1dRH4Sof5QrpmGWwpwAf3qZzwCsEjQpXcSq`; Bitquery'nin FOMO API belgesi). İşlemlerin çoğu DFlow
+  agregatöründen geçiyor. Hacim: günde ~0,9-1,2 milyon işlem (Robinhood Chain'in ~4 katı).
+- **Ücretsiz canlı erişim çalışıyor** (`scripts/solana_probe.py`): genel Solana websocket'inde
+  `logsSubscribe(mentions=[fee payer])` her Fomo işleminin loglarını anında veriyor (~670/dk). pump.fun TradeEvent
+  loglarda çözülebilir: coin, SOL, miktar, alım/satım, kullanıcı, zaman. Tek tek `getTransaction` gerekmez (genel RPC
+  buna yetmez).
+- 1 dk örnek dağılımı: PumpSwap (mezun pump.fun coinleri) %53 · pump.fun curve (yeni coinler) %10 · Meteora %10 ·
+  Raydium %3 · diğer %24. PumpSwap olayları da aynı yöntemle çözülebilir.
+- Geçmiş veri ücretsiz toplu olarak yok (Bitquery/Helius ücretli ya da kısıtlı; Dune ücretsiz hesapla mümkün ama
+  gecikmeli). Yol: şimdiden canlı toplamaya başlamak; ~1 hafta sonra Robinhood'daki aynı araştırma.
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
