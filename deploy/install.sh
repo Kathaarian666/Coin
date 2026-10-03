@@ -114,6 +114,33 @@ sudo systemctl daemon-reload
 sudo systemctl enable -q fomosol
 sudo systemctl restart fomosol
 
+# every night: the finished days of solana.db -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
+sudo tee /etc/systemd/system/fomosol-export.service >/dev/null <<EOF
+[Unit]
+Description=Send the finished days of the pump.fun data to the GitHub veri branch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=$(id -un)
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/solana.db
+EOF
+sudo tee /etc/systemd/system/fomosol-export.timer >/dev/null <<EOF
+[Unit]
+Description=Nightly pump.fun data export
+
+[Timer]
+OnCalendar=*-*-* 00:20:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable -q --now fomosol-export.timer
+
 if ! grep -q '^TELEGRAM_CHAT_IDS=.\+' "$APP_DIR/.env"; then
     say "Son adım: Telegram'da botunuza /start yazın. Bot size 'Sohbet ID'niz: ...' diye bir sayı söyleyecek."
     chat=""

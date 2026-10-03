@@ -48,7 +48,8 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - Yapıştırma bozulmasın diye önce: `bind 'set enable-bracketed-paste off'`
 - Güncelleme: `bash ~/Coin/deploy/install.sh` (systemd servisi `rhscanner`, DB `~/Coin/rhscanner.db`)
 - İkinci servis `fomosol` = pump.fun/Solana veri toplayıcı (`rhscanner/solana.py` → `~/Coin/solana.db`); log:
-  `journalctl -u fomosol -n 20 --no-pager`.
+  `journalctl -u fomosol -n 20 --no-pager`. Gece 00:20 UTC `fomosol-export.timer` biten günleri `veri` dalına
+  `solana/<gün>/` olarak gönderir (`.env`: `VERI_GITHUB_TOKEN`); araştırmada `scripts/solana_import.py`.
 - Log: `journalctl -u rhscanner -n 50 --no-pager`; hata arama:
   `journalctl -u rhscanner --since "90 min ago" --no-pager | grep -i -E "traceback|error" | tail -25`
 - Tek seferlik iş sunucuda: `cd ~/Coin && .venv/bin/python -m rhscanner <komut>` (bot da aynı RPC'yi kullanır;

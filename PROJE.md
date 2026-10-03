@@ -267,6 +267,12 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
   u64 tutarlar SQLite tamsayısına sığmıyor → REAL; Anchor olay adı başka programlarda da aynı (aynı ayırt edici) →
   olay sadece o an çalışan program pump.fun/PumpSwap ise alınır (ilk denemede curve satırlarının %7'si başka
   programdandı, tarihleri bozuktu). Hacim: ~570 bin satır/gün, ~200 MB/gün ham SQLite.
+- **Sunucudan araştırmaya veri (3 Ekim):** her gece 00:20 UTC `fomosol-export.timer` biten günleri
+  (`rhscanner/solana_export.py`) `veri` dalına `solana/<gün>/` altına gönderir (6 saatlik `trades_<ss>.csv.gz`
+  parçaları, ~50-65 MB/gün; `stats`, `sol_price`, `pools`). Token: `.env`'de `VERI_GITHUB_TOKEN` (kullanıcı kendisi
+  koydu; sadece bu depo, Contents yazma). Klon sığ ve dosya içeriksiz, sadece yeni dosyalar eklenir. Okuma:
+  `python scripts/solana_import.py /tmp/veri sol.db`. Elle deneme: `.venv/bin/python -m rhscanner.solana_export
+  solana.db --check`.
 - Eksikler (araştırmadan önce): coinin oluşturulma anı (pump.fun `CreateEvent` Fomo dışından geliyor; ilk Fomo
   işlemi ≠ lansman), geliştirici/holder bilgisi, mezuniyet anı. Araştırma kuralları (§6) aynen geçerli.
 
@@ -328,6 +334,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Veri | `data_export.py` / `data_import.py` | `veri` dalı arşivi |
 | Veri | `fomo_supply.py` | Coin arzları (FDV için) |
 | Veri | `pons_launches.py` | Bütün Pons lansmanları (token, curve, geliştirici) |
+| Veri (pump.fun) | `solana_import.py` | `veri` dalındaki `solana/` günlerini araştırma veritabanına yükler (toplayıcı: `rhscanner/solana.py`, gece gönderim: `rhscanner/solana_export.py`) |
 | Veri | `transfer_download.py` | Coinlerin ilk saat token transferleri (holder özellikleri) |
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
