@@ -103,3 +103,40 @@ def test_parse_transfers_sorts_and_skips_non_erc20():
                                                                    "0x" + "0" * 24 + "c" * 40], "data": "0x5"}]
     assert paper.parse_transfers(logs) == [(1, 5, paper.ZERO, "0x" + "c" * 40, 5.0),
                                            (2, 1, "0x" + "a" * 40, "0x" + "b" * 40, 16.0)]
+
+
+def test_follower_keeps_its_coins_across_a_restart(tmp_path):
+    import sqlite3
+
+    from rhscanner import paper
+
+    db = sqlite3.connect(tmp_path / "f.db")
+    f = paper.Follower(set(), 0.0, learn=0, db=db)
+    f.warmup_blocks = 0
+    trades = [paper.Trade(100.0 + i, 10 + i, 1, w, 5.0, 10**18) for i, w in enumerate("abcd")]
+    for x in trades:
+        assert f.add("0xC", x) is None
+    f.commit()
+    g = paper.Follower({"0xc"}, 0.0, learn=0, db=sqlite3.connect(tmp_path / "f.db"))  # the bot restarted
+    assert [x.trader for x in g.coins["0xc"].trades] == list("abcd") and g.coins["0xc"].buyers == list("abcd")
+    assert g.add("0xC", paper.Trade(105.0, 15, 1, "e", 5.0, 10**18)) == 4  # its 5th buyer still counts
+    g.keep("0xc", 10**10)
+    g.prune(10**9)
+    assert "0xc" in g.coins  # kept for its virtual trade
+    g.coins["0xc"].keep_until = 0
+    g.prune(10**9)
+    assert "0xc" not in g.coins and not g.db.execute("SELECT * FROM follow_trades").fetchall()
+
+
+def test_warmup_skips_new_coins_only_after_a_fresh_start():
+    from rhscanner import paper
+
+    f = paper.Follower(set(), 0.0, learn=0)
+    f.add("0xold", paper.Trade(1.0, 1000, 1, "a", 5.0, 1))
+    f.add("0xnew", paper.Trade(2.0, 1100, 1, "a", 5.0, 1))
+    assert not f.coins["0xnew"].eligible  # first minutes after a fresh start: its history may be older
+    g = paper.Follower(set(), 0.0, learn=0)
+    g.warmup_blocks = 0  # resumed right after the last block
+    g.add("0xold", paper.Trade(1.0, 1000, 1, "a", 5.0, 1))
+    g.add("0xnew", paper.Trade(2.0, 1100, 1, "a", 5.0, 1))
+    assert g.coins["0xnew"].eligible

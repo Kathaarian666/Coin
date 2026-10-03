@@ -148,11 +148,18 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
     return "\n".join(lines)
 
 
-def format_paper_alert(symbol: str, token: str, price: float, score: float, size: float | None, delay: float) -> str:
+def _mcap(fdv: float | None) -> str:
+    """The alert's level as Fomo shows it: market cap (price x supply), not the price of a raw unit (PROJE.md §0 D3)."""
+    if fdv is None or fdv != fdv or fdv <= 0:
+        return "Piyasa değeri: bilinmiyor (arz okunamadı)"
+    return f"Piyasa değeri (bildirimde): <b>{_usd(fdv)}</b> · 2x hedefi: {_usd(2 * fdv)}"
+
+
+def format_paper_alert(symbol: str, token: str, fdv: float | None, score: float, size: float | None, delay: float) -> str:
     """Optional message for each paper-test pick (/kagitbildirim ac)."""
     return (f"🧪 <b>Kâğıt test seçimi: {escape(symbol, quote=False)}</b>\n"
             f"Puan {score:.3f} (en iyi %2) · sanal tutar kasanın %{100 * (size or 0):.0f}'i\n"
-            f"Bildirim fiyatı: {price:.3g} $/birim · 5. alıcıdan {delay:.0f} sn sonra\n"
+            f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra\n"
             f"<code>{token}</code>\n"
             f"<i>Sadece test: gerçek alım önerisi değildir.</i>")
 
@@ -161,7 +168,7 @@ def _gecko(token: str) -> str:
     return f'<a href="https://www.geckoterminal.com/robinhood/tokens/{token}">GeckoTerminal</a>'
 
 
-def format_live_alert(symbol: str, token: str, price: float, chance: float | None, reasons: list[tuple[str, str]],
+def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float | None, reasons: list[tuple[str, str]],
                       gate: tuple[str, str], delay: float) -> str:
     """The fast message of a real alert (/canli ac); the safety report follows as a reply."""
     status, detail = gate
@@ -172,7 +179,7 @@ def format_live_alert(symbol: str, token: str, price: float, chance: float | Non
              "Neden seçildi:"]
     lines += [f"• {escape(name, quote=False)}: {escape(value, quote=False)}" for name, value in reasons] or ["• -"]
     lines += [gate_line,
-              f"Bildirim fiyatı: {price:.3g} $/birim · 5. alıcıdan {delay:.0f} sn sonra",
+              f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra",
               f"<code>{token}</code> · {_gecko(token)}",
               "<i>Güven raporu birazdan bu mesaja yanıt olarak gelecek. Karar senin.</i>"]
     return "\n".join(lines)
@@ -184,7 +191,7 @@ def format_trust_reply(report_text: str, trust: int | None) -> str:
 
 
 def format_2x(symbol: str, token: str, minutes: float) -> str:
-    return (f"✅ <b>{escape(symbol, quote=False)}</b> bildirim fiyatının 2x'ine ulaştı ({minutes:.0f} dk sonra).\n"
+    return (f"✅ <b>{escape(symbol, quote=False)}</b> bildirimdeki piyasa değerinin 2 katına ulaştı ({minutes:.0f} dk sonra).\n"
             f"Kısmi ya da tam satış kararı senin. <code>{token}</code> · {_gecko(token)}")
 
 

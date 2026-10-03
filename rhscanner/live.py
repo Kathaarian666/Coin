@@ -28,6 +28,7 @@ ZERO = "0x" + "0" * 40
 POOL_LOOKBACK = 2 * 864_000  # blocks (~2 days) searched for the coin's V4 pool
 MAX_TAX = 0.10
 LIQ_WATCH = 6 * 3600  # s after the alert the pool is watched for liquidity removal
+LIVE_2X_DAYS = 30  # "2x oldu" is watched this long ("süre önemsiz", PROJE.md §1)
 
 LABELS = {  # criterion -> (Turkish name, how to show its value)
     "mins_to_k": ("5. alıcıya kadar geçen süre", lambda v: f"{v:.1f} dk"),
@@ -184,9 +185,16 @@ class LiveLog:
         self.db.commit()
 
     def open(self, now: float) -> list[dict]:
-        cur = self.db.execute("SELECT * FROM live_log WHERE ts >= ? AND (sent_2x = 0 OR warned = 0)", (now - 3 * 86400,))
+        """Alerts still waiting for their "2x oldu" (up to LIVE_2X_DAYS) or their liquidity watch."""
+        cur = self.db.execute("SELECT * FROM live_log WHERE ts >= ? AND (sent_2x = 0 OR warned = 0)",
+                              (now - LIVE_2X_DAYS * 86400,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+    def get(self, token: str) -> dict | None:
+        cur = self.db.execute("SELECT * FROM live_log WHERE token = ?", (token,))
+        row = cur.fetchone()
+        return dict(zip([c[0] for c in cur.description], row)) if row else None
 
     def mark(self, token: str, **fields):
         for k, v in fields.items():

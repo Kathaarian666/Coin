@@ -33,13 +33,14 @@ def test_paper_reports_are_valid_telegram_html():
             ("E", {"ts": 1.79e9, "kind": "stop", "ret": -0.55, "closed": 1})]
     assert_valid([format_paper(24, s, rows, 1.79e9), format_paper(None, empty, [], None),
                   format_paper(24, s, rows, 1.79e9, s), format_paper(None, empty, [], None, empty),
-                  format_paper_alert("<X>", "0x" + "1" * 40, 1.2e-9, 0.61, 0.04, 7.0)])
+                  format_paper_alert("<X>", "0x" + "1" * 40, 45_000.0, 0.61, 0.04, 7.0),
+                  format_paper_alert("<X>", "0x" + "1" * 40, float("nan"), 0.61, None, 7.0)])
 
 
 def test_live_messages_are_valid_telegram_html():
     token = "0x" + "1" * 40
-    assert_valid([format_live_alert("<X>", token, 1.2e-9, 0.61, [("toplam alım", "$1,200"), ("a<b", "%5 <")],
+    assert_valid([format_live_alert("<X>", token, 1_250_000.0, 0.61, [("toplam alım", "$1,200"), ("a<b", "%5 <")],
                                     ("ok", "satış simülasyonu geçti (vergi %0)"), 6.0),
-                  format_live_alert("Y&Z", token, 1e-9, None, [], ("bilinmiyor", "V4 havuzu <yok>"), 9.0),
+                  format_live_alert("Y&Z", token, None, None, [], ("bilinmiyor", "V4 havuzu <yok>"), 9.0),
                   format_trust_reply("<b>rapor</b>", 87), format_trust_reply("x", None),
                   format_2x("<X>", token, 14.0), format_liquidity_warning("<X>", token, 2)])

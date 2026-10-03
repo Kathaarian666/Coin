@@ -78,7 +78,9 @@ class ScannerApp:
         self.book = Book(self.storage.db)
         self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
-        self.follower = Follower(known, since, on_new=self.paper_log.remember)
+        self.follower = Follower(known, since, on_new=self.paper_log.remember, db=self.storage.db)
+        # "2x oldu" for sent alerts: token -> [alert price, last buy was at 2x], up to LIVE_2X_DAYS (PROJE.md §0 D4)
+        self.live_watch = {r["token"]: [r["p_alert"], False] for r in self.live_log.open(time.time()) if not r["sent_2x"]}
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
@@ -118,6 +120,7 @@ class ScannerApp:
             for t in sorted(trades, key=lambda x: x.block):
                 ts = t.timestamp - (top - t.block) / paper.BLOCKS_PER_S
                 trade = Trade(ts, t.block, int(t.side == "buy"), t.trader.lower(), t.usd or 0.0, t.amount or 0)
+                self.watch_2x(t.token.lower(), trade)
                 idx = self.follower.add(t.token, trade)
                 if idx is not None:
                     moments.append((t.token, idx))
@@ -128,7 +131,9 @@ class ScannerApp:
         for token in {t.token for t in trades if t.side == "buy"}:
             stats = self.tracker.stats(token, self.fomo_window)
             rising = stats["buyers"] >= self.min_buyers and stats["buy_usd"] >= self.min_buy_usd
-            if rising and self.storage.mark_alerted(token):
+            # the old trending alert (PROJE.md §0 D6): no analysis while its alerts are off (/durdur), it would only
+            # compete with the paper test for the RPC
+            if rising and self.alerts_on and self.storage.mark_alerted(token):
                 if warmup:
                     # Already trending when the bot started: visible in /trend, no alert flood.
                     log.info("%s was already trending at startup; not alerting", token)
@@ -171,12 +176,12 @@ class ScannerApp:
             size = paper.size_for(self.paper_log.percentile(score, now)) if alert else None
             self.paper_log.add(key, t, score, bar, alert, size, features, now, features.get("depth_usd"))
             if alert:
-                coin.keep_until = max(coin.keep_until, t + paper.MAX_HOLD + 3600)
+                self.follower.keep(key, t + paper.MAX_HOLD + 3600)
                 log.info("paper alert %s (score %.3f, bar %.3f, %.0f s after the 5th buyer)", token, score, bar, now - t)
                 if self.live_on:
                     await self.send_live(token, t, trades[idx].block, p_now, features, row is not None, coin.buyers)
                 elif self.paper_notify:
-                    await self.broadcast(format_paper_alert(await self.symbol(token), token, p_now, score, size,
+                    await self.broadcast(format_paper_alert(await self.symbol(token), token, features.get("fdv"), score, size,
                                                             now - t))
             if self.paper_model_h:
                 await self.score_holder(key, coin, idx, float(supply[0]) if supply else None, row, features)
@@ -206,7 +211,7 @@ class ScannerApp:
         size = paper.size_for(self.paper_log_h.percentile(score, now)) if alert else None
         self.paper_log_h.add(key, t, score, bar, alert, size, both, now, features.get("depth_usd"))
         if alert:
-            coin.keep_until = max(coin.keep_until, t + paper.MAX_HOLD + 3600)
+            self.follower.keep(key, t + paper.MAX_HOLD + 3600)
             log.info("paper (holder) alert %s (score %.3f, bar %.3f)", key, score, bar)
 
     async def send(self, text: str, reply_to: dict | None = None) -> dict:
@@ -234,10 +239,11 @@ class ScannerApp:
             log.info("live: %s dropped (%s)", token, detail)
             return
         symbol = await self.symbol(token)
-        msgs = await self.send(format_live_alert(symbol, token, price, self.paper_model.top_hit_rate,
+        msgs = await self.send(format_live_alert(symbol, token, features.get("fdv"), self.paper_model.top_hit_rate,
                                                  live.reasons(self.paper_model, features), (status, detail),
                                                  time.time() - t))
         self.live_log.add(token.lower(), t, price, block, pool, msgs, status)
+        self.live_watch[token.lower()] = [price, False]
         try:
             report = await self.analyzer.analyze(token, None, self.fomo_stats(token))
             sellers = self.tracker.stats(token, 3600)["sellers"]
@@ -246,6 +252,26 @@ class ScannerApp:
         except Exception:
             log.exception("live safety report failed for %s", token)
 
+    def watch_2x(self, token: str, trade: Trade):
+        """Two buys in a row at >= 2x a sent alert's price: "2x oldu" (no trade history needed, survives restarts)."""
+        w = self.live_watch.get(token)
+        if w is None or trade.side != 1 or not trade.price:
+            return
+        hit = trade.price >= 2 * w[0]
+        if hit and w[1]:
+            del self.live_watch[token]
+            self.live_log.mark(token, sent_2x=1)
+            task = asyncio.create_task(self.send_2x(token, trade.ts))
+            self.tasks.append(task)
+            task.add_done_callback(lambda done: self.tasks.remove(done) if done in self.tasks else None)
+        else:
+            w[1] = hit
+
+    async def send_2x(self, token: str, ts: float):
+        row = self.live_log.get(token)
+        if row:
+            await self.send(format_2x(await self.symbol(token), token, (ts - row["ts"]) / 60), json.loads(row["msg"] or "{}"))
+
     async def live_step(self, now: float):
         """Follow-ups of sent alerts: '2x oldu' once, and a warning when liquidity leaves the coin's V4 pool."""
         rows = self.live_log.open(now)
@@ -253,13 +279,6 @@ class ScannerApp:
         pm = self.settings.v4_pool_manager
         for r in rows:
             token, reply = r["token"], json.loads(r["msg"] or "{}")
-            coin = self.follower.coins.get(token)
-            if coin and not r["sent_2x"]:
-                buys = [(x.ts, x.price) for x in coin.trades if x.side == 1 and x.price and x.ts > r["ts"]]
-                j = paper._two_in_row([p for _, p in buys], lambda p: p >= 2 * r["p_alert"])
-                if j is not None:
-                    await self.send(format_2x(await self.symbol(token), token, (buys[j][0] - r["ts"]) / 60), reply)
-                    self.live_log.mark(token, sent_2x=1)
             if r["pool"] and not r["warned"] and head:
                 if now - r["ts"] > live.LIQ_WATCH:
                     self.live_log.mark(token, warned=1)  # watched long enough
@@ -510,6 +529,13 @@ class ScannerApp:
 
     # --- lifecycle ---
     async def _post_init(self, app: Application):
+        saved = self.storage.get_state("fomo_last_block")
+        if saved is not None:
+            try:
+                if await self.rpc.block_number() - int(saved) <= self.settings.fomo_lookback_blocks:
+                    self.follower.warmup_blocks = 0  # resumes right after its last block: no new coin was missed
+            except Exception as exc:
+                log.warning("head unknown at start (%s); new coins of the first minutes are skipped", exc)
         if self.settings.enable_fomo_watcher:
             watcher = FomoWatcher(self.rpc, self.settings, self.storage, self.tracker)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_fomo_trades)))

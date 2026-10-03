@@ -299,13 +299,57 @@ class Follower:
     restarts; a coin seen for the first time is followed only once `known` has been filling for a day and the
     warm-up replay is over."""
 
-    def __init__(self, known: set | None = None, known_since: float | None = None, on_new=None, learn: float = 86400):
+    def __init__(self, known: set | None = None, known_since: float | None = None, on_new=None, learn: float = 86400,
+                 db=None):
+        """db: followed coins and their trades are kept there too (tables follow_coins, follow_trades) and come back
+        after a restart (PROJE.md §0 D5)."""
         self.coins: dict[str, Coin] = {}
         self.known = known if known is not None else set()
         self.known_since = known_since
         self.on_new = on_new
         self.start_block: int | None = None
         self.learn = learn
+        self.warmup_blocks = WARMUP_BLOCKS  # 0 when the bot resumes right after its last block (nothing was missed)
+        self.db = db
+        if db is not None:
+            db.executescript("""CREATE TABLE IF NOT EXISTS follow_coins (token TEXT PRIMARY KEY, first_ts REAL,
+                                    moment REAL, keep_until REAL);
+                                CREATE TABLE IF NOT EXISTS follow_trades (token TEXT, ts REAL, block INTEGER, side INTEGER,
+                                    trader TEXT, usd REAL, amount TEXT,
+                                    PRIMARY KEY (token, block, trader, side, amount));""")
+            db.commit()
+            self._restore()
+
+    def _restore(self):
+        for token, first_ts, moment, keep_until in self.db.execute("SELECT * FROM follow_coins").fetchall():
+            coin = Coin(first_ts, True, moment=moment, keep_until=keep_until or 0.0)
+            rows = self.db.execute("SELECT ts, block, side, trader, usd, amount FROM follow_trades WHERE token = ? "
+                                   "ORDER BY block, ts", (token,)).fetchall()
+            coin.trades = [Trade(ts, b, sd, tr, u, int(a)) for ts, b, sd, tr, u, a in rows]
+            for x in coin.trades:
+                if x.side == 1 and x.trader not in coin.buyers and len(coin.buyers) < CHECKPOINT_BUYERS:
+                    coin.buyers.append(x.trader)
+            self.coins[token] = coin
+
+    def _save(self, key: str, coin: Coin, trade: Trade | None = None):
+        if self.db is None:
+            return
+        self.db.execute("INSERT OR REPLACE INTO follow_coins VALUES (?, ?, ?, ?)",
+                        (key, coin.first_ts, coin.moment, coin.keep_until))
+        if trade is not None:
+            self.db.execute("INSERT OR IGNORE INTO follow_trades VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (key, trade.ts, trade.block, trade.side, trade.trader, trade.usd, str(trade.amount)))
+
+    def keep(self, key: str, until: float):
+        """Keep a coin (and its trades) at least until `until` (an alert's virtual trade)."""
+        coin = self.coins.get(key)
+        if coin is not None:
+            coin.keep_until = max(coin.keep_until, until)
+            self._save(key, coin)
+
+    def commit(self):
+        if self.db is not None:
+            self.db.commit()
 
     def _eligible(self, key: str, trade: Trade) -> bool:
         if self.known_since is None:
@@ -315,7 +359,8 @@ class Follower:
             self.known.add(key)
             if self.on_new:
                 self.on_new(key, trade.ts)
-        return new and trade.block >= self.start_block + WARMUP_BLOCKS and trade.ts - self.known_since >= self.learn
+        return (new and trade.block >= self.start_block + self.warmup_blocks
+                and trade.ts - self.known_since >= self.learn)
 
     def add(self, token: str, trade: Trade) -> int | None:
         if self.start_block is None:
@@ -327,13 +372,21 @@ class Follower:
         if not coin.eligible:
             return None
         coin.trades.append(trade)
+        moment = None
         if trade.side == 1 and coin.moment is None and trade.trader not in coin.buyers:
             coin.buyers.append(trade.trader)
             if len(coin.buyers) == CHECKPOINT_BUYERS:
                 coin.moment = trade.ts
                 coin.keep_until = trade.ts + 3600 + 60  # at least until the book outcome is known
-                return len(coin.trades) - 1
-        return None
+                moment = len(coin.trades) - 1
+        self._save(key, coin, trade)
+        return moment
+
+    def _drop(self, key: str):
+        del self.coins[key]
+        if self.db is not None:
+            self.db.execute("DELETE FROM follow_coins WHERE token = ?", (key,))
+            self.db.execute("DELETE FROM follow_trades WHERE token = ?", (key,))
 
     def prune(self, now: float):
         for key, c in list(self.coins.items()):
@@ -341,9 +394,10 @@ class Follower:
                 if now - c.first_ts > 7 * 86400:
                     del self.coins[key]  # forget old coins' markers after a week (they stay in `known`)
             elif c.moment is None and now - c.first_ts > FOLLOW:
-                del self.coins[key]
+                self._drop(key)
             elif c.moment is not None and now > c.keep_until:
-                del self.coins[key]
+                self._drop(key)
+        self.commit()
 
 
 class Book:
