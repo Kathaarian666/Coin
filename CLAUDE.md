@@ -54,6 +54,8 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - İkinci servis `fomosol` = pump.fun/Solana veri toplayıcı (`rhscanner/solana.py` → `~/Coin/solana.db`); log:
   `journalctl -u fomosol -n 20 --no-pager`. Gece 00:20 UTC `fomosol-export.timer` biten günleri `veri` dalına
   `solana/<gün>/` olarak gönderir (`.env`: `VERI_GITHUB_TOKEN`); araştırmada `scripts/solana_import.py`.
+- Üçüncü servis `fombnb` = BNB Chain toplayıcı (`rhscanner/bnb.py` → `~/Coin/bnb.db`: Fomo ayakları + flap.sh
+  lansmanları); aynı gece gönderimi `bnb/<gün>/` (`solana_export --chain bnb`); okuma `solana_import.py --chain bnb`.
 - Log: `journalctl -u rhscanner -n 50 --no-pager`; hata arama:
   `journalctl -u rhscanner --since "90 min ago" --no-pager | grep -i -E "traceback|error" | tail -25`
 - Tek seferlik iş sunucuda: `cd ~/Coin && .venv/bin/python -m rhscanner <komut>` (bot da aynı RPC'yi kullanır;
@@ -89,7 +91,7 @@ hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches
 puan, en iyi %2'ye sanal işlem, `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
 `scripts/paper_export.py` ile; ikinci model + holder kriterleri `paper_model_h.json` / tablo `paper_log_h`,
 `paper_export.py --holder`) · `live.py` gerçek bildirim (`/canli`, kapalı; satılamama elemesi V4SellProbe ile,
-güven puanı `trust_model.json`, 2x ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `flow.py` akış özellikleri
+güven puanı `trust_model.json`, 2x ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 

@@ -1,8 +1,11 @@
-"""Nightly export of the pump.fun collector's data (rhscanner/solana.py) to the GitHub `veri` branch (PROJE.md §4.5).
+"""Nightly export of the collectors' data to the GitHub `veri` branch (PROJE.md §4.5, §4.5b): pump.fun
+(rhscanner/solana.py) and, with --chain bnb, BNB Chain (rhscanner/bnb.py).
 
-  python -m rhscanner.solana_export [<db>=solana.db]        every finished UTC day not exported yet
-  python -m rhscanner.solana_export <db> --check            only (re)writes solana/README.txt: tests the token
-  python -m rhscanner.solana_export <db> --out <dir>        writes the files to <dir>, no push
+  python -m rhscanner.solana_export [<db>=solana.db] [--chain bnb]   every finished UTC day not exported yet
+  python -m rhscanner.solana_export <db> --check                     only (re)writes solana/README.txt: tests the token
+  python -m rhscanner.solana_export <db> --out <dir>                 writes the files to <dir>, no push
+
+BNB per day: bnb/<day>/fomo_<hh>.csv.gz (6-hour parts), usdc_in.csv.gz, launches.csv.gz.
 
 Per day: solana/<day>/trades_<hh>.csv.gz (four 6-hour parts, ~15 MB each), stats.csv.gz, sol_price.csv.gz; and
 solana/pools.csv.gz, solana/mints.csv.gz (every pool / coin so far, with creators and creation times). The push uses VERI_GITHUB_TOKEN from .env (a fine-grained token with
@@ -27,7 +30,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from . import solana
+from . import bnb, solana
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +55,17 @@ mints.csv.gz              coinler: mint, creator (geliştirici), first_seen (Fom
 """
 
 
+README_BNB = """Fomo'nun BNB Chain işlemleri ve flap.sh lansmanları, sunucudaki rhscanner/bnb.py toplayıcısından.
+Her gece rhscanner/solana_export.py --chain bnb ile gönderilir. Okumak için: scripts/solana_import.py --chain bnb.
+
+<gün>/fomo_<ss>.csv.gz    UTC ss:00'dan 6 saatlik Fomo olay ayakları: block, ts, tx, li, emitter (entry / executor),
+                          src, dst, token, amount (ham birim); alım = executor -> kullanıcı, coin ayağı
+<gün>/usdc_in.csv.gz      executor'a giden USDC transferleri (satış tutarı; USDC 18 ondalık): block, ts, tx, li, src,
+                          amount
+<gün>/launches.csv.gz     flap.sh TokenCreated: token, block, ts, creator, name, symbol
+"""
+
+
 def _day_bounds(day: str) -> tuple[int, int]:
     start = int(datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
     return start, start + 86400
@@ -69,12 +83,17 @@ def _write(path: Path, header: list[str], rows) -> int:
     return n
 
 
-def pending_days(db: sqlite3.Connection, now: float) -> list[str]:
+def pending_days(db: sqlite3.Connection, now: float, chain: str = "solana") -> list[str]:
     """Finished UTC days with trades that were not exported yet."""
-    solana.migrate(db)
-    db.executescript(solana.SCHEMA)
+    if chain == "bnb":
+        db.executescript(bnb.SCHEMA)
+        table = "fomo"
+    else:
+        solana.migrate(db)
+        db.executescript(solana.SCHEMA)
+        table = "trades"
     db.execute("CREATE TABLE IF NOT EXISTS exports (day TEXT PRIMARY KEY, ts INTEGER, rows INTEGER)")
-    first = db.execute("SELECT MIN(ts) FROM trades WHERE ts > 1600000000").fetchone()[0]
+    first = db.execute(f"SELECT MIN(ts) FROM {table} WHERE ts > 1600000000").fetchone()[0]
     if first is None:
         return []
     done = {d for (d,) in db.execute("SELECT day FROM exports")}
@@ -87,7 +106,24 @@ def pending_days(db: sqlite3.Connection, now: float) -> list[str]:
     return out
 
 
-def write_day(db: sqlite3.Connection, day: str, root: Path) -> int:
+def write_bnb_day(db: sqlite3.Connection, day: str, root: Path) -> int:
+    start, end = _day_bounds(day)
+    folder = root / "bnb" / day
+    cols = "block, ts, tx, li, emitter, src, dst, token, amount"
+    rows = 0
+    for h in range(0, 24, PART_HOURS):
+        a, b = start + h * 3600, start + (h + PART_HOURS) * 3600
+        rows += _write(folder / f"fomo_{h:02d}.csv.gz", cols.split(", "),
+                       db.execute(f"SELECT {cols} FROM fomo WHERE ts >= ? AND ts < ? ORDER BY block, li", (a, b)))
+    for table, cols in (("usdc_in", "block, ts, tx, li, src, amount"), ("launches", "token, block, ts, creator, name, symbol")):
+        _write(folder / f"{table}.csv.gz", cols.split(", "),
+               db.execute(f"SELECT {cols} FROM {table} WHERE ts >= ? AND ts < ? ORDER BY block", (start, end)))
+    return rows
+
+
+def write_day(db: sqlite3.Connection, day: str, root: Path, chain: str = "solana") -> int:
+    if chain == "bnb":
+        return write_bnb_day(db, day, root)
     start, end = _day_bounds(day)
     folder = root / "solana" / day
     rows = 0
@@ -154,6 +190,8 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     out = Path(argv.pop(argv.index("--out") + 1)) if "--out" in argv else None
     check = "--check" in argv
+    chain = argv.pop(argv.index("--chain") + 1) if "--chain" in argv else "solana"
+    readme = README_BNB if chain == "bnb" else README
     args = [a for a in argv if not a.startswith("--")]
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     token = os.environ.get("VERI_GITHUB_TOKEN", "").strip()
@@ -168,14 +206,14 @@ def main(argv=None):
             push(Path(tmp), "solana: README", token)
         log.info("token çalışıyor: veri dalına yazılabildi")
         return 0
-    for day in pending_days(db, time.time()):
+    for day in pending_days(db, time.time(), chain):
         if out is not None:
-            log.info("%s: %d işlem -> %s", day, write_day(db, day, out), out)
+            log.info("%s: %d işlem -> %s", day, write_day(db, day, out, chain), out)
             continue
         with tempfile.TemporaryDirectory() as tmp:
-            rows = write_day(db, day, Path(tmp))
-            (Path(tmp) / "solana" / "README.txt").write_text(README)
-            push(Path(tmp), f"solana {day}: {rows} işlem", token)
+            rows = write_day(db, day, Path(tmp), chain)
+            (Path(tmp) / chain / "README.txt").write_text(readme)
+            push(Path(tmp), f"{chain} {day}: {rows} kayıt", token)
         db.execute("INSERT OR REPLACE INTO exports VALUES (?, ?, ?)", (day, int(time.time()), rows))
         db.commit()
         log.info("%s gönderildi: %d işlem", day, rows)

@@ -114,10 +114,31 @@ sudo systemctl daemon-reload
 sudo systemctl enable -q fomosol
 sudo systemctl restart fomosol
 
-# every night: the finished days of solana.db -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
+say "BNB veri toplayıcı kuruluyor (Fomo'nun BNB işlemleri + flap.sh lansmanları -> $APP_DIR/bnb.db)..."
+sudo tee /etc/systemd/system/fombnb.service >/dev/null <<EOF
+[Unit]
+Description=Fomo BNB Chain trade + flap.sh launch collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=$(id -un)
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.bnb $APP_DIR/bnb.db
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable -q fombnb
+sudo systemctl restart fombnb
+
+# every night: the finished days of solana.db and bnb.db -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
 sudo tee /etc/systemd/system/fomosol-export.service >/dev/null <<EOF
 [Unit]
-Description=Send the finished days of the pump.fun data to the GitHub veri branch
+Description=Send the finished days of the pump.fun and BNB data to the GitHub veri branch
 After=network-online.target
 Wants=network-online.target
 
@@ -125,7 +146,8 @@ Wants=network-online.target
 Type=oneshot
 User=$(id -un)
 WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/solana.db
+ExecStart=-$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/solana.db
+ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/bnb.db --chain bnb
 EOF
 sudo tee /etc/systemd/system/fomosol-export.timer >/dev/null <<EOF
 [Unit]

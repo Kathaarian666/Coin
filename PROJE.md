@@ -17,7 +17,8 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A5 | Pump.fun eksikleri: **toplama tamam** (3 Ekim, §4.5: geliştirici, oluşturulma anı, mezuniyet, curve/havuz rezervleri); sunucu güncellemesi kullanıcıda | sunucu güncellemesi |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test) — 5-7 gün veri birikince (~9-10 Ekim) | tarihi bekliyor |
 | A6 | Pump.fun gece gönderiminin ilk sonucu (4 Ekim) kontrol | 4 Ekim |
-| A7 | BNB ve Base: ön inceleme bitti (§4.5b). **Karar kullanıcıda:** BNB canlı toplama şimdi mi; Base geçmişi indirilsin mi, ne zaman | kullanıcıda |
+| A7 | BNB: toplayıcı hazır (3 Ekim, `fombnb`, §4.5b), sunucu güncellemesi kullanıcıda; Base: bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | sunucu güncellemesi |
+| A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
@@ -320,6 +321,13 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 - **Base:** ~16 Fomo işlemi/dk (1 saat örnek; Robinhood'un ~1/4'ü), saatte ~460 alıcı, ~90 coin; havuzlar
   Uniswap V4 ve Aerodrome. **Geçmiş veri ücretsiz** (`mainnet.base.org`, 30 gün önce dahil, 500 blokluk sorgu 0,5 sn)
   → Robinhood gibi hemen indirilip araştırılabilir; ama havuz küçük.
+- **BNB toplayıcı (3 Ekim, kullanıcı "evet"; `rhscanner/bnb.py`, sunucuda `fombnb`, DB `~/Coin/bnb.db`):** 4 sn'de bir
+  publicnode'dan son bloklar (adres filtreli getLogs, 400 blokluk parçalar): Fomo olay ayakları (`fomo`), executor'a
+  giden USDC (`usdc_in`, satış tutarı), **flap.sh lansmanları** (`launches`: portal `0xe2ce6ab8...` TokenCreated =
+  zaman, yaratıcı, sıra no, coin, ad, sembol; bir Fomo coininin mint işleminden bulundu; 10 dk'da ~300 lansman). Blok
+  zamanı iki head arasında doğrusal (BNB ~0,45 sn/blok). Ücretsiz düğüm ~1 saat log tuttuğu için toplayıcı 1 saatten
+  uzun durursa o boşluk kaybolur. Canlı denemede dakikada 144-252 Fomo işlemi, 24-45 flap.sh lansmanı; 403 yok.
+  Gece gönderimi `veri` dalına `bnb/<gün>/` (~61 MB/gün). Okuma: `scripts/solana_import.py /tmp/veri bnb.db --chain bnb`.
 - Güvenlik tarafı zincire göre değişir (flap.sh/four.meme şablonları, PancakeSwap/Aerodrome havuzları için satış
   simülasyonu yeniden yazılmalı).
 
