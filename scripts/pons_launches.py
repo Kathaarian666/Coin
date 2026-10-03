@@ -1,8 +1,9 @@
 """Download every Pons V2 launch (token, curve, launcher) over a trades DB's span (plus earlier days) into it.
 
-  python scripts/pons_launches.py <trades.db> [<days before the first trade>=14]
+  python scripts/pons_launches.py <trades.db> [<days before the first trade>=14] [--all]
 
 Table `launches(token, curve, launcher, block, ts)`; ts is interpolated from the trades' block times.
+Continues after the last launch already in the table (new days); --all downloads the whole span again.
 """
 
 import json
@@ -44,11 +45,15 @@ def get_logs(lo, hi):
 
 def main():
     db = sqlite3.connect(sys.argv[1])
-    before = float(sys.argv[2]) if len(sys.argv) > 2 else 14
+    args = [a for a in sys.argv[2:] if not a.startswith("--")]
+    before = float(args[0]) if args else 14
     db.execute("CREATE TABLE IF NOT EXISTS launches (token TEXT PRIMARY KEY, curve TEXT, launcher TEXT, block INTEGER, ts REAL)")
     sample = np.array(db.execute("SELECT block, ts FROM trades WHERE rowid % 500 = 0 ORDER BY block").fetchall(), float)
     lo, hi = int(sample[0, 0] - before * BLOCKS_PER_DAY), int(sample[-1, 0])
     rate = np.polyfit(sample[:, 0], sample[:, 1], 1)
+    last = db.execute("SELECT MAX(block) FROM launches").fetchone()[0]
+    if last and "--all" not in sys.argv:
+        lo = max(lo, last - 1000)
     t0 = time.time()
     for start in range(lo, hi + 1, STEP):
         rows = []

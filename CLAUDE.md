@@ -96,8 +96,8 @@ Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 `/check <adres>` `/trend` `/minskor` `/minalici` `/minhacim` `/durdur` `/devam` `/durum` `/karne [saat]` `/kagitbildirim ac|kapat` `/canli ac|kapat`
 
 ## Veri (araştırma)
-**Veri arşivi: GitHub `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; 1-3 Eylül + 17 Eylül'den bugüne; 3-17 Eylül
-eksik, indirilmeyecek — kullanıcı kararı). Yeni oturumda: `git fetch origin veri && git worktree add /tmp/veri
+**Veri arşivi: GitHub `veri` dalı** (gün başına parquet ~9 MB, `supply.parquet`; 1 Eylül'den bugüne aralıksız — 3-17 Eylül boşluğu 2 Ekim'de
+dolduruldu; pump.fun verisi `solana/` altında). Yeni oturumda: `git fetch origin veri && git worktree add /tmp/veri
 origin/veri` → `python scripts/data_import.py /tmp/veri fomo.db` (~1 dk) → `fomo_supply.py fomo.db` (eksik arzlar) → `pons_launches.py fomo.db`.
 Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.db` → `data_export.py fomo.db /tmp/veri` + commit/push (veri dalına). RPC'ye `user-agent`
 başlığı gerekir. Fomo olaylarında satış $'ı yok → USDG Transfer(to=executor) ile eşleniyor; Fomo toplu tx'lerinde

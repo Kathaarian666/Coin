@@ -11,8 +11,8 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 
 | # | İş | Durum |
 |---|---|---|
-| A1 | Model güçlendirme: holder özellikleri (transfer indirmesi 10.500/14.400'de kaldı) → walk-forward'da katkısı | **şimdi** |
-| A2 | Taze gün testi: yeni günleri indir, ana veriye ve `veri` arşivine ekle, model eğitilmediği günlerde nasıl | **şimdi** |
+| A1 | Holder kriterleri: ölçüldü (§4.6: 2x isabeti +11 puan, kasa artmıyor). **Karar bekliyor:** kâğıt teste ikinci model olarak eklensin mi | kullanıcıda |
+| A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A3 | Bot hatası: `checks/contract.py` 44 baytlık PUSH0 EIP-1167 kopyayı tanımıyor | sırada |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
 | A5 | Pump.fun eksikleri: coinin oluşturulma anı, geliştirici, mezuniyet anı; 5-7 gün veri sonra araştırma | sırada |
@@ -295,6 +295,34 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 - Eksikler (araştırmadan önce): coinin oluşturulma anı (pump.fun `CreateEvent` Fomo dışından geliyor; ilk Fomo
   işlemi ≠ lansman), geliştirici/holder bilgisi, mezuniyet anı. Araştırma kuralları (§6) aynen geçerli.
 
+### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
+**Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
+anlarla eğitildi) hiç görmediği 1 Ekim 11:31 – 3 Ekim 08:14 aralığında, botun yaptığı gibi (son 48 saatin en iyi
+%2'si): 537 coin 5. alıcıya ulaştı, **11 seçim; 2x %80 (8/10, 1'i henüz 24 saat izlenmedi), 1 saatte 2x %55**;
+hepsinin 2x oranı %41. Kasa $1000, 30 sn, iz: brüt 1,11x, masraflı 1,07x (~1,9 günde; haftalığa çevrilince ~1,3x).
+Araştırmanın walk-forward en iyi %2'si: 2x %64, son haftası %67. → Görülmemiş günlerde **2x oranı araştırmayla
+tutarlı**, kasa artışı hedefin (haftada 2x) altında; örnek çok küçük (11), kâğıt test sürdükçe büyüyecek.
+Arşiv: 2 Ekim'in kalanı + 3 Ekim 08:14'e kadar `veri` dalına eklendi.
+
+**Holder kriterleri** (`scripts/transfer_download.py` → `transfer_features.py <k=5>` → `scripts/holder_study.py`):
+27.112 coinin ilk Fomo işleminden sonraki 1 saatlik bütün Transfer'leri (69 milyon). 5. alıcı anında: holder sayısı,
+10 dk'daki artış, top10/top1 payı, geliştirici payı / dağıttığı, sniper payı, Fomo holder payı, 10 dk transfer.
+Anın bloğu 5. alıcının kendi işleminden (zamandan tahmin edilen blok anı biraz erken alıyordu: sızıntı değil, eksik
+bilgi). 1 saatten geç gelen anlarda bilgi boş (o anda bilinen bir koşul; anların %89'unda bilgi var).
+Aynı 22 walk-forward gün (10 Eyl – 1 Eki), botun 20 kriteri ↔ 20 + 9 holder kriteri:
+
+| Seçim | 2x (20 kriter) | 2x (+ holder) |
+|---|---|---|
+| en iyi %5 (günde ~25) | %54,6 | **%62,8** |
+| en iyi %2 (günde ~10) | %64,0 | **%75,3** (en kötü gün %0 → %40) |
+| en iyi %1 (günde ~5) | %67,7 | %78,5 |
+
+Kasa (en iyi %2, 30 sn, iz, her hafta $1000'dan): 20 kriter masraflı 2,58x / 4,96x / 1,66x; + holder 1,83x / 4,59x /
+1,69x (brüt 3,28/5,99/1,95 ↔ 3,40/5,59/1,96). → **Holder kriterleri 2x isabetini ~11 puan artırıyor ama haftalık kasa
+sonucunu artırmıyor** (ilk haftada masraflı daha kötü). Uyarı: aynı test günlerinde bir karşılaştırma daha (çoklu
+deneme). Canlıda her aday için lansmandan itibaren Transfer logları gerekir (RPC yükü, bildirimde birkaç sn gecikme).
+Karar kullanıcıda (§0 A1).
+
 ## 5. Denenip bırakılanlar (neden)
 
 | Deneme | Sonuç |
@@ -333,7 +361,7 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 
 ## 7. Veri ve araçlar
 
-**Arşiv:** GitHub `veri` dalı, günlük parquet (1-3 Eylül + 17 Eylül'den bugüne; 3-17 Eylül eksik, indirilmeyecek).
+**Arşiv:** GitHub `veri` dalı, günlük parquet (1 Eylül'den bugüne aralıksız; 3-17 Eylül boşluğu 2 Ekim'de dolduruldu). Pump.fun: `solana/`.
 Yeni oturumda araştırma veritabanını kurmak:
 ```
 git fetch origin veri && git worktree add /tmp/veri origin/veri
@@ -356,7 +384,9 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Veri (pump.fun) | `solana_import.py` | `veri` dalındaki `solana/` günlerini araştırma veritabanına yükler (toplayıcı: `rhscanner/solana.py`, gece gönderim: `rhscanner/solana_export.py`) |
 | Veri | `transfer_download.py` | Coinlerin ilk saat token transferleri (holder özellikleri) |
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
-| Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler |
+| Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler (`<k>` seçilebilir; anın kendi bloğu; 1 saatten geç anlar boş) |
+| Araştırma (§0 A1) | `holder_study.py` | Holder kriterleri modele katkı sağlıyor mu: aynı walk-forward, 2x oranı + kasa simülasyonu |
+| Test (§0 A2) | `fresh_test.py` | Kâğıt test modeli görmediği günlerde (bot gibi seçim, 2x oranı, kasa simülasyonu) |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 | Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |
 | Araştırma (3. adım) | `wave_study.py` | İkinci dalga anları (1 saatlik coin, 30 dk sessizlikten sonra 5 dk'da 5+ alıcı) |
