@@ -189,6 +189,7 @@ class Collector:
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     asyncio.run(Collector(sys.argv[1] if len(sys.argv) > 1 else "solana.db").run())
 
 
