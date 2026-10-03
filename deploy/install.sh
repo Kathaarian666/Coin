@@ -138,7 +138,7 @@ sudo systemctl restart fombnb
 # every night: the finished days of solana.db and bnb.db -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
 sudo tee /etc/systemd/system/fomosol-export.service >/dev/null <<EOF
 [Unit]
-Description=Send the finished days of the pump.fun and BNB data to the GitHub veri branch
+Description=Send the finished days of the pump.fun, BNB and Robinhood data to the GitHub veri branch
 After=network-online.target
 Wants=network-online.target
 
@@ -147,7 +147,8 @@ Type=oneshot
 User=$(id -un)
 WorkingDirectory=$APP_DIR
 ExecStart=-$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/solana.db
-ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/bnb.db --chain bnb
+ExecStart=-$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/bnb.db --chain bnb
+ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/rhscanner.db --chain robinhood
 EOF
 sudo tee /etc/systemd/system/fomosol-export.timer >/dev/null <<EOF
 [Unit]

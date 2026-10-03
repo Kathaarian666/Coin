@@ -19,7 +19,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
-| D8 | (kullanıcı "evet", yapılıyor) Denetim: bottaki model 1 Ekim'de dondu; simülasyon her gün yeniden eğitilen modelle yapıldı → yeniden eğitim planı yok; Robinhood yeni günleri arşive sadece oturumda elle ekleniyor (otomatik değil) | konuşulacak |
+| D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
 | D9 | Denetim: sunucu belleği (1 GB, 3 Python servisi + bot) hiç kontrol edilmedi → `free -m` | kullanıcıda |
 | D11 | Denetim: pump.fun'da PumpSwap havuzunun coini okunamazsa (429) işlem atlanıyor → A6'da `stats` sayımlarıyla kayıp ölçülecek | A6 ile |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
@@ -423,6 +423,15 @@ python scripts/pons_launches.py fomo.db
 Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.db` → `data_export.py fomo.db /tmp/veri`
 → veri dalına commit/push. Araştırma venv'i: `numpy pandas pyarrow scikit-learn`.
 
+**Robinhood yeni günler (3 Ekim'den, §0 D8):** bot gördüğü her Fomo işlemini `rhscanner.db` `fomo_log`'a yazar; gece
+gönderimi `robinhood/<gün>/trades.csv.gz` (3 günden eskisi botun DB'sinden silinir). Araştırmada:
+`python scripts/solana_import.py /tmp/veri fomo.db --chain robinhood` (sadece son bloktan sonrası; parquet arşivle bot
+günleri arasında boşluk varsa `retrain.py` zincirden indirir).
+**Haftalık yeniden eğitim:** `python scripts/retrain.py <çalışma klasörü>` → veri, 5. alıcı anları, holder özellikleri,
+iki model (`paper_model.json`, `paper_model_h.json`; JSON = sklearn ve canlı kriter = araştırma kontrolleriyle). Sonra
+testler, `fresh_test.py` ile son günler, commit/push, kullanıcıya sunucu güncellemesi. Kâğıt test yeniden başlatmada
+kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/karne <saat>`).
+
 **Betikler (`scripts/`):**
 
 | Tür | Betik | Ne yapar |
@@ -437,6 +446,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler (`<k>` seçilebilir; anın kendi bloğu; 1 saatten geç anlar boş) |
 | Araştırma (§0 A1) | `holder_study.py` | Holder kriterleri modele katkı sağlıyor mu: aynı walk-forward, 2x oranı + kasa simülasyonu |
+| Eğitim (§0 D8) | `retrain.py` | Haftalık: arşiv + bot günleri → anlar → holder özellikleri → iki modelin dışa aktarımı |
 | Test (§0 A2) | `fresh_test.py` | Kâğıt test modeli görmediği günlerde (bot gibi seçim, 2x oranı, kasa simülasyonu) |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 | Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |

@@ -6,6 +6,8 @@
   python -m rhscanner.solana_export <db> --out <dir>                 writes the files to <dir>, no push
 
 BNB per day: bnb/<day>/fomo_<hh>.csv.gz (6-hour parts), usdc_in.csv.gz, launches.csv.gz.
+Robinhood (--chain robinhood, the bot's rhscanner.db): robinhood/<day>/trades.csv.gz, every Fomo trade the bot saw
+(table fomo_log; rows older than 3 days are deleted once their day is sent).
 
 Per day: solana/<day>/trades_<hh>.csv.gz (four 6-hour parts, ~15 MB each), stats.csv.gz, sol_price.csv.gz; and
 solana/pools.csv.gz, solana/mints.csv.gz (every pool / coin so far, with creators and creation times). The push uses VERI_GITHUB_TOKEN from .env (a fine-grained token with
@@ -66,6 +68,15 @@ Her gece rhscanner/solana_export.py --chain bnb ile gönderilir. Okumak için: s
 """
 
 
+README_ROBINHOOD = """Robinhood Chain'deki bütün Fomo işlemleri, sunucudaki botun canlı gördüğü haliyle (rhscanner.db fomo_log).
+Her gece rhscanner/solana_export.py --chain robinhood ile gönderilir. Araştırma veritabanına eklemek için:
+scripts/solana_import.py /tmp/veri fomo.db --chain robinhood (fomo_download.py biçimi; sadece son bloktan sonrası).
+
+<gün>/trades.csv.gz       block, ts (blok zamanı, toplu sorgunun son bloğundan ~9,93 blok/sn ile geri), token, side
+                          (1 alım, 0 satış), trader, usd (satışlarda USDG transferinden; okunamazsa boş), amount (ham)
+"""
+
+
 def _day_bounds(day: str) -> tuple[int, int]:
     start = int(datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
     return start, start + 86400
@@ -88,6 +99,8 @@ def pending_days(db: sqlite3.Connection, now: float, chain: str = "solana") -> l
     if chain == "bnb":
         db.executescript(bnb.SCHEMA)
         table = "fomo"
+    elif chain == "robinhood":
+        table = "fomo_log"
     else:
         solana.migrate(db)
         db.executescript(solana.SCHEMA)
@@ -121,9 +134,18 @@ def write_bnb_day(db: sqlite3.Connection, day: str, root: Path) -> int:
     return rows
 
 
+def write_robinhood_day(db: sqlite3.Connection, day: str, root: Path) -> int:
+    start, end = _day_bounds(day)
+    cols = "block, ts, token, side, trader, usd, amount"
+    return _write(root / "robinhood" / day / "trades.csv.gz", cols.split(", "),
+                  db.execute(f"SELECT {cols} FROM fomo_log WHERE ts >= ? AND ts < ? ORDER BY block", (start, end)))
+
+
 def write_day(db: sqlite3.Connection, day: str, root: Path, chain: str = "solana") -> int:
     if chain == "bnb":
         return write_bnb_day(db, day, root)
+    if chain == "robinhood":
+        return write_robinhood_day(db, day, root)
     start, end = _day_bounds(day)
     folder = root / "solana" / day
     rows = 0
@@ -191,7 +213,7 @@ def main(argv=None):
     out = Path(argv.pop(argv.index("--out") + 1)) if "--out" in argv else None
     check = "--check" in argv
     chain = argv.pop(argv.index("--chain") + 1) if "--chain" in argv else "solana"
-    readme = README_BNB if chain == "bnb" else README
+    readme = {"bnb": README_BNB, "robinhood": README_ROBINHOOD}.get(chain, README)
     args = [a for a in argv if not a.startswith("--")]
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     token = os.environ.get("VERI_GITHUB_TOKEN", "").strip()
@@ -215,6 +237,8 @@ def main(argv=None):
             (Path(tmp) / chain / "README.txt").write_text(readme)
             push(Path(tmp), f"{chain} {day}: {rows} kayıt", token)
         db.execute("INSERT OR REPLACE INTO exports VALUES (?, ?, ?)", (day, int(time.time()), rows))
+        if chain == "robinhood":  # the bot's own database: keep only the last days
+            db.execute("DELETE FROM fomo_log WHERE ts < ?", (_day_bounds(day)[1] - 3 * 86400,))
         db.commit()
         log.info("%s gönderildi: %d işlem", day, rows)
     return 0

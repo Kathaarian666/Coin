@@ -82,6 +82,11 @@ class ScannerApp:
         self.follower = Follower(known, since, on_new=self.paper_log.remember, db=self.storage.db)
         # "2x oldu" for sent alerts: token -> [alert price, last buy was at 2x], up to LIVE_2X_DAYS (PROJE.md §0 D4)
         self.live_watch = {r["token"]: [r["p_alert"], False] for r in self.live_log.open(time.time()) if not r["sent_2x"]}
+        # every Fomo trade the bot sees, for the research archive (nightly export, PROJE.md §0 D8)
+        self.storage.db.executescript("""CREATE TABLE IF NOT EXISTS fomo_log (block INTEGER, ts REAL, token TEXT,
+                                         side INTEGER, trader TEXT, usd REAL, amount TEXT);
+                                         CREATE UNIQUE INDEX IF NOT EXISTS fomo_log_key
+                                         ON fomo_log (block, token, trader, side, amount);""")
         self.symbols: dict[str, str] = {}
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
@@ -114,6 +119,12 @@ class ScannerApp:
 
     # --- sources ---
     async def on_fomo_trades(self, trades: list[FomoTrade], warmup: bool = False):
+        top_block = max(t.block for t in trades)
+        self.storage.db.executemany(
+            "INSERT OR IGNORE INTO fomo_log VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [(t.block, t.timestamp - (top_block - t.block) / paper.BLOCKS_PER_S, t.token.lower(), int(t.side == "buy"),
+              t.trader.lower(), t.usd, str(t.amount or 0)) for t in trades])
+        self.storage.db.commit()
         if self.paper_model:
             # one block timestamp per poll: spread the batch back over its blocks (~10 a second)
             top = max(t.block for t in trades)

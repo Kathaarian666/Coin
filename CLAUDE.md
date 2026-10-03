@@ -57,6 +57,8 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
   `solana/<gün>/` olarak gönderir (`.env`: `VERI_GITHUB_TOKEN`); araştırmada `scripts/solana_import.py`.
 - Üçüncü servis `fombnb` = BNB Chain toplayıcı (`rhscanner/bnb.py` → `~/Coin/bnb.db`: Fomo ayakları + flap.sh
   lansmanları); aynı gece gönderimi `bnb/<gün>/` (`solana_export --chain bnb`); okuma `solana_import.py --chain bnb`.
+- Bot gördüğü her Robinhood Fomo işlemini `fomo_log`'a yazar; gece gönderimi `robinhood/<gün>/` (araştırmada
+  `solana_import.py --chain robinhood`). Modeller haftada bir oturumda `scripts/retrain.py` ile yeniden eğitilir.
 - Log: `journalctl -u rhscanner -n 50 --no-pager`; hata arama:
   `journalctl -u rhscanner --since "90 min ago" --no-pager | grep -i -E "traceback|error" | tail -25`
 - Tek seferlik iş sunucuda: `cd ~/Coin && .venv/bin/python -m rhscanner <komut>` (bot da aynı RPC'yi kullanır;
@@ -80,7 +82,7 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~83 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). ~91 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 

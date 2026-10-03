@@ -77,3 +77,47 @@ def test_import_reads_the_export_back(tmp_path):
         db.execute("SELECT * FROM trades WHERE slot < 3 ORDER BY slot").fetchall()
     assert r.execute("SELECT * FROM pools").fetchall() == [("P", "M", "W", 123, None)]
     assert r.execute("SELECT * FROM mints").fetchall() == [("M", "C", 5, 4, None, 99, 1)]
+
+
+def test_robinhood_days_from_the_bot_reach_the_research_db(tmp_path):
+    import asyncio
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    from rhscanner.bot import ScannerApp
+    from rhscanner.config import Settings
+    from rhscanner.fomo import FomoTrade
+
+    app = ScannerApp(Settings(db_path=str(tmp_path / "r.db")))
+    app.paper_model = None  # only the logging matters here
+    day = 1_759_449_600
+    tok = "0x" + "AB" * 20
+    trades = [FomoTrade("0x1", 100, tok, "buy", "0x" + "a" * 40, 50.0, day + 10, 10**21),
+              FomoTrade("0x2", 101, tok, "sell", "0x" + "b" * 40, 20.0, day + 10, 5 * 10**20)]
+    asyncio.run(app.on_fomo_trades(trades))
+    asyncio.run(app.on_fomo_trades(trades))  # replayed after a restart: no twins
+    db = app.storage.db
+    assert db.execute("SELECT COUNT(*) FROM fomo_log").fetchone()[0] == 2
+    assert solana_export.pending_days(db, day + 86400 + 5, "robinhood") == ["2025-10-03"]
+    assert solana_export.write_day(db, "2025-10-03", tmp_path / "veri", "robinhood") == 2
+
+    research = sqlite3.connect(tmp_path / "fomo.db")
+    research.executescript("""CREATE TABLE trades (block INTEGER, ts REAL, token INTEGER, side INTEGER, trader INTEGER,
+                              usd REAL, amount REAL);
+                              CREATE TABLE names (id INTEGER PRIMARY KEY, kind TEXT, addr TEXT, UNIQUE (kind, addr));""")
+    research.execute("INSERT INTO names VALUES (1, 'token', ?)", ("0x" + "Ab" * 20,))  # known coin, other case
+    research.execute("INSERT INTO trades VALUES (100, 1.0, 1, 1, 1, 9.0, 1.0)")  # block 100 already there
+    research.commit()
+    spec = importlib.util.spec_from_file_location("solana_import", Path(__file__).parents[1] / "scripts" / "solana_import.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    old, sys.argv = sys.argv, [None, str(tmp_path / "veri"), str(tmp_path / "fomo.db"), "--chain", "robinhood"]
+    try:
+        mod.main()
+    finally:
+        sys.argv = old
+    r = sqlite3.connect(tmp_path / "fomo.db")
+    assert r.execute("SELECT block, token, side, usd, amount FROM trades ORDER BY block").fetchall() == \
+        [(100, 1, 1, 9.0, 1.0), (101, 1, 0, 20.0, 5e20)]
+    asyncio.run(app.rpc.close())
