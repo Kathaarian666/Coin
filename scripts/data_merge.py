@@ -12,7 +12,7 @@ import sys
 
 
 def main():
-    src, dst = sqlite3.connect(sys.argv[1]), sqlite3.connect(sys.argv[2])
+    src, dst = sqlite3.connect(sys.argv[1]), sqlite3.connect(sys.argv[2], timeout=300)  # other scripts may use it
     last = dst.execute("SELECT COALESCE(MAX(block), 0) FROM trades").fetchone()[0]
     upto = None
     if "--fill" in sys.argv:
