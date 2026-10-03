@@ -49,3 +49,17 @@ def test_report_has_one_trust_score():
     text = format_safety("TST", "0x" + "1" * 40, 91, safety.checklist({"contract": None}, 0, False, None, None, None),
                          [("zincir", True)])
     assert text.count("Güven puanı") == 1 and "91/100" in text and text.count("❔") == 14
+
+
+def test_shared_launchpad_owner_is_not_a_warning():
+    from rhscanner import live
+
+    owner = next(iter(live.LAUNCHPAD_OWNERS))
+    report = {"contract": {"owner": owner.upper().replace("0X", "0x"), "owner_is_contract": True, "renounced": False},
+              "findings": [{"code": "owned_by_contract", "message": ""}]}
+    got = {n: st for n, st, _ in safety.checklist(report, 0, False, None, None, None)}
+    assert got["Sahiplik"] == "ok"
+    assert live.trust_flags(report, 0, False, None)["sahip"] == 0
+    other = {**report, "contract": {**report["contract"], "owner": "0x" + "5" * 40}}
+    assert live.trust_flags(other, 0, False, None)["sahip"] == 1
+    assert {n: st for n, st, _ in safety.checklist(other, 0, False, None, None, None)}["Sahiplik"] == "warn"

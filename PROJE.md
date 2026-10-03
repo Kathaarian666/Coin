@@ -180,6 +180,11 @@ satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı)
 
   En çok etki edenler: Pons hook'u ve Fomo'da 2+ satıcı (güven artırır); kontratın sahibi olması, trading aç/kapa,
   başka hook ya da hook yok, nadir kontrat (güven düşürür).
+- **Sahiplik düzeltmesi (3 Ekim, kullanıcının `/check` denemesinden):** "sahibi var" iki ayrı grubu karıştırıyordu.
+  `0xeb7c0347...` ~1.500 Fomo coininin ortak sahibi (Pons/Doppler hook'lu launchpad coinleri): 572 ölçülen coinde
+  tuzak **%0**; başka bir sahibi olan 179 coinde tuzak **%46**; sahipsiz %2,8. Güven modeli ortak sahip hariç tutularak
+  yeniden eğitildi (`scripts/trust_export.py`, eski işaretlerle 0,838 = eski model; yeni test AUC 0,845; "sahip"
+  katsayısı 1,26 → 2,58). Puan 0-50: tuzak %50 · 70-85: %8,9 · 85-100: %1,9. Raporda ortak sahip ✅.
 - **V4 satış simülasyonu (`contracts/V4SellProbe.sol`, `scripts/sell_probe_study.py`, 2 Ekim):** gerçek bir holder'ın
   adresine eth_call state override ile konan program coini V4 havuzuna satıyor (para harcanmaz). Çalışıyor; geçmiş
   blokta sadece dRPC'de (ana RPC eski durumu tutmuyor), canlıda `latest` ile. Bulgu: "satılamayan" etiketli 13 Pons
@@ -454,6 +459,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Simülasyon (3. adım) | `trade_sim.py` | Kullanıcının kurallarıyla işlem simülasyonu: gecikme, masraf, şans kontrolü, hafta hafta |
 | Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
 | Kontrat | `compile_contracts.mjs` | `contracts/` derlemesi (solc 0.8.26, viaIR) |
+| Araştırma (1. adım) | `trust_export.py` | Güven puanı modelini eğitir → `rhscanner/trust_model.json` |
 | Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
 
 **Git dalları:**

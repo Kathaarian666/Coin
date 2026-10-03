@@ -13,6 +13,7 @@ import logging
 import httpx
 
 from .hooks import NAMED_HOOKS
+from .live import LAUNCHPAD_OWNERS
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ def checklist(report: dict, sellers: int, pons: bool, depth_usd: float | None, g
     elif sellers == 1:
         out.append((WARN, "sadece 1 Fomo kullanıcısı sattı"))
     else:
-        out.append((UNKNOWN, "henüz Fomo'da satan yok"))
+        out.append((UNKNOWN, "son 1 saatte Fomo'da satış görülmedi"))
 
     # 2. risky contract functions (+ GoPlus)
     gp_bad = [n for k, n in (("is_mintable", "mint"), ("is_blacklisted", "kara liste"), ("transfer_pausable", "durdurma"),
@@ -109,6 +110,8 @@ def checklist(report: dict, sellers: int, pons: bool, depth_usd: float | None, g
         out.append((UNKNOWN, "sahip okunamadı"))
     elif contract.get("renounced"):
         out.append((OK, "sahibi yok (devredilmiş)"))
+    elif (contract.get("owner") or "").lower() in LAUNCHPAD_OWNERS:
+        out.append((OK, "sahibi ortak launchpad kontratı (~1.500 Fomo coininin sahibi; geçmişte bu grupta tuzak yok)"))
     elif contract.get("owner_is_contract"):
         out.append((WARN, "sahibi bir kontrat (launchpad ya da multisig olabilir)"))
     else:

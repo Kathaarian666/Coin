@@ -25,6 +25,9 @@ PROBE_CALLER = "0x00000000000000000000000000000000c0ffee02"
 SELL_SIG = "sell(address,(address,address,uint24,int24,address),address,uint256)"
 TOPIC_MODIFY_LIQUIDITY = "0x" + keccak(text="ModifyLiquidity(bytes32,address,int24,int24,int256,bytes32)").hex()
 ZERO = "0x" + "0" * 40
+# owner() of ~1.5k Fomo coins (Pons/Doppler-hooked launchpad coins): a launchpad contract, not a developer; none of
+# its 572 measured coins was a trap, while coins with any other owner were 46 % traps (PROJE.md §4.1, 3 Oct)
+LAUNCHPAD_OWNERS = {"0xeb7c034704ef8dcd2d32324c1545f62fb4ad0862"}
 POOL_LOOKBACK = 2 * 864_000  # blocks (~2 days) searched for the coin's V4 pool
 MAX_TAX = 0.10
 LIQ_WATCH = 6 * 3600  # s after the alert the pool is watched for liquidity removal
@@ -73,12 +76,13 @@ def reasons(model, features: dict, n: int = 3) -> list[tuple[str, str]]:
 # --- trust score (PROJE.md §4.1) ---
 def trust_flags(report: dict, fomo_sellers: int, pons: bool, depth: float | None) -> dict:
     codes = {f["code"] for f in report.get("findings", [])}
-    hooks = (report.get("liquidity") or {}).get("hooks")
+    hooks = ((report.get("liquidity") or {}).get("hooks") or "").lower() or None
+    owner = ((report.get("contract") or {}).get("owner") or "").lower()
     named = {h.lower() for h in NAMED_HOOKS}
     return {
         "satici2": int(fomo_sellers >= 2),
         "proxy": int(bool((report.get("contract") or {}).get("proxy_implementation"))),
-        "sahip": int(bool(codes & {"owned", "owned_by_contract"})),
+        "sahip": int(bool(codes & {"owned", "owned_by_contract"}) and owner not in LAUNCHPAD_OWNERS),
         "mint": int("fn_mint" in codes),
         "pause": int("fn_pause" in codes),
         "trading": int("fn_trading" in codes),
