@@ -38,6 +38,10 @@ if [ -d "$APP_DIR/.git" ]; then
 else
     git clone -q --single-branch -b "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
+# bash is still running the copy it read before the update: start the freshly downloaded one instead
+if [ -z "${RHS_UPDATED:-}" ]; then
+    RHS_UPDATED=1 exec bash "$APP_DIR/deploy/install.sh" "$@"
+fi
 
 say "Python ortamı hazırlanıyor (1-3 dakika sürebilir)..."
 python3 -m venv "$APP_DIR/.venv"
