@@ -25,8 +25,10 @@ import fresh_test  # noqa: E402
 import rise_study  # noqa: E402
 import trade_sim  # noqa: E402
 
+# fomo_holder_share is left out: it counted wallets whose first Fomo trade came later (future knowledge), and the
+# bot cannot know every Fomo wallet's history
 HOLDER = ["holders", "holder_growth_10m", "top10_pct", "top1_pct", "dev_pct", "dev_sent_pct", "sniper_pct",
-          "fomo_holder_share", "transfers_10m"]
+          "transfers_10m"]
 TOPS = (0.05, 0.02, 0.01)
 
 

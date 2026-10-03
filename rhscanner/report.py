@@ -111,8 +111,10 @@ def _pct(x: float | None) -> str:
     return "-" if x is None else f"{x * 100:+.0f}%"
 
 
-def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], trained_until: float | None) -> str:
-    """/karne: the paper test (nothing is bought). `recent`: (symbol, alert row)."""
+def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], trained_until: float | None,
+                 other: dict | None = None) -> str:
+    """/karne: the paper test (nothing is bought). `recent`: (symbol, alert row); `other`: the summary of the second
+    model (+ holder criteria, PROJE.md §4.6) run beside it."""
     span = f"son {hours:g} saat" if hours else "başından beri"
     lines = [f"🧪 <b>Kâğıt test</b> — {span} (para harcanmaz)",
              "Fomo'da 5. alıcıya ulaşan her yeni coin puanlanır; en iyi %2 seçilir. Her seçim için sanal işlem: "
@@ -134,6 +136,13 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
             res = f" · net {_pct(r['ret'])}{'' if r['closed'] else ' (açık)'}" if r["ret"] is not None else ""
             when = time.strftime("%d.%m %H:%M", time.gmtime(r["ts"]))
             lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {state}{res}")
+    if other is not None:
+        lines += ["", "🧪 <b>İkinci model (+ holder kriterleri)</b>, aynı coinler, kendi en iyi %2'si:",
+                  f"Puanlanan: {other['scored']} · seçilen: <b>{other['alerts']}</b> · 2x yapan: {other['x2']} · "
+                  f"zarar-kese takılan: {other['stop']}"]
+        if other["mean"] is not None:
+            lines.append(f"İşlem başına net: ort <b>{_pct(other['mean'])}</b> · kârlı %{100 * other['win']:.0f}")
+        lines.append(f"Sanal kasa: <b>${other['bank']:,.0f}</b> ({other['bank'] / 1000:.2f}x)")
     if trained_until:
         lines.append(f"\n<i>Model {time.strftime('%d.%m', time.gmtime(trained_until))} tarihine kadarki veriyle eğitildi.</i>")
     return "\n".join(lines)

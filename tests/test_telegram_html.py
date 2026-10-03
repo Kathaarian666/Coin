@@ -32,6 +32,7 @@ def test_paper_reports_are_valid_telegram_html():
             ("C&D", {"ts": 1.79e9, "kind": None, "ret": None, "closed": 0}),
             ("E", {"ts": 1.79e9, "kind": "stop", "ret": -0.55, "closed": 1})]
     assert_valid([format_paper(24, s, rows, 1.79e9), format_paper(None, empty, [], None),
+                  format_paper(24, s, rows, 1.79e9, s), format_paper(None, empty, [], None, empty),
                   format_paper_alert("<X>", "0x" + "1" * 40, 1.2e-9, 0.61, 0.04, 7.0)])
 
 

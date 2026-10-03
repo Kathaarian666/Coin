@@ -71,3 +71,35 @@ def test_book_rate_and_settle():
     assert db.execute("SELECT n, hits FROM paper_book WHERE wallet = 'x'").fetchone() == (3, 1)
     assert abs(book.rate(["x", "y"]) - 2 / 6) < 1e-9
     assert db.execute("SELECT COUNT(*) FROM paper_pending").fetchone()[0] == 0
+
+
+def test_holder_features_match_the_research_rules():
+    from rhscanner import paper
+
+    tok, curve, dev = "0x" + "c" * 40, "0x" + "d" * 40, "0x" + "e" * 40
+    z = paper.ZERO
+    tr = [(100, 0, z, curve, 1000.0),          # launch: the curve gets the supply (system address)
+          (101, 0, curve, "0x" + "1" * 40, 50.0),  # a sniper (within 5 blocks of the launch)
+          (102, 0, curve, dev, 30.0),
+          (9000, 0, dev, "0x" + "2" * 40, 10.0),  # the launcher hands coins out
+          (9100, 0, curve, "0x" + "3" * 40, 20.0),
+          (20000, 0, curve, "0x" + "4" * 40, 99.0)]  # after the moment: ignored
+    f = paper.holder_features(tr, tok, 9500, 5000.0, 9400, 4950.0, (100, curve, dev), 1000.0)
+    assert f["holders"] == 4 and f["holder_growth_10m"] == 2  # 10 minutes (5958 blocks) earlier: sniper and dev
+    assert f["top1_pct"] == 5.0 and f["top10_pct"] == 10.0
+    assert f["dev_pct"] == 2.0 and f["dev_sent_pct"] == 1.0 and f["sniper_pct"] == 7.0 and f["transfers_10m"] == 2  # dev got coins in block 102: a sniper too
+    assert paper.holder_window(9400, 100) == 100 and paper.holder_window(99_000, 100) == 99_000 - 36_000
+    late = paper.holder_features(tr, tok, 9500, 4950.0 + 3601, 9400, 4950.0, None, None)
+    assert all(v != v for v in late.values())  # more than an hour after the first Fomo trade: none
+
+
+def test_parse_transfers_sorts_and_skips_non_erc20():
+    from rhscanner import paper
+
+    logs = [{"blockNumber": "0x2", "logIndex": "0x1", "topics": [paper.TRANSFER_TOPIC, "0x" + "0" * 24 + "a" * 40,
+                                                                   "0x" + "0" * 24 + "B" * 40], "data": "0x10"},
+            {"blockNumber": "0x1", "logIndex": "0x0", "topics": [paper.TRANSFER_TOPIC, "0x1", "0x2", "0x3"], "data": "0x"},
+            {"blockNumber": "0x1", "logIndex": "0x5", "topics": [paper.TRANSFER_TOPIC, "0x" + "0" * 64,
+                                                                   "0x" + "0" * 24 + "c" * 40], "data": "0x5"}]
+    assert paper.parse_transfers(logs) == [(1, 5, paper.ZERO, "0x" + "c" * 40, 5.0),
+                                           (2, 1, "0x" + "a" * 40, "0x" + "b" * 40, 16.0)]

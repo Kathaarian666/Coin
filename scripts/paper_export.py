@@ -1,6 +1,11 @@
 """Train the paper-test model and export it, with the first buyers' record, for the bot (rhscanner/paper.py).
 
   python scripts/paper_export.py <trades.db> <winners.parquet>
+  python scripts/paper_export.py <trades.db> <winners_h5.parquet> --holder
+
+--holder (PROJE.md §4.6): the same model with the 8 holder criteria added (winners_h5 = transfer_features.py at
+the 5th buyer), written to rhscanner/paper_model_h.json; the bot runs it beside the main one. Its live holder code
+(paper.holder_features) is checked against the research table too; the first buyers' book is not rewritten.
 
 Model: the 2x classifier at the 5th distinct Fomo buyer with the 20 chosen criteria (PROJE.md §4.4: C + D),
 trained on every moment with at least 24 h of data; the starting top-2 % bar = 98th percentile of its scores over
@@ -63,13 +68,39 @@ def parity(db, df, launches, supply, n=300):
     return worst
 
 
+def holder_parity(db, df, n=300):
+    """paper.holder_features on the downloaded Transfer logs must give the research table's holder values."""
+    token_id = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names WHERE kind = 'token'")}
+    launch = {t: (b, c, l) for t, b, c, l in db.execute("SELECT lower(token), block, curve, launcher FROM launches")}
+    supply = {a.lower(): r for a, r in db.execute("SELECT addr, raw FROM supply") if r}
+    worst = {}
+    rows = df[df.holders.notna()]
+    for r in rows.sample(min(n, len(rows)), random_state=2).itertuples():
+        own = db.execute("SELECT ts, block FROM trades WHERE token = ? ORDER BY ts", (token_id[r.coin],)).fetchall()
+        first_ts, first_block = own[0]
+        moment_block = [b for t, b in own if t <= r.ts][-1]
+        tr = db.execute("SELECT block, li, src, dst, value FROM transfers WHERE token = ? AND block >= ? ORDER BY block, li",
+                        (r.coin, paper.holder_window(first_block, (launch.get(r.coin) or (None,))[0]))).fetchall()
+        f = paper.holder_features(tr, r.coin, moment_block, r.ts, first_block, first_ts, launch.get(r.coin),
+                                  supply.get(r.coin))
+        for c, v in f.items():
+            want = getattr(r, c)
+            if (v is None or (isinstance(v, float) and math.isnan(v))) and pd.isna(want):
+                continue
+            worst[c] = max(worst.get(c, 0.0), abs(v - want) / max(1e-9, abs(want)))
+    return worst
+
+
 def main():
     db = sqlite3.connect(sys.argv[1], timeout=300)
+    holder = "--holder" in sys.argv
     w = pd.read_parquet(sys.argv[2])
     df = rise_study.load(sys.argv[2], None, K).sort_values("ts").reset_index(drop=True)
-    cols = [c for c in rise_study.CHOSEN if c in df]
+    cols = [c for c in rise_study.CHOSEN if c in df and c not in paper.HOLDER_FEATURES]
+    if holder:
+        cols = cols + paper.HOLDER_FEATURES
     live = set(paper.alert_features([paper.Trade(0, 0, 1, "a", 1, 1), paper.Trade(1, 1, 1, "b", 1, 1)], 1, K,
-                                    None, None, math.nan))
+                                    None, None, math.nan)) | set(paper.HOLDER_FEATURES)
     missing = [c for c in cols if c not in live]
     if missing:
         raise SystemExit(f"bot bu kriterleri hesaplamıyor: {missing}")
@@ -85,7 +116,7 @@ def main():
                  # typical values: an alert's reasons = the criteria whose typical value would lower its score most
                  "medians": {c: float(df[c].median()) for c in cols},
                  # what the top 2 % did in the walk-forward test (PROJE.md §4.4 C): shown as the 2x chance
-                 "top_hit_rate": 0.61})
+                 "top_hit_rate": 0.745 if holder else 0.61})
     model = paper.Model(data)
     sample = df.sample(min(2000, len(df)), random_state=0)
     ours = np.array([model.score({c: row[c] for c in cols}) for _, row in sample.iterrows()])
@@ -104,6 +135,16 @@ def main():
           ", ".join(f"{c} {v:.1e}" for c, v in sorted(worst.items(), key=lambda x: -x[1])[:6]))
     if bad:
         raise SystemExit(f"canlı kriter hesabı araştırmadan farklı: {bad}")
+    if holder:
+        hw = holder_parity(db, df)
+        print("canlı holder hesabı ↔ araştırma (en büyük göreli fark):",
+              ", ".join(f"{c} {v:.1e}" for c, v in sorted(hw.items(), key=lambda x: -x[1])))
+        bad = {c: v for c, v in hw.items() if v > 1e-6}
+        if bad:
+            raise SystemExit(f"canlı holder hesabı araştırmadan farklı: {bad}")
+        (ROOT / "rhscanner" / "paper_model_h.json").write_text(json.dumps(data, separators=(",", ":")))
+        print("yazıldı: paper_model_h.json")
+        return
 
     # the first buyers' record as of the data's end (outcome: 2x within 1 h of the 5th-buyer moment)
     traders = dict(db.execute("SELECT id, addr FROM names WHERE kind = 'trader'"))

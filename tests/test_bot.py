@@ -1,3 +1,4 @@
+import json
 import asyncio
 import time
 
@@ -56,6 +57,16 @@ async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_v
         return [10**27]
     app.rpc.try_call_fn = supply
     token = "0x" + "2" * 40
+    assert app.paper_model_h is not None  # the second model (+ holder criteria) runs beside it
+    app.paper_model_h.bar = 0.0
+    asked = []
+
+    async def get_logs(lo, hi, topics, address=None, **k):  # the coin's Transfer logs: 3 holders got coins
+        asked.append((lo, hi, address))
+        return [{"blockNumber": hex(paper.WARMUP_BLOCKS + 10 + i), "logIndex": "0x0",
+                 "topics": [paper.TRANSFER_TOPIC, "0x" + "0" * 64, "0x" + "0" * 24 + w * 40], "data": hex(10**24)}
+                for i, w in enumerate("abc")]
+    app.rpc.get_logs = get_logs
     t0 = time.time() - 7200
 
     def trade(who, ts, block, usd=50.0, amount=None, side="buy"):
@@ -69,6 +80,10 @@ async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_v
     await asyncio.gather(*list(app.tasks))
     rows = app.paper_log.alerts(0)
     assert len(rows) == 1 and rows[0]["token"] == token and 0 < rows[0]["score"] < 1
+    assert asked and asked[0][2] == token and asked[0][1] == paper.WARMUP_BLOCKS + 410  # up to the 5th buyer's block
+    h = app.paper_log_h.alerts(0)
+    feats = json.loads(app.storage.db.execute("SELECT features FROM paper_log_h").fetchone()[0])
+    assert len(h) == 1 and feats["holders"] == 3 and feats["top10_pct"] == 0.3 and "usd_all" in feats
     # price doubles (two buys in a row at 2x the alert price), then the trade runs on
     later = [trade(w, t0 + 600 + i, paper.WARMUP_BLOCKS + 9000 + i, 100.0, amount=int(50e12)) for i, w in enumerate("fg")]
     await app.on_fomo_trades(later)
@@ -76,4 +91,5 @@ async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_v
     row = app.paper_log.alerts(0)[0]
     # half sold at 2x; the open half is valued at the median of the last 5 prices (1x here): net about +35 %
     assert row["kind"] == "2x" and not row["closed"] and 0.2 < row["ret"] < 0.5
+    assert app.paper_log_h.alerts(0)[0]["kind"] == "2x"  # its virtual trade moves on too
     await app.rpc.close()

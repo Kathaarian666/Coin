@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass
 from html import escape
@@ -71,6 +72,9 @@ class ScannerApp:
         # paper test (PROJE.md §2 step 4/5): new coins scored at the 5th Fomo buyer, top 2 % get a virtual trade
         self.paper_model = Model.load()
         self.paper_log = PaperLog(self.storage.db)
+        # the same with the holder criteria (PROJE.md §4.6), side by side: own scores, bar and virtual trades
+        self.paper_model_h = Model.load(paper.MODEL_H_PATH)
+        self.paper_log_h = PaperLog(self.storage.db, "paper_log_h")
         self.book = Book(self.storage.db)
         self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
@@ -150,7 +154,8 @@ class ScannerApp:
             t = trades[idx].ts
             supply = await self.rpc.try_call_fn(token, "totalSupply()", ["uint256"])
             index = self.analyzer.launches
-            row = index.db.execute("SELECT block FROM pons_launches WHERE token = ?", (key,)).fetchone() if index else None
+            row = index.db.execute("SELECT block, curve, launcher FROM pons_launches WHERE token = ?",
+                                   (key,)).fetchone() if index else None
             launch_ts = t - (trades[idx].block - row[0]) / paper.BLOCKS_PER_S if row else None
             first3 = coin.buyers[:3]
             features = paper.alert_features(trades, idx, paper.CHECKPOINT_BUYERS,
@@ -166,15 +171,43 @@ class ScannerApp:
             size = paper.size_for(self.paper_log.percentile(score, now)) if alert else None
             self.paper_log.add(key, t, score, bar, alert, size, features, now, features.get("depth_usd"))
             if alert:
-                coin.keep_until = t + paper.MAX_HOLD + 3600
+                coin.keep_until = max(coin.keep_until, t + paper.MAX_HOLD + 3600)
                 log.info("paper alert %s (score %.3f, bar %.3f, %.0f s after the 5th buyer)", token, score, bar, now - t)
                 if self.live_on:
                     await self.send_live(token, t, trades[idx].block, p_now, features, row is not None, coin.buyers)
                 elif self.paper_notify:
                     await self.broadcast(format_paper_alert(await self.symbol(token), token, p_now, score, size,
                                                             now - t))
+            if self.paper_model_h:
+                await self.score_holder(key, coin, idx, float(supply[0]) if supply else None, row, features)
         except Exception:
             log.exception("paper scoring failed for %s", token)
+
+    async def score_holder(self, key: str, coin, idx: int, supply_raw: float | None, launch: tuple | None,
+                           features: dict):
+        """The second paper model: the main criteria plus the holder ones from the coin's Transfer logs."""
+        trades = coin.trades
+        t, block, first = trades[idx].ts, trades[idx].block, trades[0]
+        holder = dict.fromkeys(paper.HOLDER_FEATURES, math.nan)
+        if t <= first.ts + paper.HOLDER_WINDOW:
+            try:
+                logs = await self.rpc.get_logs(paper.holder_window(first.block, launch[0] if launch else None), block,
+                                               [paper.TRANSFER_TOPIC], address=key)
+            except Exception as exc:  # not scored rather than scored without its holders
+                log.warning("holder logs unavailable for %s: %s", key, exc)
+                return
+            holder = paper.holder_features(paper.parse_transfers(logs), key, block, t, first.block, first.ts, launch,
+                                           supply_raw)
+        both = {**features, **holder}
+        now = time.time()
+        score = self.paper_model_h.score(both)
+        bar = self.paper_log_h.bar(self.paper_model_h, now)
+        alert = score >= bar
+        size = paper.size_for(self.paper_log_h.percentile(score, now)) if alert else None
+        self.paper_log_h.add(key, t, score, bar, alert, size, both, now, features.get("depth_usd"))
+        if alert:
+            coin.keep_until = max(coin.keep_until, t + paper.MAX_HOLD + 3600)
+            log.info("paper (holder) alert %s (score %.3f, bar %.3f)", key, score, bar)
 
     async def send(self, text: str, reply_to: dict | None = None) -> dict:
         """Sends to every chat; returns chat id -> message id (for replies)."""
@@ -250,23 +283,24 @@ class ScannerApp:
     def paper_step(self, now: float):
         """Settles the first buyers' book, moves the open virtual trades on, forgets coins no longer needed."""
         self.book.settle(self.follower, now)
-        for token, ts, depth in self.paper_log.open_alerts():
-            coin = self.follower.coins.get(token)
-            if coin is None:  # restarted meanwhile: its trades are gone
-                self.paper_log.update(token, None, None, True, now)
-                continue
-            trade = paper.paper_trade(coin.trades, ts, now)
-            if trade is None:
-                continue
-            depth = depth if depth and depth == depth else 3000.0  # unknown depth: a cautious pool
-            expired = now - ts > paper.MAX_HOLD
-            if trade["open"] == 0 or expired:
-                value = paper.last_value(coin.trades, now, trade["p_alert"]) if trade["open"] else None
-                ret = paper.net_return(trade, depth, 20.0, value)
-                self.paper_log.update(token, trade, ret, True, now)
-            else:
-                value = paper.last_value(coin.trades, now, trade["p_alert"])
-                self.paper_log.update(token, trade, paper.net_return(trade, depth, 20.0, value), False, now)
+        for plog in (self.paper_log, self.paper_log_h):
+            for token, ts, depth in plog.open_alerts():
+                coin = self.follower.coins.get(token)
+                if coin is None:  # restarted meanwhile: its trades are gone
+                    plog.update(token, None, None, True, now)
+                    continue
+                trade = paper.paper_trade(coin.trades, ts, now)
+                if trade is None:
+                    continue
+                depth = depth if depth and depth == depth else 3000.0  # unknown depth: a cautious pool
+                expired = now - ts > paper.MAX_HOLD
+                if trade["open"] == 0 or expired:
+                    value = paper.last_value(coin.trades, now, trade["p_alert"]) if trade["open"] else None
+                    ret = paper.net_return(trade, depth, 20.0, value)
+                    plog.update(token, trade, ret, True, now)
+                else:
+                    value = paper.last_value(coin.trades, now, trade["p_alert"])
+                    plog.update(token, trade, paper.net_return(trade, depth, 20.0, value), False, now)
         self.follower.prune(now)
 
     async def paper_loop(self):
@@ -428,8 +462,11 @@ class ScannerApp:
         since = time.time() - hours * 3600 if hours else 0.0
         rows = self.paper_log.alerts(since)
         recent = [(await self.symbol(r["token"]), r) for r in rows[-8:]]
+        other = None
+        if self.paper_model_h:
+            other = paper.summary(self.paper_log_h.alerts(since), self.paper_log_h.scored(since))
         await update.message.reply_html(format_paper(hours, paper.summary(rows, self.paper_log.scored(since)), recent,
-                                                     self.paper_model.trained_until))
+                                                     self.paper_model.trained_until, other))
 
     async def cmd_live(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):
@@ -466,7 +503,8 @@ class ScannerApp:
             f"Kâğıt test: {'açık' if self.paper_model else 'kapalı (model yok)'}"
             f"{' (ilk 24 saat: eski coinleri öğreniyor)' if self.follower.known_since and time.time() - self.follower.known_since < 86400 else ''}"
             f" · izlenen yeni coin {sum(c.eligible for c in self.follower.coins.values())} · son 24 saatte puanlanan "
-            f"{self.paper_log.scored(time.time() - 86400)} · seçilen {len(self.paper_log.alerts(time.time() - 86400))}\n"
+            f"{self.paper_log.scored(time.time() - 86400)} · seçilen {len(self.paper_log.alerts(time.time() - 86400))}"
+            f"{' · holderlı model seçti ' + str(len(self.paper_log_h.alerts(time.time() - 86400))) if self.paper_model_h else ''}\n"
             f"Gerçek bildirim: {'açık' if self.live_on else 'kapalı'}"
         )
 

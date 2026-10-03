@@ -11,7 +11,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 
 | # | İş | Durum |
 |---|---|---|
-| A1 | Holder kriterleri (§4.6): kullanıcı "ekle" dedi (3 Ekim) → kâğıt teste ikinci model (holder'lı) yan yana | **şimdi** |
+| A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
 | A5 | Pump.fun eksikleri: coinin oluşturulma anı, geliştirici, mezuniyet anı; 5-7 gün veri sonra araştırma | sırada |
@@ -87,6 +87,11 @@ bırakıldı.
   kriter kodu araştırma tablosuyla 300 coinde birebir); ilk alıcı geçmişi `paper_book.json`'dan başlar, canlıda büyür.
   Satış $'ı artık canlıda da USDG transferinden okunuyor (`fomo.fetch_sell_usd`). Yeniden başlatmada açık sanal
   işlemler kaybolur (sonuçsuz kapanır). Eski kayıt modu (`scan.py`, `/kayit`) silindi.
+- **İkinci model (+ holder, 3 Ekim, §4.6, kullanıcı "ekle"):** aynı coinler 20 kriter + 8 holder kriteriyle de
+  puanlanır (`paper_model_h.json`, tablo `paper_log_h`), kendi son 2 günlük en iyi %2'si ve kendi sanal işlemleri;
+  `/karne` ikisini alt alta gösterir. Holder bilgisi coinin Transfer loglarından (ilk Fomo işleminden 1 saat öncesi /
+  lansmandan 5. alıcının bloğuna; coin başına ~0,2-7 sn); 5. alıcı ilk Fomo işleminden 1 saatten geç geldiyse boş
+  (araştırmadaki gibi). Canlı hesap araştırma tablosuyla 300 coinde birebir. Gerçek bildirim (`/canli`) ana modelle.
 - **Gerçek bildirim hazır, kapalı (3 Ekim, `live.py`, `/canli ac|kapat`):** kâğıt testin seçimi → satılamama elemesi
   (Pons coini geçer; diğerleri V4 satış simülasyonu: geri dönerse ya da vergi ≥ %10 ise elenir; havuz/alıcı
   bulunamazsa "⚠️ doğrulanamadı" ile gider; coin başına 5-12 sn) → hızlı mesaj (2x ihtimali ~%61, puanı en çok
@@ -319,7 +324,10 @@ Kasa (en iyi %2, 30 sn, iz, her hafta $1000'dan): 20 kriter masraflı 2,58x / 4,
 1,69x (brüt 3,28/5,99/1,95 ↔ 3,40/5,59/1,96). → **Holder kriterleri 2x isabetini ~11 puan artırıyor ama haftalık kasa
 sonucunu artırmıyor** (ilk haftada masraflı daha kötü). Uyarı: aynı test günlerinde bir karşılaştırma daha (çoklu
 deneme). Canlıda her aday için lansmandan itibaren Transfer logları gerekir (RPC yükü, bildirimde birkaç sn gecikme).
-Karar kullanıcıda (§0 A1).
+Kullanıcı kararı (3 Ekim): kâğıt teste ikinci model olarak eklendi (§3). "Fomo holder payı" kriteri çıkarıldı:
+ileride Fomo'ya gelen cüzdanları da sayıyordu (gelecek bilgisi) ve bot bütün Fomo cüzdan geçmişini bilmiyor; 8 kriterle
+sonuç aynı (en iyi %2: 2x %74,5; haftalık masraflı 1,83x / 4,31x / 1,49x). Araştırma formülleri canlıyla eşitlendi
+(anın kendi bloğu, 10 dk = 5.958 blok, arz yoksa sadece o ana kadarki mint'ler, sniper o ana kadar).
 
 ## 5. Denenip bırakılanlar (neden)
 

@@ -19,6 +19,9 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .config import DEFAULT_V4_POOL_MANAGER
+from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
+
 CHECKPOINT_BUYERS = 5
 DELAY = 30  # s: the user's reaction time
 FEE, FEE_MIN = 0.005, 0.95
@@ -31,6 +34,7 @@ BLOCKS_PER_S = 9.93
 TOP = 0.02  # alert share
 BANKROLL = 1000.0
 MODEL_PATH = Path(__file__).with_name("paper_model.json")
+MODEL_H_PATH = Path(__file__).with_name("paper_model_h.json")  # + holder criteria, run beside it (PROJE.md §4.6)
 BOOK_PATH = Path(__file__).with_name("paper_book.json")
 
 
@@ -101,6 +105,77 @@ def alert_features(trades: list[Trade], i: int, k: int, supply_raw: float | None
         "same_block_buys": sum(1 for b in blocks if blocks.count(b) > 1),
         "small_buy_share": sum(1 for u in b_usd if u < 20) / len(b_usd),
         "buyers_hit_rate": buyers_hit_rate,
+    }
+
+
+# --- holder features at the moment (scripts/transfer_features.py, same formulas; PROJE.md §4.6) ---
+HOLDER_WINDOW = 3600  # s after the coin's first Fomo trade: later moments get none (as in the research data)
+HOLDER_LOOKBACK_BLOCKS = 36_000  # before the first Fomo trade where the coin's Transfer logs start (or its launch)
+ZERO = "0x" + "0" * 40
+HOLDER_SYSTEM = {ZERO, "0x000000000000000000000000000000000000dead", DEFAULT_V4_POOL_MANAGER.lower(),
+                 FOMO_ENTRY.lower(), FOMO_EXECUTOR.lower()}
+TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"  # ERC-20 Transfer
+HOLDER_FEATURES = ["holders", "holder_growth_10m", "top10_pct", "top1_pct", "dev_pct", "dev_sent_pct",
+                   "sniper_pct", "transfers_10m"]
+
+
+def holder_window(first_block: int, launch_block: int | None) -> int:
+    """First block of the coin's Transfer logs: its launch, if at most an hour before its first Fomo trade."""
+    return max(launch_block or 0, first_block - HOLDER_LOOKBACK_BLOCKS)
+
+
+def parse_transfers(logs: list[dict]) -> list[tuple]:
+    """eth_getLogs Transfer entries -> (block, log index, from, to, value), oldest first (ERC-721 style skipped)."""
+    out = []
+    for e in logs:
+        if len(e.get("topics", [])) != 3:
+            continue
+        try:
+            value = float(int(e["data"], 16))
+        except (ValueError, TypeError):
+            continue
+        out.append((int(e["blockNumber"], 16), int(e["logIndex"], 16), "0x" + e["topics"][1][-40:].lower(),
+                    "0x" + e["topics"][2][-40:].lower(), value))
+    return sorted(out)
+
+
+def holder_features(transfers: list[tuple], token: str, moment_block: int, moment_ts: float, first_block: int,
+                    first_ts: float, launch: tuple | None, supply_raw: float | None) -> dict:
+    """transfers: (block, log index, from, to, value) from holder_window() on, oldest first; launch: (block, curve,
+    launcher) of a Pons coin. All NaN for a moment later than HOLDER_WINDOW after the first Fomo trade."""
+    if moment_ts > first_ts + HOLDER_WINDOW:
+        return dict.fromkeys(HOLDER_FEATURES, math.nan)
+    lb, curve, launcher = launch if launch else (None, None, None)
+    system = HOLDER_SYSTEM | {token.lower()} | ({curve.lower()} if curve else set())
+    launcher = launcher.lower() if launcher else None
+    full = lb is not None and lb >= first_block - HOLDER_LOOKBACK_BLOCKS
+    tr = [t for t in transfers if t[0] <= moment_block]
+    total = supply_raw or max(1.0, sum(t[4] for t in tr if t[2] == ZERO))
+    snipers = {t[3] for t in tr if lb is not None and t[0] <= lb + 5 and t[3] not in system}
+    b_10 = moment_block - 600 * BLOCKS_PER_S
+    bal: dict = {}
+    holders_10 = None
+    sent = 0.0
+    for blk, _, src, dst, val in tr:
+        if holders_10 is None and blk > b_10:
+            holders_10 = sum(1 for a, v in bal.items() if v > 0 and a not in system)
+        bal[src] = bal.get(src, 0.0) - val
+        bal[dst] = bal.get(dst, 0.0) + val
+        if launcher and src == launcher and dst != ZERO:
+            sent += val
+    held = {a: v for a, v in bal.items() if v > 0 and a not in system}
+    if holders_10 is None:
+        holders_10 = len(held)
+    top = sorted(held.values(), reverse=True)
+    return {
+        "holders": len(held),
+        "holder_growth_10m": len(held) - holders_10,
+        "top10_pct": 100 * sum(top[:10]) / total,
+        "top1_pct": 100 * (top[0] if top else 0) / total,
+        "dev_pct": 100 * held.get(launcher, 0) / total if launcher else math.nan,
+        "dev_sent_pct": 100 * sent / total if launcher else math.nan,
+        "sniper_pct": 100 * sum(held.get(a, 0) for a in snipers) / total if full else math.nan,
+        "transfers_10m": sum(1 for t in tr if t[0] > b_10),
     }
 
 
@@ -317,14 +392,16 @@ class Book:
 class PaperLog:
     """One row per scored coin; alerts carry a virtual trade that is updated until it closes."""
 
-    SCHEMA = """CREATE TABLE IF NOT EXISTS paper_log (token TEXT PRIMARY KEY, ts REAL NOT NULL, score REAL NOT NULL,
+    SCHEMA = """CREATE TABLE IF NOT EXISTS {t} (token TEXT PRIMARY KEY, ts REAL NOT NULL, score REAL NOT NULL,
                 bar REAL, alert INTEGER NOT NULL DEFAULT 0, size REAL, features TEXT, seen REAL, depth REAL,
                 p_alert REAL, p_in REAL, kind TEXT, ret REAL, closed INTEGER NOT NULL DEFAULT 0, closed_ts REAL);
                 CREATE TABLE IF NOT EXISTS scan_known (token TEXT PRIMARY KEY, ts REAL NOT NULL);"""
 
-    def __init__(self, db):
+    def __init__(self, db, table: str = "paper_log"):
+        """table: paper_log for the main model, paper_log_h for the one with holder criteria."""
         self.db = db
-        db.executescript(self.SCHEMA)
+        self.t = table
+        db.executescript(self.SCHEMA.format(t=table))
         db.commit()
         self._pending = 0
 
@@ -341,44 +418,44 @@ class PaperLog:
 
     def bar(self, model: Model, now: float, min_rows: int = 300) -> float:
         """Top-2 % bar: the last 2 days' scores once there are enough, else the model's starting bar."""
-        scores = sorted(s for (s,) in self.db.execute("SELECT score FROM paper_log WHERE ts >= ?", (now - 2 * 86400,)))
+        scores = sorted(s for (s,) in self.db.execute(f"SELECT score FROM {self.t} WHERE ts >= ?", (now - 2 * 86400,)))
         if len(scores) < min_rows:
             return model.bar
         return scores[min(len(scores) - 1, int((1 - TOP) * len(scores)))]
 
     def percentile(self, score: float, now: float) -> float:
-        scores = sorted(s for (s,) in self.db.execute("SELECT score FROM paper_log WHERE ts >= ?", (now - 2 * 86400,)))
+        scores = sorted(s for (s,) in self.db.execute(f"SELECT score FROM {self.t} WHERE ts >= ?", (now - 2 * 86400,)))
         return bisect.bisect_left(scores, score) / len(scores) if scores else 1.0
 
     def add(self, token: str, ts: float, score: float, bar: float, alert: bool, size: float | None, features: dict,
             seen: float, depth: float | None):
         clean = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in features.items()}
-        self.db.execute("""INSERT OR IGNORE INTO paper_log (token, ts, score, bar, alert, size, features, seen, depth)
+        self.db.execute(f"""INSERT OR IGNORE INTO {self.t} (token, ts, score, bar, alert, size, features, seen, depth)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (token.lower(), ts, score, bar, int(alert), size, json.dumps(clean), seen, depth))
         self.db.commit()
 
     def open_alerts(self) -> list[tuple]:
-        return self.db.execute("SELECT token, ts, depth FROM paper_log WHERE alert = 1 AND closed = 0").fetchall()
+        return self.db.execute(f"SELECT token, ts, depth FROM {self.t} WHERE alert = 1 AND closed = 0").fetchall()
 
     def update(self, token: str, trade: dict | None, ret: float | None, closed: bool, now: float):
         if trade is None:
-            self.db.execute("UPDATE paper_log SET closed = ?, closed_ts = ? WHERE token = ?",
+            self.db.execute(f"UPDATE {self.t} SET closed = ?, closed_ts = ? WHERE token = ?",
                             (int(closed), now if closed else None, token))
         else:
-            self.db.execute("""UPDATE paper_log SET p_alert = ?, p_in = ?, kind = ?, ret = ?, closed = ?, closed_ts = ?
+            self.db.execute(f"""UPDATE {self.t} SET p_alert = ?, p_in = ?, kind = ?, ret = ?, closed = ?, closed_ts = ?
                                WHERE token = ?""", (trade["p_alert"], trade["p_in"], trade["kind"], ret, int(closed),
                                                     now if closed else None, token))
         self.db.commit()
 
     def alerts(self, since: float) -> list[dict]:
-        cur = self.db.execute("""SELECT token, ts, score, size, seen, kind, ret, closed FROM paper_log
+        cur = self.db.execute(f"""SELECT token, ts, score, size, seen, kind, ret, closed FROM {self.t}
                                  WHERE alert = 1 AND ts >= ? ORDER BY ts""", (since,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
 
     def scored(self, since: float) -> int:
-        return self.db.execute("SELECT COUNT(*) FROM paper_log WHERE ts >= ?", (since,)).fetchone()[0]
+        return self.db.execute(f"SELECT COUNT(*) FROM {self.t} WHERE ts >= ?", (since,)).fetchone()[0]
 
 
 def size_for(pct: float) -> float:

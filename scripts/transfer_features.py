@@ -54,20 +54,21 @@ def main():
         lb, curve, launcher = launch.get(coin, (None, None, None))
         system = SYSTEM | {coin, curve} if curve else SYSTEM | {coin}
         full = lb is not None and lb >= first_block[coin] - 36000
-        total = supply.get(coin) or max(1.0, sum(r[4] for r in tr if r[2] == "0x" + "0" * 40))
-        snipers = {r[3] for r in tr if lb is not None and r[0] <= lb + 5 and r[3] not in system}
         # the checkpoint's own block (the last Fomo trade at or before it), not a block guessed from the time
         own = np.array(db.execute("SELECT ts, block FROM trades WHERE token = ? ORDER BY ts", (token_id[coin],)).fetchall())
         for _, row in g.iterrows():
             if row.ts > first[coin][1] + window:
                 continue
             b_now = own[np.searchsorted(own[:, 0], row.ts, side="right") - 1, 1]
-            b_10 = to_block(row.ts - 600)
+            b_10 = b_now - 600 * 9.93  # as the bot (rhscanner/paper.py holder_features)
             bal = defaultdict(float)
             holders_10 = None
             sent_by_launcher = 0.0
             cut = np.searchsorted(blocks, b_now, side="right")
+            # mints only up to the moment (no later supply), when totalSupply is unknown
+            total = supply.get(coin) or max(1.0, sum(r[4] for r in tr[:cut] if r[2] == "0x" + "0" * 40))
             cut10 = np.searchsorted(blocks, b_10, side="right")
+            snipers = {r[3] for r in tr[:cut] if lb is not None and r[0] <= lb + 5 and r[3] not in system}
             for idx, (blk, li, src, dst, val) in enumerate(tr[:cut]):
                 if idx == cut10:
                     holders_10 = sum(1 for a, v in bal.items() if v > 0 and a not in system)
