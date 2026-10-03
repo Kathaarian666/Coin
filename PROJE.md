@@ -14,10 +14,9 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
-| A5 | Pump.fun eksikleri: **toplama tamam** (3 Ekim, §4.5: geliştirici, oluşturulma anı, mezuniyet, curve/havuz rezervleri); sunucu güncellemesi kullanıcıda | sunucu güncellemesi |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test) — 5-7 gün veri birikince (~9-10 Ekim) | tarihi bekliyor |
-| A6 | Pump.fun gece gönderiminin ilk sonucu (4 Ekim) kontrol | 4 Ekim |
-| A7 | BNB: toplayıcı hazır (3 Ekim, `fombnb`, §4.5b), sunucu güncellemesi kullanıcıda; Base: bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | sunucu güncellemesi |
+| A6 | Gece gönderiminin ilk sonucu (4 Ekim sabahı): `veri` dalında `solana/2026-10-03` ve `bnb/2026-10-03` var mı, içerikleri sağlam mı | 4 Ekim |
+| A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
