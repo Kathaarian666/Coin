@@ -3,6 +3,25 @@
 Son güncelleme: 2 Ekim (1. adım: güvenlik kararları). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
+## 0. Açık işler (kullanıcı kuralı, 3 Ekim: hiçbir iş atlanmaz)
+
+Kural: konuşulan bir iş bitmeden yeni işe geçilmez. Kullanıcı "şimdilik geç" derse iş burada **ertelendi** olarak
+kalır ve her adım sonunda / uygun anda kullanıcıya hatırlatılır. Yeni oturumda önce bu listeye bakılır; iş bitince
+satırı silinir (sonucu ilgili bölüme yazılır).
+
+| # | İş | Durum |
+|---|---|---|
+| A1 | Model güçlendirme: holder özellikleri (transfer indirmesi 10.500/14.400'de kaldı) → walk-forward'da katkısı | **şimdi** |
+| A2 | Taze gün testi: yeni günleri indir, ana veriye ve `veri` arşivine ekle, model eğitilmediği günlerde nasıl | **şimdi** |
+| A3 | Bot hatası: `checks/contract.py` 44 baytlık PUSH0 EIP-1167 kopyayı tanımıyor | sırada |
+| A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
+| A5 | Pump.fun eksikleri: coinin oluşturulma anı, geliştirici, mezuniyet anı; 5-7 gün veri sonra araştırma | sırada |
+| A6 | Pump.fun gece gönderiminin ilk sonucu (4 Ekim) kontrol | 4 Ekim |
+| A7 | BNB ve Base zincirleri | sırada (pump.fun'dan sonra) |
+| K1 | Kullanıcı: sohbete yapıştırılan eski GitHub token'ı silindi mi (teyit) | kullanıcıda |
+| K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
+| K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
+
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
 
 Bot, Fomo uygulamasında (Robinhood Chain) **yeni çıkan coinler** arasından **yükselme ihtimali en yüksek olanları**

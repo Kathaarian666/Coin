@@ -22,6 +22,10 @@ bildirim gönderen bot + yükselecek coinleri erken bulma araştırması. Proje 
 - Telegram mesajları HTML: metinde çıplak `<` olursa Telegram mesajı reddeder ve komut sessizce cevapsız kalır
   → `escape()` / `&lt;` kullan; `tests/test_telegram_html.py` bütün rapor biçimlerini bu yüzden kontrol ediyor.
 
+- **İş atlanmaz (kullanıcı kuralı, 3 Ekim):** konuşulan her iş `PROJE.md` §0 "Açık işler" listesine yazılır;
+  listedeki işler bitmeden yeni işe geçilmez. Kullanıcı "şimdilik geç" derse "ertelendi" olarak kalır ve **her adım
+  sonunda / uygun anda hatırlatılır**. Yeni oturumda önce §0'a bak. Kullanıcıyla her zaman Türkçe konuş.
+
 ## Proje durumu → `PROJE.md`
 **Önce `PROJE.md`'yi oku**: amaç, botun şu anki hali, kanıtlanmış bulgular, denenip bırakılanlar, ölçüm kuralları,
 betiklerin durumu ve yol haritası orada (tek özet; bu dosyada tekrarlanmaz). Her önemli bulgu/karar sonrası
