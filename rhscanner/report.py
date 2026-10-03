@@ -185,9 +185,27 @@ def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float 
     return "\n".join(lines)
 
 
-def format_trust_reply(report_text: str, trust: int | None) -> str:
-    head = f"🛡 <b>Güven puanı (model): {trust}/100</b>\n" if trust is not None else ""
-    return head + report_text
+SAFETY_ICONS = {"ok": "✅", "warn": "⚠️", "unknown": "❔"}
+
+
+def format_safety(symbol: str, token: str, trust: int | None, items: list[tuple[str, str, str]],
+                  sources: list[tuple[str, bool]]) -> str:
+    """The safety report (PROJE.md §1): one trust score (the model) and the 14 checks in a fixed order."""
+    if trust is None:
+        head = "🛡 <b>Güven puanı: bilinmiyor</b>"
+    else:
+        word = "yüksek" if trust >= 85 else "orta" if trust >= 70 else "düşük"
+        head = f"🛡 <b>Güven puanı: {trust}/100</b> ({word})"
+    lines = [f"{head} — {escape(symbol, quote=False)}",
+             "<i>Geçmişte bu işaretlere sahip coinlerin tuzak (rug / satılamama) oranından hesaplanır.</i>", ""]
+    lines += [f"{SAFETY_ICONS.get(st, '❔')} {escape(name, quote=False)}: {escape(text, quote=False)}"
+              for name, st, text in items]
+    src = " · ".join(f"{escape(n, quote=False)} {'✓' if ok else '–'}" for n, ok in sources)
+    lines += ["", f"Kaynaklar: {src} (– = bu coin için henüz bilgisi yok)",
+              f"<code>{token}</code> · {_gecko(token)} · "
+              f'<a href="https://dexscreener.com/{DEXSCREENER_CHAIN}/{token}">DexScreener</a>',
+              "<i>Hiçbiri eleme yapmaz; satılamayan coinler bildirimden önce elenir. Yatırım tavsiyesi değildir.</i>"]
+    return "\n".join(lines)
 
 
 def format_2x(symbol: str, token: str, minutes: float) -> str:

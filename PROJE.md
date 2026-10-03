@@ -18,16 +18,9 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A6 | Gece gönderiminin ilk sonucu (4 Ekim sabahı): `veri` dalında `solana/2026-10-03` ve `bnb/2026-10-03` var mı, içerikleri sağlam mı | 4 Ekim |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
-| D1 | Denetim: güven raporu §1 kararına uymuyor — eski rapor + eski kural tabanlı "güven skoru" + yeni model puanı aynı mesajda (iki ayrı güven sayısı); 14 kontrol tek tek / "bilinmiyor" düzeni yok. `/canli` açılmadan düzeltilmeli | konuşulacak |
-| D2 | Denetim: §1'de dış kaynak olarak yazan GoPlus kodda hiç yok (DexScreener var, GeckoTerminal sadece link) | konuşulacak |
-| D3 | Denetim: gerçek bildirimde fiyat "ham birim" ($/10⁻¹⁸ token) — Fomo'daki fiyatla karşılaştırılamaz; piyasa değeri (FDV) gösterilmeli | konuşulacak |
-| D4 | Denetim: "2x oldu" takibi 3 günde ve her yeniden başlatmada kesiliyor ("süre önemsiz" kararı); likidite uyarısı sadece Pons dışı coinlerde, ilk 6 saat | konuşulacak |
-| D5 | Denetim: yeniden başlatma kâğıt testin açık işlemlerini ve takipteki coinleri siliyor → test süresince bota dokunmamak ya da durumu diske yazmak | konuşulacak |
-| D6 | Denetim: eski bildirim akışı bildirimler kapalıyken de yükselen her coine ağır analiz yapıyor (RPC'yi kâğıt testle paylaşıyor) → kapatılmalı/kaldırılmalı | konuşulacak |
-| D7 | Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
-| D8 | Denetim: bottaki model 1 Ekim'de dondu; simülasyon her gün yeniden eğitilen modelle yapıldı → yeniden eğitim planı yok; Robinhood yeni günleri arşive sadece oturumda elle ekleniyor (otomatik değil) | konuşulacak |
+| D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
+| D8 | (kullanıcı "evet", yapılıyor) Denetim: bottaki model 1 Ekim'de dondu; simülasyon her gün yeniden eğitilen modelle yapıldı → yeniden eğitim planı yok; Robinhood yeni günleri arşive sadece oturumda elle ekleniyor (otomatik değil) | konuşulacak |
 | D9 | Denetim: sunucu belleği (1 GB, 3 Python servisi + bot) hiç kontrol edilmedi → `free -m` | kullanıcıda |
-| D10 | Denetim: bildirim sayısı — en iyi %2 = günde ~6-10 bildirim; §1 "mümkün olduğunca az" ile birlikte onaylanmadı | konuşulacak |
 | D11 | Denetim: pump.fun'da PumpSwap havuzunun coini okunamazsa (429) işlem atlanıyor → A6'da `stats` sayımlarıyla kayıp ölçülecek | A6 ile |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
@@ -105,6 +98,13 @@ bırakıldı.
   `/karne` ikisini alt alta gösterir. Holder bilgisi coinin Transfer loglarından (ilk Fomo işleminden 1 saat öncesi /
   lansmandan 5. alıcının bloğuna; coin başına ~0,2-7 sn); 5. alıcı ilk Fomo işleminden 1 saatten geç geldiyse boş
   (araştırmadaki gibi). Canlı hesap araştırma tablosuyla 300 coinde birebir. Gerçek bildirim (`/canli`) ana modelle.
+- **Denetim düzeltmeleri (3 Ekim, §0 D1-D6, D10; kullanıcı onayıyla):** güven raporu §1 kararına göre yeniden yazıldı
+  (`safety.py`: tek güven puanı = model; 14 kontrol sabit sırayla ✅/⚠️/❔; GoPlus + GeckoTerminal + DexScreener ikinci
+  görüş, `/check` de aynı rapor) · bildirimde ham birim fiyatı yerine piyasa değeri ve 2x hedefi · "2x oldu" 30 gün
+  izlenir, yeniden başlatmada kaybolmaz · takipteki coinler ve sanal işlemler veritabanında, yeniden başlatmada geri
+  gelir (kaldığı bloktan devam ederse ısınma atlanır) · eski akış bildirimleri kapalıyken analiz yapmaz · RPC 10M blok
+  sınırı: uzun log aralıkları bölünüyor (lansman/geliştirici/hook kontrolleri bu yüzden hep "bilinmiyor" çıkıyordu) ·
+  bildirim sayısı en iyi %2 (günde ~6-10) kullanıcı onayladı.
 - **Gerçek bildirim hazır, kapalı (3 Ekim, `live.py`, `/canli ac|kapat`):** kâğıt testin seçimi → satılamama elemesi
   (Pons coini geçer; diğerleri V4 satış simülasyonu: geri dönerse ya da vergi ≥ %10 ise elenir; havuz/alıcı
   bulunamazsa "⚠️ doğrulanamadı" ile gider; coin başına 5-12 sn) → hızlı mesaj (2x ihtimali ~%61, puanı en çok

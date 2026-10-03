@@ -21,7 +21,8 @@ from .hooks import REGISTRY
 from . import live
 from .live import LiveLog
 from .report import (format_2x, format_liquidity_warning, format_live_alert, format_paper, format_paper_alert,
-                     format_report, format_trust_reply)
+                     format_report, format_safety)
+from . import safety
 from .rpc import RpcClient
 from . import paper
 from .paper import Book, Follower, Model, PaperLog, Trade
@@ -245,12 +246,24 @@ class ScannerApp:
         self.live_log.add(token.lower(), t, price, block, pool, msgs, status)
         self.live_watch[token.lower()] = [price, False]
         try:
-            report = await self.analyzer.analyze(token, None, self.fomo_stats(token))
-            sellers = self.tracker.stats(token, 3600)["sellers"]
-            trust = live.trust_score(live.trust_flags(report, sellers, pons, features.get("depth_usd")))
-            await self.send(format_trust_reply(format_report(report, self.settings.blockscout_url), trust), msgs)
+            await self.send(await self.safety_text(token, pons, features.get("depth_usd")), msgs)
         except Exception:
             log.exception("live safety report failed for %s", token)
+
+    async def safety_text(self, token: str, pons: bool | None = None, depth: float | None = None) -> str:
+        """The safety report (PROJE.md §1, §0 D1/D2): the trust model's score and the 14 checks, our chain checks
+        with GoPlus / GeckoTerminal / DexScreener as a second opinion."""
+        (report, (gp, gt)) = await asyncio.gather(self.analyzer.analyze(token, None, self.fomo_stats(token)),
+                                                  safety.second_opinions(self.http, token))
+        if pons is None:
+            index = self.analyzer.launches
+            pons = bool(index and index.db.execute("SELECT 1 FROM pons_launches WHERE token = ?",
+                                                   (token.lower(),)).fetchone())
+        sellers = self.tracker.stats(token, 3600)["sellers"]
+        trust = live.trust_score(live.trust_flags(report, sellers, pons, depth))
+        items = safety.checklist(report, sellers, pons, depth, gp, gt)
+        return format_safety(str(report.get("symbol") or "?"), report["token"], trust, items,
+                             safety.sources(report, gp, gt))
 
     def watch_2x(self, token: str, trade: Trade):
         """Two buys in a row at >= 2x a sent alert's price: "2x oldu" (no trade history needed, survives restarts)."""
@@ -400,9 +413,7 @@ class ScannerApp:
             return
         msg = await update.message.reply_text("🔍 Analiz ediliyor...")
         try:
-            token = context.args[0]
-            report = await self.analyzer.analyze(token, fomo=self.fomo_stats(token))
-            text = format_report(report, self.settings.blockscout_url)
+            text = await self.safety_text(context.args[0])
         except ValueError as exc:
             text = f"❌ {exc}"
         except Exception:

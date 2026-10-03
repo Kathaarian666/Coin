@@ -109,3 +109,22 @@ async def test_short_rate_limit_is_waited_out_on_primary(monkeypatch):
     assert await rpc.block_number() == 16
     assert primary.call_count == 2 and backup.call_count == 0 and rpc.active == 0
     await rpc.close()
+
+
+@respx.mock
+async def test_long_log_ranges_are_split():
+    import json
+
+    seen = []
+
+    def handler(request):
+        q = json.loads(request.content)["params"][0]
+        lo, hi = int(q["fromBlock"], 16), int(q["toBlock"], 16)
+        seen.append((lo, hi))
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": [{"blockNumber": hex(lo)}]})
+    respx.post(URL).mock(side_effect=handler)
+    rpc = RpcClient(URL, max_rps=0)
+    logs = await rpc.get_logs(0, 20_000_000, ["0xt"])
+    assert seen == [(0, 8_999_999), (9_000_000, 17_999_999), (18_000_000, 20_000_000)]
+    assert [int(x["blockNumber"], 16) for x in logs] == [0, 9_000_000, 18_000_000]
+    await rpc.close()

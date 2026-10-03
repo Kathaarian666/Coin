@@ -66,6 +66,7 @@ class RpcClient:
     RATE_LIMIT_WAITS = 2
     LOG_RATE_LIMIT_WAITS = 6
     SMALL_LOG_RANGE = 90
+    MAX_LOG_SPAN = 9_000_000  # blocks per eth_getLogs (Robinhood's node allows 10M since Oct 2026)
 
     def __init__(self, url: str, max_rps: float = 8.0, client: httpx.AsyncClient | None = None,
                  fallback_urls: list[str] | tuple = ()):
@@ -150,6 +151,13 @@ class RpcClient:
         return int(await self.request("eth_blockNumber", []), 16)
 
     async def get_logs(self, from_block: int, to_block: int, topics: list, address=None, retries: int = 4) -> list[dict]:
+        if to_block - from_block >= self.MAX_LOG_SPAN:  # the node refuses longer ranges: ask in parts, oldest first
+            out, lo = [], from_block
+            while lo <= to_block:
+                hi = min(to_block, lo + self.MAX_LOG_SPAN - 1)
+                out += await self.get_logs(lo, hi, topics, address, retries)
+                lo = hi + 1
+            return out
         query = {"fromBlock": hex(from_block), "toBlock": hex(to_block), "topics": topics}
         if address:
             query["address"] = address
