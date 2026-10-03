@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 2 Ekim (1. adım: güvenlik kararları). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 3 Ekim (genel denetim, §0 D-maddeleri). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
 ## 0. Açık işler (kullanıcı kuralı, 3 Ekim: hiçbir iş atlanmaz)
@@ -18,6 +18,17 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A6 | Gece gönderiminin ilk sonucu (4 Ekim sabahı): `veri` dalında `solana/2026-10-03` ve `bnb/2026-10-03` var mı, içerikleri sağlam mı | 4 Ekim |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
+| D1 | Denetim: güven raporu §1 kararına uymuyor — eski rapor + eski kural tabanlı "güven skoru" + yeni model puanı aynı mesajda (iki ayrı güven sayısı); 14 kontrol tek tek / "bilinmiyor" düzeni yok. `/canli` açılmadan düzeltilmeli | konuşulacak |
+| D2 | Denetim: §1'de dış kaynak olarak yazan GoPlus kodda hiç yok (DexScreener var, GeckoTerminal sadece link) | konuşulacak |
+| D3 | Denetim: gerçek bildirimde fiyat "ham birim" ($/10⁻¹⁸ token) — Fomo'daki fiyatla karşılaştırılamaz; piyasa değeri (FDV) gösterilmeli | konuşulacak |
+| D4 | Denetim: "2x oldu" takibi 3 günde ve her yeniden başlatmada kesiliyor ("süre önemsiz" kararı); likidite uyarısı sadece Pons dışı coinlerde, ilk 6 saat | konuşulacak |
+| D5 | Denetim: yeniden başlatma kâğıt testin açık işlemlerini ve takipteki coinleri siliyor → test süresince bota dokunmamak ya da durumu diske yazmak | konuşulacak |
+| D6 | Denetim: eski bildirim akışı bildirimler kapalıyken de yükselen her coine ağır analiz yapıyor (RPC'yi kâğıt testle paylaşıyor) → kapatılmalı/kaldırılmalı | konuşulacak |
+| D7 | Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
+| D8 | Denetim: bottaki model 1 Ekim'de dondu; simülasyon her gün yeniden eğitilen modelle yapıldı → yeniden eğitim planı yok; Robinhood yeni günleri arşive sadece oturumda elle ekleniyor (otomatik değil) | konuşulacak |
+| D9 | Denetim: sunucu belleği (1 GB, 3 Python servisi + bot) hiç kontrol edilmedi → `free -m` | kullanıcıda |
+| D10 | Denetim: bildirim sayısı — en iyi %2 = günde ~6-10 bildirim; §1 "mümkün olduğunca az" ile birlikte onaylanmadı | konuşulacak |
+| D11 | Denetim: pump.fun'da PumpSwap havuzunun coini okunamazsa (429) işlem atlanıyor → A6'da `stats` sayımlarıyla kayıp ölçülecek | A6 ile |
 | K2 | Kullanıcı: sunucu "restart required" → uygun anda `sudo reboot` (kâğıt testin açık işlemleri kaybolur) | kullanıcıda |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
@@ -47,11 +58,11 @@ yüksek → kasanın %4'ü, orta → %2, düşük → %1 (kullanıcı değiştir
 %50 düşünce sat / 24 saat sonra sat / hiç satma. **Bildirimden sonra "⚠️ likidite çekiliyor" uyarısı da olacak**
 (kullanıcı istedi; 4. adım).
 
-**2. adım kararları (2 Ekim):** bildirim anı = Fomo'da **3. alıcı** · modelde **17 kriter** (§4.2'deki güçlü/orta olanlar;
+**2. adım kararları (2 Ekim; 3 Ekim'de değişti → bildirim anı 5. alıcı, 20 kriter, en iyi %2, §4.4 C+D):** bildirim anı = Fomo'da **3. alıcı** · modelde **17 kriter** (§4.2'deki güçlü/orta olanlar;
 etkisiz 9'u çıktı) · tutar kasanın %4 / %2 / %1'i (2x ihtimaline göre) · kullanıcının **tepki süresi ~30 sn** (simülasyonun
 asıl ölçüsü; 60 sn üstü zararlı çıktı → bildirim hızlı olmalı, Fomo'da coini açan link) · otomatik alım **yok**.
 
-**Kapsam (2 Ekim):** şimdilik **sadece Robinhood Chain**. Fomo'da Solana (pump.fun), BNB, Base vb. zincirlerden de coin
+**Kapsam (2 Ekim; 3 Ekim'de değişti → kullanıcı: "önceliğimiz pump.fun, en az Robinhood kadar iyi"; BNB verisi de toplanıyor, Base ertelendi, §2 adım 6):** şimdilik **sadece Robinhood Chain**. Fomo'da Solana (pump.fun), BNB, Base vb. zincirlerden de coin
 var; bunları görmüyoruz, yani kısıtlı bir havuza bakıyoruz. Robinhood Chain'de sistem kanıtlanınca aynı yöntem diğer
 zincirlere taşınacak. **Kullanıcı istedi: her adım sonunda bunu hatırlat.**
 
@@ -66,19 +77,20 @@ bırakıldı.
 
 | Adım | Ne | Durum |
 |---|---|---|
-| **0** | Temizlik + bu belge + veri arşivini güncelleme | **bu adım** |
+| **0** | Temizlik + bu belge + veri arşivini güncelleme | bitti (2 Ekim) |
 | **1** | **Güvenlik kriterleri (birlikte).** Her kontrol için: ne kontrol ediyor, neyi eliyor, geçmiş veride kaç coini eledi, elenenler gerçekten kötü müydü. Ekle/çıkar; hangisi **eler**, hangisi raporda **yazar**. | bitti (2 Ekim): §1 kararlar, §4.1 ölçüm |
-| **2** | **Yükseliş kriterleri (backtest ile, birlikte).** Aday kriterler tek tek: 2x oranını ne kadar artırıyor, görmediği günlerde tutuyor mu. Bildirim anı karşılaştırması (Fomo'da 3./5./10. alıcı). Kriter listesi + model. | **sürüyor**: ilk ölçüm §4.2 |
-| **3** | **Simülasyon (karar kapısı).** Güvenlik elemesi + model uçtan uca geçmiş veride: günde kaç bildirim, kaçı 2x, girseydik sonuç ne olurdu. "Yeterince kâr" tanımı ve 2x olmayanların nasıl sayılacağı bu adımda birlikte belirlenir. Yetmezse 1/2'ye dönülür. | bekliyor |
+| **2** | **Yükseliş kriterleri (backtest ile, birlikte).** Aday kriterler tek tek: 2x oranını ne kadar artırıyor, görmediği günlerde tutuyor mu. Bildirim anı karşılaştırması (Fomo'da 3./5./10. alıcı). Kriter listesi + model. | bitti (3 Ekim): 5. alıcı, 20 kriter (§4.4 C+D), en iyi %2; holder'lı ikinci model kâğıt testte (§4.6) |
+| **3** | **Simülasyon (karar kapısı).** Güvenlik elemesi + model uçtan uca geçmiş veride: günde kaç bildirim, kaçı 2x, girseydik sonuç ne olurdu. "Yeterince kâr" tanımı ve 2x olmayanların nasıl sayılacağı bu adımda birlikte belirlenir. Yetmezse 1/2'ye dönülür. | yapıldı, **kapı açık kaldı**: hedef (haftada 2x) son haftada tutmadı (masraflı 1,66x); kullanıcı kâğıt teste geçmeyi seçti → karar A4'te (§0 D7) |
 | **4** | **Bot.** Bildirim (güven + 2x ihtimali + nedenler), "2x oldu" haberi, karne. Kriterler kesinleşmeden bota dokunulmaz. | **sürüyor**: kâğıt test kuruldu (3 Ekim, §3) |
-| **5** | **Canlı izleme.** Karne (bildirimlerin kaçı 2x yaptı) simülasyonla karşılaştırılır. | bekliyor |
-| **6** | **Diğer zincirler** (Solana/pump.fun, BNB, Base…): Fomo'daki diğer zincirlere aynı yöntem; her zincir için ayrı veri ve güvenlik kontrolleri. | **sürüyor, öncelik pump.fun** (3 Ekim, kullanıcı: "pump.fun'da en az Robinhood kadar iyi"): canlı veri toplama başladı (§4.5); BNB/Base sonra |
+| **5** | **Canlı izleme.** Karne (bildirimlerin kaçı 2x yaptı) simülasyonla karşılaştırılır. | kâğıt test sürüyor (A4: ~8-10 Ekim) |
+| **6** | **Diğer zincirler** (Solana/pump.fun, BNB, Base…): Fomo'daki diğer zincirlere aynı yöntem; her zincir için ayrı veri ve güvenlik kontrolleri. | **sürüyor, öncelik pump.fun** (3 Ekim, kullanıcı: "pump.fun'da en az Robinhood kadar iyi"): pump.fun ve BNB verisi toplanıyor (§4.5, §4.5b); araştırma ~9-10 Ekim (A8); Base ertelendi |
 
 ## 3. Şu anki durum
 
 **Sunucudaki bot (`rhscanner/`, systemd servisi):**
-- Fomo işlemlerini izliyor. Bir coin 10 dakikada yeterli alıcıya (`/minalici`) ve hacme (`/minhacim`) ulaşınca güven
-  taraması yapıyor, skor `/minskor` üstündeyse Telegram'a rapor gönderiyor.
+- (Eski akış, bildirimleri kapalı) Fomo işlemlerini izliyor. Bir coin 10 dakikada yeterli alıcıya (`/minalici`) ve
+  hacme (`/minhacim`) ulaşınca güven taraması yapıyor, skor `/minskor` üstündeyse rapor gönderiyor — bildirimler
+  kapalıyken de analiz yapıyor (§0 D6).
 - Güven taraması: satılabilirlik, honeypot simülasyonu, kontrat, likidite, V4 hook, holder, geliştirici geçmişi,
   sniper/bundle, sahte hacim (Fomo churn). Ayrıntı: `README.md`. 1. adımda tek tek gözden geçirilecek.
 - **Kâğıt test (3 Ekim, `paper.py`, `/karne`, kullanıcı kararı "b"):** Fomo'da 5. alıcıya ulaşan her yeni coin 20
@@ -99,9 +111,9 @@ bırakıldı.
   yükselten 3 kriter, GeckoTerminal linki) → yanıt olarak güven raporu + model güven puanı (`trust_model.json`,
   §4.1 tuzak modeli, AUC 0,84) → sonra "2x oldu" ve V4 havuzundan likidite çekilirse uyarı (ilk 6 saat).
 
-## 4. Şimdiye kadar bilinenler (eski araştırma, 17–28 Eylül zincir verisi)
+## 4. Şimdiye kadar bilinenler
 
-Bunlar yön gösterir; 2x tanımı (bildirim fiyatından, süresiz) ile 2. adımda **yeniden ölçülecek**.
+(Bu girişteki maddeler eski araştırma, 17–28 Eylül; fiyat = son 3 alımın ortancası, sonradan hatalı bulundu §6.2.) Bunlar yön gösterir; 2x tanımı (bildirim fiyatından, süresiz) ile 2. adımda **yeniden ölçülecek**.
 - Günde ~2.000 yeni coin Fomo'da görünüyor, Pons'ta günde ~6.500 lansman. Fomo coinlerinin %86'sı hiç 10 alıcıya
   ulaşmıyor. 72 saat sonra medyan fiyat ilk fiyatın ~%30'u.
 - Fomo coinin küçük bir parçası: Fomo'da 3. alıcı geldiğinde coinin zincirde zaten ~40+ holder'ı var; holder'ların
@@ -176,8 +188,9 @@ satılamayan %1,7). Pons coinlerinde satılamayan %0 (beklenen; etiket tutarlı)
   2'sinde satış sonradan kilitlendi. Yani bildirim anında honeypot nadir; asıl tuzak bildirimden sonraki ilk saatte
   likiditenin çekilmesi → bildirim anında ancak dolaylı işaretlerle (güven puanı) tahmin edilir. Eleme kuralı
   (honeypot / vergi ≥ %10) yine simülasyonla uygulanır (4. adım).
-- **Botta bulunan açık (4. adımda düzeltilecek):** `checks/contract.py` sadece 45 baytlık EIP-1167 klonu tanıyor;
-  44 baytlık PUSH0 türü (714 coin, 33 asıl kontrat) tanınmıyor, kontrol klonun kendisine bakıyor.
+- **Botta bulunan açık — düzeltildi (3 Ekim):** `checks/contract.py` sadece 45 baytlık EIP-1167 klonu tanıyordu;
+  44 baytlık türler (714 coin, 33 asıl kontrat; zincirde görülen `3d3d3d3d363d3d37...`) artık tanınıyor
+  (`minimal_proxy_target`, gerçek coinlerde araştırmayla aynı şablon).
 
 ### 4.2 Yükseliş ölçümü (2. adım, `scripts/rise_study.py`, 2 Ekim)
 18 Eylül–1 Ekim, en az 24 saat izlenmiş yeni coinler. 2x = bildirimdeki son alım fiyatının 2 katı, iki ardışık alımla,
@@ -399,7 +412,7 @@ sonuç aynı (en iyi %2: 2x %74,5; haftalık masraflı 1,83x / 4,31x / 1,49x). A
 
 ## 7. Veri ve araçlar
 
-**Arşiv:** GitHub `veri` dalı, günlük parquet (1 Eylül'den bugüne aralıksız; 3-17 Eylül boşluğu 2 Ekim'de dolduruldu). Pump.fun: `solana/`.
+**Arşiv:** GitHub `veri` dalı, günlük parquet (1 Eylül'den bugüne aralıksız; 3-17 Eylül boşluğu 2 Ekim'de dolduruldu). Pump.fun: `solana/`, BNB: `bnb/` (sunucudan her gece).
 Yeni oturumda araştırma veritabanını kurmak:
 ```
 git fetch origin veri && git worktree add /tmp/veri origin/veri
@@ -431,6 +444,7 @@ Yeni günler: `fomo_download.py <gün> yeni.db` → `data_merge.py yeni.db fomo.
 | Araştırma (3. adım) | `profit_study.py` | Modeli işlemin net getirisiyle eğitir; 2x / kâr>0 / getiri modelleri hafta hafta |
 | Simülasyon (3. adım) | `trade_sim.py` | Kullanıcının kurallarıyla işlem simülasyonu: gecikme, masraf, şans kontrolü, hafta hafta |
 | Araştırma (2. adım) | `rise_study.py` | Bildirim anları, kriterler tek tek (eğitim/test), hepsi birlikte günlük yeniden eğitilen model |
+| Kontrat | `compile_contracts.mjs` | `contracts/` derlemesi (solc 0.8.26, viaIR) |
 | Araştırma (1. adım) | `security_study.py` | Güvenlik kontrolleri ↔ tuzak (rug/satılamayan) ve 2x; `report` modu tabloyu basar |
 
 **Git dalları:**
