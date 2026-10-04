@@ -20,6 +20,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
 | A10 | Çıkış anındaki gerçek satış değerini zincirde ölçmek (eski blokta satış simülasyonu) → kural taramasını gerçek değerle tekrar, sonra final sınavı (1 Ekim+) (§4.4b) | konuşulacak |
+| D12 | Canlı likidite uyarısı (`live.liquidity_removed`) her negatif ModifyLiquidity'yi çekme sayıyor; hook'lu havuzlar likiditeyi sürekli taşıdığı için yanlış alarm verir → net likidite (zirvenin %20'sinin altı) kuralına geçmeli (`exit_truth.py` gibi) | A10 ile |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
@@ -499,6 +500,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma (§0 A1) | `holder_study.py` | Holder kriterleri modele katkı sağlıyor mu: aynı walk-forward, 2x oranı + kasa simülasyonu |
 | Eğitim (§0 D8) | `retrain.py` | Haftalık: arşiv + bot günleri → anlar → holder özellikleri → iki modelin dışa aktarımı |
 | Araştırma (3. adım) | `exit_study.py` | Çıkış kuralları / seçim / tutar ızgarası, hafta hafta masraflı; final sınavı günleri ayrık |
+| Araştırma (A10) | `exit_truth.py` | Seçimlerin çıkış anındaki gerçek fiyatı: curve + V4 havuzlarındaki bütün işlemler, net likidite çekilmesi |
 | Araştırma (pump.fun, A8) | `pump_study.py` | pump.fun yeni coinlerinin 3./5./10. Fomo alıcısı anları, kriterler, 2x / tuzak / mezuniyet |
 | Test (§0 A2) | `fresh_test.py` | Kâğıt test modeli görmediği günlerde (bot gibi seçim, 2x oranı, kasa simülasyonu) |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
