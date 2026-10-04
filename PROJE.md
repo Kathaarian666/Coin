@@ -14,9 +14,9 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
-| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test) — 5-7 gün veri birikince (~9-10 Ekim) | tarihi bekliyor |
+| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma başladı (§4.5c); tam ölçüm 5-7 gün veriyle (~9-10 Ekim) | sürüyor |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
-| A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
+| A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
@@ -352,6 +352,29 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 - Güvenlik tarafı zincire göre değişir (flap.sh/four.meme şablonları, PancakeSwap/Aerodrome havuzları için satış
   simülasyonu yeniden yazılmalı).
 
+### 4.5c pump.fun ilk ölçüm (4 Ekim, §0 A8 ön çalışma; sadece 3 Ekim'in ~16 saati → yön gösterir, kesin değil)
+`scripts/pump_study.py` (winner_study'nin pump.fun karşılığı, aynı ölçüm kuralları): Fomo'da ilk işlemi curve'de olan
+yeni coinler, k. farklı Fomo alıcısı anı, o anki fiyat = o alımın USD/token fiyatı (SOL/USD saatlik), sonuç bütün sonraki
+Fomo işlemlerinden (curve + PumpSwap). Tuzak = 1 saat içinde fiyat bildirimin %10'una iner, öncesinde 2x yok.
+
+| An | Coin (günde) | 1 saatte 2x | 6 saatte 2x | 1 saatte tuzak | Mezun olan | Yaş medyan |
+|---|---|---|---|---|---|---|
+| 3. alıcı | ~1.950 | %20,4 | %22,6 | %6,1 | %21 | 3,4 dk |
+| **5. alıcı** | **~1.520** | **%22,5** | **%25,6** | **%8,0** | %26 | 4,2 dk |
+| 10. alıcı | ~1.090 | %22,6 | %24,3 | %13,2 | %37 | 5,9 dk |
+
+- Havuz Robinhood'un ~5 katı (5. alıcıda günde ~1.500 coin ↔ ~300-385), 2x oranı benzer, tuzak ~2 katı.
+- İlk Fomo işleminde coinin yaşı medyan 1,6 dk; %10'u 1 günden eski (sonradan canlanan) — onlarda 2x %26, tuzak %4
+  (yenilerde %20 / %10).
+- **Mezuniyet çöküşü:** piyasa değeri / curve doluluğu en yüksek beşte birlikte (mezuniyete yakın, ~$38k+) 1 saatte tuzak
+  **%39-44** (diğer dilimlerde %0-1). Ölçüm hatası arandı: fiyat birimi mezuniyet geçişinde sürekli, PumpSwap işlem
+  fiyatları havuz fiyatıyla tutarlı (yarısının altında işlem %0) → çöküşler gerçek (havuz fiyatı başlangıcın %1'ine).
+- Tek kriterler (5. alıcı, 1 saatte 2x, en düşük → en yüksek beşte bir): ilk alımdan bu yana fiyat %19 → %31,
+  5. alıcıya süre %26 → %15 (hızlı iyi), son 10 dk alım $ %19 → %29, son 60 sn alıcı %16 → %26; piyasa değeri ve
+  curve doluluğu orta dilimde en iyi (%34-35) ama en üstte tuzak. Büyük alım $ tuzağı düşürüyor (%16 → %2).
+- Sınır: sadece Fomo işlemleri görülüyor; geliştiricinin / bundle'ın Fomo dışı satışları ancak fiyattan görünür →
+  holder/geliştirici payı için zincirden ek sorgu gerekebilir (karar kullanıcıyla).
+
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
 anlarla eğitildi) hiç görmediği 1 Ekim 11:31 – 3 Ekim 08:14 aralığında, botun yaptığı gibi (son 48 saatin en iyi
@@ -456,6 +479,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler (`<k>` seçilebilir; anın kendi bloğu; 1 saatten geç anlar boş) |
 | Araştırma (§0 A1) | `holder_study.py` | Holder kriterleri modele katkı sağlıyor mu: aynı walk-forward, 2x oranı + kasa simülasyonu |
 | Eğitim (§0 D8) | `retrain.py` | Haftalık: arşiv + bot günleri → anlar → holder özellikleri → iki modelin dışa aktarımı |
+| Araştırma (pump.fun, A8) | `pump_study.py` | pump.fun yeni coinlerinin 3./5./10. Fomo alıcısı anları, kriterler, 2x / tuzak / mezuniyet |
 | Test (§0 A2) | `fresh_test.py` | Kâğıt test modeli görmediği günlerde (bot gibi seçim, 2x oranı, kasa simülasyonu) |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
 | Araştırma (1. adım) | `sell_probe_study.py` | V4 satış simülasyonu: bildirim anında ve 1/6/24 saat sonra satılabiliyor mu |
