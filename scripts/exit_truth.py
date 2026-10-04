@@ -142,12 +142,22 @@ def main():
         alert_block = int(f[f[:, 0] <= r.ts][-1, 1])
         jobs.append((r.coin, curves.get(r.coin), alert_block, None, alert_block + int(24 * 3600 * BLOCKS_PER_S) + 600))
     t0, results, failed = time.time(), {}, 0
-    with ThreadPoolExecutor(4) as pool:
-        for n, (token, ev, err) in enumerate(pool.map(one, jobs)):
+    cache = Path(sys.argv[3]).with_suffix(".cache.jsonl")  # finished coins survive a restart
+    if cache.exists():
+        for line in cache.read_text().splitlines():
+            token, ev = json.loads(line)
+            results[token] = [tuple(e) for e in ev]
+    todo = [j for j in jobs if j[0] not in results]
+    print(f"{len(jobs) - len(todo)} coin önbellekten, {len(todo)} kaldı", flush=True)
+    with ThreadPoolExecutor(5) as pool, open(cache, "a") as out:
+        for n, (token, ev, err) in enumerate(pool.map(one, todo)):
             results[token] = ev
             failed += ev is None
-            if n % 50 == 0:
-                print(f"{n}/{len(jobs)} coin · {time.time() - t0:.0f} sn · hata {failed}", flush=True)
+            if ev is not None:
+                out.write(json.dumps([token, ev]) + "\n")
+                out.flush()
+            if n % 10 == 0:
+                print(f"{n}/{len(todo)} coin · {time.time() - t0:.0f} sn · hata {failed}", flush=True)
     rows = []
     for r, job in zip(picks.itertuples(), jobs):
         ev, f = results[r.coin], fomo[r.coin]
