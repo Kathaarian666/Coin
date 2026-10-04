@@ -15,12 +15,10 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test) — 5-7 gün veri birikince (~9-10 Ekim) | tarihi bekliyor |
-| A6 | Gece gönderiminin ilk sonucu (4 Ekim sabahı): `veri` dalında `solana/2026-10-03` ve `bnb/2026-10-03` var mı, içerikleri sağlam mı | 4 Ekim |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | ~1 Kasım'dan önce |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| D11 | Denetim: pump.fun'da PumpSwap havuzunun coini okunamazsa (429) işlem atlanıyor → A6'da `stats` sayımlarıyla kayıp ölçülecek | A6 ile |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
@@ -337,6 +335,13 @@ süre sınırı yok. Eğitim 26 Eylül öncesi, test 26 Eylül–1 Ekim (6 gün)
 - **Base:** ~16 Fomo işlemi/dk (1 saat örnek; Robinhood'un ~1/4'ü), saatte ~460 alıcı, ~90 coin; havuzlar
   Uniswap V4 ve Aerodrome. **Geçmiş veri ücretsiz** (`mainnet.base.org`, 30 gün önce dahil, 500 blokluk sorgu 0,5 sn)
   → Robinhood gibi hemen indirilip araştırılabilir; ama havuz küçük.
+- **İlk gece gönderimi (4 Ekim 00:23-00:28 UTC, A6/D11):** üçü de `veri` dalında. pump.fun 3 Ekim: 526.486 işlem
+  (07:09-23:59, eksik saat yok), 4.011 curve + 3.671 PumpSwap coini; dakikalık sayımla karşılaştırma: curve işlemlerinin
+  %100'ü, PumpSwap'ın %99,9'u kaydedilmiş (D11: kayıp önemsiz). `mints` 7.536 coin (geliştirici 6.070; oluşturulma anı
+  3.380, yarıda kalan 3.195; havuz oluşturulma 162/4.435 — havuz aramaları sırada). BNB: 85.307 Fomo işlemi
+  (13:24-23:59, 15 dk'dan uzun boşluk yok, yeniden başlatma dahil), 5.271 flap.sh lansmanı. Robinhood (botun gördüğü):
+  92.379 işlem (15:03-23:59, boşluk yok, satışların %99'unda $). Parquet arşivi 3 Ekim 08:14'te bitiyor → 08:14-15:03
+  boşluğunu `retrain.py` zincirden indirir.
 - **BNB toplayıcı (3 Ekim, kullanıcı "evet"; `rhscanner/bnb.py`, sunucuda `fombnb`, DB `~/Coin/bnb.db`):** 4 sn'de bir
   publicnode'dan son bloklar (adres filtreli getLogs, 400 blokluk parçalar): Fomo olay ayakları (`fomo`), executor'a
   giden USDC (`usdc_in`, satış tutarı), **flap.sh lansmanları** (`launches`: portal `0xe2ce6ab8...` TokenCreated =
