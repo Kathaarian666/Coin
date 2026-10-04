@@ -19,7 +19,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| A10 | Çıkış anındaki gerçek satış değerini zincirde ölçmek → kural taramasını gerçek değerle tekrar (`exit_truth.py` → `exit_truth_rules.py`), tuzak riskli seçimleri eleme denemesi, sonra final sınavı (1 Ekim+) (§4.4b) | ölçüm sürüyor (4 Ekim) |
+| A10 | Gerçek çıkış değeri ölçüldü (§4.4c): "5x'te hepsini sat" haftada ~3,1x (gerçek değerle), şimdiki kurallar ~0,8-1,2x. Açık: (1) kâğıt teste bu kuralı ekleyip ekleme kararı (kullanıcı), (2) final sınavı — 1 Ekim+ için walk-forward seçim yok (1 seçim); yeni günlerle yapılacak | kullanıcı kararı bekliyor |
 | D12 | Canlı likidite uyarısı net likidite kuralına geçti (4 Ekim): havuzun oluşumundan beri net likiditesi bir blok sonunda zirvesinin %20'sine ya da altına inince bir kez uyarır (`live.pull_step`); tek tek çıkarmalar sayılmaz (hook'lar likiditeyi aynı işlemde çıkarıp geri koyuyor). Sunucuya bir sonraki güncellemeyle gider; `/canli` kapalı olduğu için şimdilik etkisi yok | yapıldı (sunucu güncellemesi bekliyor) |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
@@ -395,6 +395,28 @@ seçim (%1/%2/%5), tutar; masraflı, 30 sn, her hafta $1.000.
   çıkış anında zincirde gerçekten satılabilecek tutar ölçülerek bilinir (eski bloklarda satış simülasyonu, dRPC +
   `V4SellProbe` / Pons curve). Kâğıt test de aynı varsayımı kullanıyor (`paper.last_value`), `/karne` iyimser olabilir.
 
+### 4.4c Gerçek çıkış değeriyle kural taraması (4 Ekim, §0 A10)
+`scripts/exit_truth.py`: en iyi %2'lik 222 seçimin (10 Eylül – 1 Ekim) çıkış anlarında (1/3/6/24 sa) zincirdeki gerçek
+fiyat (Pons curve + coinin bütün V4 havuzlarındaki işlemler). Likidite çekilmesi için şu kural kullanıldı: havuzun net
+likiditesi bir blok sonunda zirvesinin %20'sinin altına iner ve bu, Fomo'nun işlem yaptığı havuzda son işlemden sonra
+olur. Sonuç: gerçek / son Fomo fiyatı ortancası 1,00, ama seçimlerin **~%20'sinde (45) likidite çekilmiş** →
+değer 0. Ölçülemeyen %3-6 (coin başka havuza geçmiş); iki yönde de değerlendi (0 / Fomo fiyatı), sonucu değiştirmiyor.
+`scripts/exit_truth_rules.py` (aynı simülasyon: masraflı, 30 sn, haftalık $1.000; 3 hafta, 10-30 Eylül):
+- **Şimdiki kurallar** (2x'te yarı, %50 zarar-kes, zirveden %50) gerçek değerle haftada **0,80-1,17x** (süre sınırına
+  göre) → kârsız. Olağan değerlemenin en iyisi (5x'te yarı, 1 sa) 9,9x değil **2,0x**.
+- **En iyi: 5x'e ulaşınca hepsini sat** (zarar-kes yok, kalan 1-24 sa sonra satılır; süre neredeyse fark etmiyor):
+  haftada **~3,15x** (2,85 / 6,27 / 1,76; en kötü hafta 1,76x; en iyi %1 hariç 3,0x). Komşu kurallar da aynı bölgede
+  (en iyi 8'in hepsi "5x'te hepsi").
+- **Tuzak eleme denemeleri kötüleştirdi:** sadece Pons coinleri → 1,30x (büyük kazananların yarısı Pons dışı);
+  güven puanı ≥ 50 (her gün önceki günlerle eğitilen) → 2,25x. 5x'te hemen satınca rug'lar çoğunlukla sonra geliyor.
+- **Hata arandı** (`scripts/exit_truth_delay.py`): 221 seçimin 79'u 3 saat içinde 5x'e ulaşmış, ortanca **9,6 dk**
+  sonra. Zincirde ölçülebilen 50'sinin hepsinde zincirdeki fiyat da 5x civarı (ortanca 5,4x, en düşük 3,4x) → veri
+  hatası değil. **Satış gecikmesi:** 1 dk geç → 3,55x, 5 dk → 6,1x (yükseliş sürüyor), **15 dk → 79'un 17'sinde
+  likidite çekilmiş** (4,3x). → Kural ancak bildirim anında ve hızlı uygulanırsa işe yarar; "5x oldu" haberi anında
+  gelmeli ve satış birkaç dakika içinde yapılmalı.
+- Sınırlar: sadece 3 hafta; kural aynı haftalarda seçildi (ızgarada 120 kural); 1 Ekim+ final sınavı için yalnız 1
+  seçim var → asıl sınav yeni günler ve kâğıt test olacak.
+
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
 anlarla eğitildi) hiç görmediği 1 Ekim 11:31 – 3 Ekim 08:14 aralığında, botun yaptığı gibi (son 48 saatin en iyi
@@ -501,6 +523,8 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Eğitim (§0 D8) | `retrain.py` | Haftalık: arşiv + bot günleri → anlar → holder özellikleri → iki modelin dışa aktarımı |
 | Araştırma (3. adım) | `exit_study.py` | Çıkış kuralları / seçim / tutar ızgarası, hafta hafta masraflı; final sınavı günleri ayrık |
 | Araştırma (A10) | `exit_truth.py` | Seçimlerin çıkış anındaki gerçek fiyatı: curve + V4 havuzlarındaki bütün işlemler, net likidite çekilmesi |
+| Araştırma (A10) | `exit_truth_rules.py` | Çıkış kuralı taraması, gerçek çıkış değeriyle; Pons / güven puanı filtreleri |
+| Araştırma (A10) | `exit_truth_delay.py` | 5x kuralında satış gecikmesinin etkisi; Fomo 5x'inin zincirde doğrulanması |
 | Araştırma (pump.fun, A8) | `pump_study.py` | pump.fun yeni coinlerinin 3./5./10. Fomo alıcısı anları, kriterler, 2x / tuzak / mezuniyet |
 | Test (§0 A2) | `fresh_test.py` | Kâğıt test modeli görmediği günlerde (bot gibi seçim, 2x oranı, kasa simülasyonu) |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
