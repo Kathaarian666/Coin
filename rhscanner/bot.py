@@ -307,10 +307,17 @@ class ScannerApp:
                 if now - r["ts"] > live.LIQ_WATCH:
                     self.live_log.mark(token, warned=1)  # watched long enough
                     continue
-                n = await live.liquidity_removed(self.rpc, pm, r["pool"], r["checked_block"] + 1, head)
-                self.live_log.mark(token, checked_block=head)
-                if n:
-                    await self.send(format_liquidity_warning(await self.symbol(token), token, n), reply)
+                if r["liq_net"] is None:  # first look: the pool's whole history, for its peak
+                    born = await live.pool_birth(self.rpc, pm, r["pool"], r["block"])
+                    start, net, peak = born if born is not None else max(0, r["block"] - live.POOL_LOOKBACK), 0, 0
+                else:
+                    start, net, peak = r["checked_block"] + 1, int(r["liq_net"]), int(r["liq_peak"])
+                logs = await live.pool_liquidity_logs(self.rpc, pm, r["pool"], start, head)
+                net, peak, pulled_at = live.pull_step(logs, net, peak, r["block"])
+                self.live_log.mark(token, checked_block=head, liq_net=str(net), liq_peak=str(peak))
+                if pulled_at is not None:
+                    share = 100 * (1 - max(0, net) / peak) if peak else 100.0
+                    await self.send(format_liquidity_warning(await self.symbol(token), token, share), reply)
                     self.live_log.mark(token, warned=1)
 
     async def live_loop(self):

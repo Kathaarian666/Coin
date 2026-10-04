@@ -213,6 +213,6 @@ def format_2x(symbol: str, token: str, minutes: float) -> str:
             f"Kısmi ya da tam satış kararı senin. <code>{token}</code> · {_gecko(token)}")
 
 
-def format_liquidity_warning(symbol: str, token: str, events: int) -> str:
-    return (f"⚠️ <b>{escape(symbol, quote=False)}</b>: havuzdan likidite çekiliyor ({events} işlem). "
+def format_liquidity_warning(symbol: str, token: str, pulled_pct: float) -> str:
+    return (f"⚠️ <b>{escape(symbol, quote=False)}</b>: havuzdaki likiditenin %{pulled_pct:.0f}'i çekildi. "
             f"Rug olabilir, dikkat.\n<code>{token}</code> · {_gecko(token)}")

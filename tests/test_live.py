@@ -67,3 +67,19 @@ def test_2x_is_sent_once_on_two_buys_in_a_row_and_survives_a_restart(tmp_path):
     assert len(sent) == 1 and "2 katına" in sent[0] and token not in app.live_watch
     assert app.live_log.get(token)["sent_2x"] == 1
     asyncio.run(app.rpc.close())
+
+
+def _liq(block, delta):
+    return {"blockNumber": hex(block), "data": "0x" + "00" * 64 + delta.to_bytes(32, "big", signed=True).hex() + "00" * 32}
+
+
+def test_pull_step_net_liquidity():
+    # a hook takes all liquidity out and puts it back in the same block: no pull
+    logs = [_liq(10, 1000), _liq(11, -1000), _liq(11, 1000), _liq(12, -300)]
+    net, peak, at = live.pull_step(logs, 0, 0, since=0)
+    assert (net, peak, at) == (700, 1000, None)
+    # later most of it leaves for good: pulled at that block, only once
+    net, peak, at = live.pull_step([_liq(20, -600), _liq(21, -50)], net, peak, since=0)
+    assert (net, peak, at) == (50, 1000, 20)
+    # a pull before the alert block is not reported
+    assert live.pull_step([_liq(5, 100), _liq(6, -90)], 0, 0, since=7)[2] is None

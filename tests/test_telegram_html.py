@@ -45,4 +45,4 @@ def test_live_messages_are_valid_telegram_html():
                   format_safety("<X>", token, 87, [("Fomo'da satış", "ok", "2 <satıcı>"), ("Likidite", "warn", "a&b"),
                                                      ("LP kilidi", "unknown", "bilinmiyor")], [("GoPlus", True), ("Gecko", False)]),
                   format_safety("Y", token, None, [], []),
-                  format_2x("<X>", token, 14.0), format_liquidity_warning("<X>", token, 2)])
+                  format_2x("<X>", token, 14.0), format_liquidity_warning("<X>", token, 85.0)])

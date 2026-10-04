@@ -6,8 +6,10 @@ template cannot block sells), any other coin is sold in a simulation into its Un
 10 % or more drops the pick; when nothing can be simulated (no pool or holder found) it is sent with a warning.
 The message gives the 2x chance (what the top 2 % did in the walk-forward test) and the 3 criteria that lift the
 score most; the safety report with the trust score (trust_model.json, PROJE.md §4.1) follows as a reply.
-Afterwards: "2x oldu" when two buys in a row reach 2x the alert price, and a warning when liquidity is taken out
-of the coin's V4 pool (ModifyLiquidity with a negative delta).
+Afterwards: "2x oldu" when two buys in a row reach 2x the alert price, and a warning when the liquidity of the coin's
+V4 pool is pulled: its net liquidity (every ModifyLiquidity since the pool's creation) at the end of a block falls to
+PULL_SHARE of its peak or less. Single removals are no signal: launchpad hooks take liquidity out and put it back all
+the time, often in the same transaction (PROJE.md §0 D12, as scripts/exit_truth.py).
 """
 
 import json
@@ -31,6 +33,8 @@ LAUNCHPAD_OWNERS = {"0xeb7c034704ef8dcd2d32324c1545f62fb4ad0862"}
 POOL_LOOKBACK = 2 * 864_000  # blocks (~2 days) searched for the coin's V4 pool
 MAX_TAX = 0.10
 LIQ_WATCH = 6 * 3600  # s after the alert the pool is watched for liquidity removal
+PULL_SHARE = 0.2  # net liquidity at or under this share of its peak = pulled
+LIQ_CHUNK = 100_000  # blocks per pool log query (the node refuses wider address-filtered ranges for some queries)
 LIVE_2X_DAYS = 30  # "2x oldu" is watched this long ("süre önemsiz", PROJE.md §1)
 
 LABELS = {  # criterion -> (Turkish name, how to show its value)
@@ -162,14 +166,40 @@ async def sell_gate(rpc, pm: str, token: str, pons: bool, buyers: list[str]) -> 
     return status, detail, pool[0]
 
 
-async def liquidity_removed(rpc, pm: str, pool_id: str, from_block: int, to_block: int) -> int:
-    """Number of ModifyLiquidity events with a negative delta (liquidity taken out) in the block range."""
-    logs = await rpc.get_logs(from_block, to_block, [TOPIC_MODIFY_LIQUIDITY, pool_id], address=pm)
-    out = 0
-    for e in logs:
+def pull_step(logs: list[dict], net: int, peak: int, since: int) -> tuple[int, int, int | None]:
+    """ModifyLiquidity logs (block order) -> (net, peak, the first block >= since that ended with the net
+    liquidity <= PULL_SHARE x peak after being above it, or None)."""
+    pulled_at, block = None, None
+    was = peak > 0 and net <= PULL_SHARE * peak
+    for e in [*logs, None]:
+        b = int(e["blockNumber"], 16) if e else None
+        if block is not None and b != block:  # the previous block is complete
+            peak = max(peak, net)
+            now = peak > 0 and net <= PULL_SHARE * peak
+            if now and not was and block >= since and pulled_at is None:
+                pulled_at = block
+            was = now
+        if e is None:
+            break
+        block = b
         d = bytes.fromhex(e["data"][2:])
-        if len(d) >= 96 and int.from_bytes(d[64:96], "big", signed=True) < 0:
-            out += 1
+        if len(d) >= 96:
+            net += int.from_bytes(d[64:96], "big", signed=True)
+    return net, peak, pulled_at
+
+
+async def pool_birth(rpc, pm: str, pool_id: str, before: int) -> int | None:
+    """The block the V4 pool was created in (searched back POOL_LOOKBACK blocks)."""
+    logs = await rpc.get_logs(max(0, before - POOL_LOOKBACK), before, [TOPIC_V4_INITIALIZE, pool_id], address=pm)
+    return int(logs[0]["blockNumber"], 16) if logs else None
+
+
+async def pool_liquidity_logs(rpc, pm: str, pool_id: str, from_block: int, to_block: int) -> list[dict]:
+    out, lo = [], from_block
+    while lo <= to_block:
+        hi = min(to_block, lo + LIQ_CHUNK - 1)
+        out += await rpc.get_logs(lo, hi, [TOPIC_MODIFY_LIQUIDITY, pool_id], address=pm)
+        lo = hi + 1
     return out
 
 
@@ -180,7 +210,11 @@ class LiveLog:
         self.db = db
         db.execute("""CREATE TABLE IF NOT EXISTS live_log (token TEXT PRIMARY KEY, ts REAL, p_alert REAL, block INTEGER,
                       pool TEXT, msg TEXT, gate TEXT, sent_2x INTEGER DEFAULT 0, warned INTEGER DEFAULT 0,
-                      checked_block INTEGER)""")
+                      checked_block INTEGER, liq_net TEXT, liq_peak TEXT)""")
+        cols = {r[1] for r in db.execute("PRAGMA table_info(live_log)")}
+        for c in ("liq_net", "liq_peak"):  # int256 sums, kept as text; NULL = the pool's history not read yet
+            if c not in cols:
+                db.execute(f"ALTER TABLE live_log ADD COLUMN {c} TEXT")
         db.commit()
 
     def add(self, token, ts, p_alert, block, pool, msg, gate):
