@@ -19,6 +19,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
+| A10 | Çıkış anındaki gerçek satış değerini zincirde ölçmek (eski blokta satış simülasyonu) → kural taramasını gerçek değerle tekrar, sonra final sınavı (1 Ekim+) (§4.4b) | konuşulacak |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
@@ -372,8 +373,26 @@ Fomo işlemlerinden (curve + PumpSwap). Tuzak = 1 saat içinde fiyat bildirimin 
 - Tek kriterler (5. alıcı, 1 saatte 2x, en düşük → en yüksek beşte bir): ilk alımdan bu yana fiyat %19 → %31,
   5. alıcıya süre %26 → %15 (hızlı iyi), son 10 dk alım $ %19 → %29, son 60 sn alıcı %16 → %26; piyasa değeri ve
   curve doluluğu orta dilimde en iyi (%34-35) ama en üstte tuzak. Büyük alım $ tuzağı düşürüyor (%16 → %2).
-- Sınır: sadece Fomo işlemleri görülüyor; geliştiricinin / bundle'ın Fomo dışı satışları ancak fiyattan görünür →
-  holder/geliştirici payı için zincirden ek sorgu gerekebilir (karar kullanıcıyla).
+- Sınır: sadece Fomo işlemleri görülüyor; geliştiricinin / bundle'ın Fomo dışı satışları ancak fiyattan görünür.
+  Holder sorgusu (`getTokenLargestAccounts`) ücretsiz Solana RPC'de hem buradan hem sunucudan hep 429; bütün pump.fun
+  işlemlerini dinlemek dakikada ~13.600 mesaj / 20 MB (günde ~29 GB, 1 GB'lık sunucu için ağır); Helius ücretsiz planı
+  kayıt ister. **Kullanıcı kararı (4 Ekim): pump.fun'da holder verisi yok, fiyat + Fomo akışı kriterleriyle devam.**
+
+### 4.4b Çıkış kuralları taraması ve satış fiyatı varsayımı (4 Ekim, kullanıcı: "farklı parametrelerle kârlılığı yukarı taşı")
+`scripts/exit_study.py`: araştırmanın walk-forward seçimleri (5. alıcı, 10-30 Eylül; 1 Ekim sonrası **final sınavı,
+dokunulmadı**), kural ızgarası: hedef (1,5/2/3/5x) ve hedefte satılan pay, zarar-kes, zirveden iz, süre sınırı (1-24 sa),
+seçim (%1/%2/%5), tutar; masraflı, 30 sn, her hafta $1.000.
+- **Olağan değerlemeyle** (çıkışta son 5 fiyatın ortancası, 6 saat işlem yoksa yarı fiyat — §6 kural 5) süre sınırlı
+  kurallar çok iyi görünüyor: en iyi %2, 5x hedefte yarısı, kalan 1 saatte satılır → haftada ~9,9x (şimdiki kurallar
+  2,77x). Bölge geniş (1-6 saat, 3-5x hedef hep 7-10x).
+- **Hata arandı → önemli bulgu:** simülasyon, sessizleşmiş coini **son Fomo fiyatından** satabileceğimizi varsayıyor.
+  Kötümser değerlemeyle (çıkıştan önceki 15 / 30 / 60 dk'da Fomo işlemi yoksa değer 0) bütün süresiz/uzun kurallar,
+  **şimdiki kurallar dahil**, haftada ~0,8-1,4x'e iniyor; 1 saat sınırlı kurallar 15 dk eşikte 1,1-2,0x, 30 dk'da
+  1,6-2,7x (5x hedef en iyi; üç haftanın hepsi > 1). → Kâr tahmininin büyük kısmı **çıkış anındaki gerçek satış
+  fiyatına** bağlı; ne olumlu ne kötümser değerleme doğru — gerçek değer arada.
+- Sonuç: (1) kısa tutma (1 saat) + yüksek hedef (3-5x) her değerlemede şimdiki kurallardan iyi; (2) mutlak kâr ancak
+  çıkış anında zincirde gerçekten satılabilecek tutar ölçülerek bilinir (eski bloklarda satış simülasyonu, dRPC +
+  `V4SellProbe` / Pons curve). Kâğıt test de aynı varsayımı kullanıyor (`paper.last_value`), `/karne` iyimser olabilir.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
@@ -479,6 +498,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma | `transfer_features.py` | Bu anlara holder özellikleri ekler (`<k>` seçilebilir; anın kendi bloğu; 1 saatten geç anlar boş) |
 | Araştırma (§0 A1) | `holder_study.py` | Holder kriterleri modele katkı sağlıyor mu: aynı walk-forward, 2x oranı + kasa simülasyonu |
 | Eğitim (§0 D8) | `retrain.py` | Haftalık: arşiv + bot günleri → anlar → holder özellikleri → iki modelin dışa aktarımı |
+| Araştırma (3. adım) | `exit_study.py` | Çıkış kuralları / seçim / tutar ızgarası, hafta hafta masraflı; final sınavı günleri ayrık |
 | Araştırma (pump.fun, A8) | `pump_study.py` | pump.fun yeni coinlerinin 3./5./10. Fomo alıcısı anları, kriterler, 2x / tuzak / mezuniyet |
 | Test (§0 A2) | `fresh_test.py` | Kâğıt test modeli görmediği günlerde (bot gibi seçim, 2x oranı, kasa simülasyonu) |
 | Araştırma | `rise_detect.py` | "Ciddi yükseleni ayırabiliyor muyuz" raporu |
