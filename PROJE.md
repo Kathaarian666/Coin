@@ -19,8 +19,8 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| A10 | Çıkış anındaki gerçek satış değerini zincirde ölçmek (eski blokta satış simülasyonu) → kural taramasını gerçek değerle tekrar, sonra final sınavı (1 Ekim+) (§4.4b) | konuşulacak |
-| D12 | Canlı likidite uyarısı (`live.liquidity_removed`) her negatif ModifyLiquidity'yi çekme sayıyor; hook'lu havuzlar likiditeyi sürekli taşıdığı için yanlış alarm verir → net likidite (zirvenin %20'sinin altı) kuralına geçmeli (`exit_truth.py` gibi) | A10 ile |
+| A10 | Çıkış anındaki gerçek satış değerini zincirde ölçmek → kural taramasını gerçek değerle tekrar (`exit_truth.py` → `exit_truth_rules.py`), tuzak riskli seçimleri eleme denemesi, sonra final sınavı (1 Ekim+) (§4.4b) | ölçüm sürüyor (4 Ekim) |
+| D12 | Canlı likidite uyarısı net likidite kuralına geçti (4 Ekim): havuzun oluşumundan beri net likiditesi bir blok sonunda zirvesinin %20'sine ya da altına inince bir kez uyarır (`live.pull_step`); tek tek çıkarmalar sayılmaz (hook'lar likiditeyi aynı işlemde çıkarıp geri koyuyor). Sunucuya bir sonraki güncellemeyle gider; `/canli` kapalı olduğu için şimdilik etkisi yok | yapıldı (sunucu güncellemesi bekliyor) |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
