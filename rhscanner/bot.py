@@ -20,8 +20,8 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from . import live
 from .live import LiveLog
-from .report import (format_2x, format_liquidity_warning, format_live_alert, format_paper, format_paper_alert,
-                     format_report, format_safety)
+from .report import (format_2x, format_liquidity_warning, format_live_alert, format_paper, format_paper_5x,
+                     format_paper_alert, format_report, format_safety)
 from . import safety
 from .rpc import RpcClient
 from . import paper
@@ -76,6 +76,7 @@ class ScannerApp:
         # the same with the holder criteria (PROJE.md §4.6), side by side: own scores, bar and virtual trades
         self.paper_model_h = Model.load(paper.MODEL_H_PATH)
         self.paper_log_h = PaperLog(self.storage.db, "paper_log_h")
+        self.paper5_hits: list[tuple[str, float]] = []  # (token, seconds after the alert) to announce
         self.book = Book(self.storage.db)
         self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
@@ -351,12 +352,69 @@ class ScannerApp:
                 else:
                     value = paper.last_value(coin.trades, now, trade["p_alert"])
                     plog.update(token, trade, paper.net_return(trade, depth, 20.0, value), False, now)
+            for token, ts, depth, kind5 in plog.open5():  # the 5x rule beside it (PROJE.md §4.4c)
+                if kind5 == "süre":
+                    continue  # its time exit waits for the on-chain check (paper5_step)
+                coin = self.follower.coins.get(token)
+                if coin is None:
+                    plog.update5(token, None, None, True)
+                    continue
+                trade = paper.paper_trade_5x(coin.trades, ts, now)
+                if trade is None:
+                    continue
+                depth = depth if depth and depth == depth else 3000.0
+                value = paper.last_value(coin.trades, now, trade["p_alert"]) if trade["open"] else None
+                ret = paper.net_return(trade, depth, 20.0, value)
+                plog.update5(token, trade["kind"], ret, trade["kind"] == "5x")
+                if trade["kind"] == "5x" and plog is self.paper_log and now - trade["legs"][0][0] < 600:
+                    # announced only when fresh: after an update the last days' picks are worked out afresh
+                    self.paper5_hits.append((token, trade["legs"][0][0] - ts))
         self.follower.prune(now)
+
+    async def pool_pulled(self, token: str, t_exit: float, now: float) -> str:
+        """'çekildi' / 'var' / 'havuz yok': was the coin's latest V4 pool's liquidity pulled by t_exit (its net
+        liquidity at most live.PULL_SHARE of its peak, the rule of scripts/exit_truth.py)?"""
+        pm = self.settings.v4_pool_manager
+        head = await self.rpc.block_number()
+        exit_block = head - max(0, int((now - t_exit) * paper.BLOCKS_PER_S))
+        pool = await live.find_pool(self.rpc, pm, token, exit_block)
+        if pool is None:
+            return "havuz yok"  # still on its launch curve (cannot be pulled) or no V4 pool
+        born = await live.pool_birth(self.rpc, pm, pool[0], exit_block)
+        start = born if born is not None else max(0, exit_block - live.POOL_LOOKBACK)
+        logs = await live.pool_liquidity_logs(self.rpc, pm, pool[0], start, exit_block)
+        net, peak, _ = live.pull_step(logs, 0, 0, 0)
+        return "çekildi" if peak > 0 and net <= live.PULL_SHARE * peak else "var"
+
+    async def paper5_step(self, now: float):
+        """The 5x rule's time exits get their on-chain check; its 5x hits are announced (/kagitbildirim)."""
+        hits, self.paper5_hits = self.paper5_hits, []
+        if self.paper_notify and not self.live_on:
+            for token, secs in hits:
+                await self.broadcast(format_paper_5x(await self.symbol(token), token, secs / 60))
+        checked = {}
+        for plog in (self.paper_log, self.paper_log_h):
+            for token, ts, depth, kind5 in plog.open5():
+                if kind5 != "süre":
+                    continue
+                t_exit = ts + paper.HOLD5
+                if token not in checked:
+                    try:
+                        checked[token] = await self.pool_pulled(token, t_exit, now)
+                    except Exception as exc:
+                        log.warning("pool check failed for %s: %s", token, exc)
+                        checked[token] = None
+                status = checked[token]
+                if status is None and now - t_exit < 6 * 3600:
+                    continue  # try again next minute
+                ret = plog.db.execute(f"SELECT ret5 FROM {plog.t} WHERE token = ?", (token,)).fetchone()[0]
+                plog.update5(token, "süre", -1.0 if status == "çekildi" else ret, True, status or "bakılamadı")
 
     async def paper_loop(self):
         while True:
             try:
                 self.paper_step(time.time())
+                await self.paper5_step(time.time())
             except asyncio.CancelledError:
                 raise
             except Exception:

@@ -33,6 +33,8 @@ WARMUP_BLOCKS = 6000  # coins first seen this soon after the bot started may hav
 BLOCKS_PER_S = 9.93
 TOP = 0.02  # alert share
 BANKROLL = 1000.0
+TP5 = 5.0  # second rule beside the main one (PROJE.md §4.4c, A10): everything sold at 5x the alert price ...
+HOLD5 = 3 * 3600  # ... or at this many seconds after the alert (worth 0 if the pool's liquidity was pulled by then)
 MODEL_PATH = Path(__file__).with_name("paper_model.json")
 MODEL_H_PATH = Path(__file__).with_name("paper_model_h.json")  # + holder criteria, run beside it (PROJE.md §4.6)
 BOOK_PATH = Path(__file__).with_name("paper_book.json")
@@ -219,14 +221,42 @@ def _two_in_row(values, cond) -> int | None:
     return None
 
 
-def paper_trade(trades: list[Trade], t_alert: float, now: float) -> dict | None:
-    """The user's trade on an alert at t_alert, as far as it is known at `now`: entry, closed legs
-    [(time, share, price)], 'open' share and kind ('2x' / 'stop' / 'yok'). None before the entry is known."""
+def _entry(trades: list[Trade], t_alert: float, now: float) -> tuple | None:
+    """(alert price = the last buy then, entry time, entry price = the last buy DELAY s later); None before that."""
     p_alert = next((x.price for x in reversed(trades) if x.side == 1 and x.price and x.ts <= t_alert), None)
     t_in = t_alert + DELAY
     if p_alert is None or now < t_in:
         return None
-    p_in = next((x.price for x in reversed(trades) if x.side == 1 and x.price and x.ts <= t_in), p_alert)
+    return p_alert, t_in, next((x.price for x in reversed(trades) if x.side == 1 and x.price and x.ts <= t_in), p_alert)
+
+
+def paper_trade_5x(trades: list[Trade], t_alert: float, now: float) -> dict | None:
+    """The second rule (PROJE.md §4.4c): everything is sold once two buys in a row reach TP5 x the alert price
+    (kind '5x'); otherwise at HOLD5 after the alert at the last Fomo price then (kind 'süre'; the bot then checks
+    on-chain whether the pool's liquidity was pulled, which makes it worth 0); before that kind 'yok', open."""
+    entry = _entry(trades, t_alert, now)
+    if entry is None:
+        return None
+    p_alert, t_in, p_in = entry
+    t_end = t_alert + HOLD5
+    buys = [(x.ts, min(x.price, CAP * p_alert)) for x in trades
+            if t_in < x.ts <= min(now, t_end) and x.side == 1 and x.price]
+    out = {"p_alert": p_alert, "t_in": t_in, "p_in": p_in, "legs": [], "open": 1.0, "kind": "yok"}
+    j = _two_in_row([p for _, p in buys], lambda p: p >= TP5 * p_alert)
+    if j is not None:
+        out.update(legs=[(buys[j][0], 1.0, TP5 * p_alert)], open=0.0, kind="5x")
+    elif now >= t_end:
+        out.update(legs=[(t_end, 1.0, last_value(trades, t_end, p_alert))], open=0.0, kind="süre")
+    return out
+
+
+def paper_trade(trades: list[Trade], t_alert: float, now: float) -> dict | None:
+    """The user's trade on an alert at t_alert, as far as it is known at `now`: entry, closed legs
+    [(time, share, price)], 'open' share and kind ('2x' / 'stop' / 'yok'). None before the entry is known."""
+    entry = _entry(trades, t_alert, now)
+    if entry is None:
+        return None
+    p_alert, t_in, p_in = entry
     after = [x for x in trades if t_in < x.ts <= now and x.price]
     px = [min(x.price, CAP * p_alert) for x in after]
     buys = [(x.ts, p) for x, p in zip(after, px) if x.side == 1]
@@ -456,6 +486,11 @@ class PaperLog:
         self.db = db
         self.t = table
         db.executescript(self.SCHEMA.format(t=table))
+        cols = {r[1] for r in db.execute(f"PRAGMA table_info({table})")}
+        # the 5x rule's trade beside the main one (PROJE.md §4.4c); chain5: the pool at its time exit
+        for c, kind in (("kind5", "TEXT"), ("ret5", "REAL"), ("closed5", "INTEGER NOT NULL DEFAULT 0"), ("chain5", "TEXT")):
+            if c not in cols:
+                db.execute(f"ALTER TABLE {table} ADD COLUMN {c} {kind}")
         db.commit()
         self._pending = 0
 
@@ -502,8 +537,17 @@ class PaperLog:
                                                     now if closed else None, token))
         self.db.commit()
 
+    def open5(self) -> list[tuple]:
+        return self.db.execute(f"SELECT token, ts, depth, kind5 FROM {self.t} WHERE alert = 1 AND closed5 = 0").fetchall()
+
+    def update5(self, token: str, kind: str | None, ret: float | None, closed: bool, chain: str | None = None):
+        self.db.execute(f"UPDATE {self.t} SET kind5 = ?, ret5 = ?, closed5 = ?, chain5 = ? WHERE token = ?",
+                        (kind, ret, int(closed), chain, token))
+        self.db.commit()
+
     def alerts(self, since: float) -> list[dict]:
-        cur = self.db.execute(f"""SELECT token, ts, score, size, seen, kind, ret, closed FROM {self.t}
+        cur = self.db.execute(f"""SELECT token, ts, score, size, seen, kind, ret, closed, kind5, ret5, closed5, chain5
+                                 FROM {self.t}
                                  WHERE alert = 1 AND ts >= ? ORDER BY ts""", (since,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
@@ -517,12 +561,13 @@ def size_for(pct: float) -> float:
     return 0.04 if pct >= 1 - TOP / 3 else 0.02 if pct >= 1 - 2 * TOP / 3 else 0.01
 
 
-def bankroll(rows: list[dict]) -> float:
-    """$1000 run through the alerts in time order with their sizes and net returns (closed or marked)."""
+def bankroll(rows: list[dict], key: str = "ret") -> float:
+    """$1000 run through the alerts in time order with their sizes and net returns (closed or marked); key "ret5":
+    the 5x rule."""
     bank = BANKROLL
     for r in rows:
-        if r["ret"] is not None:
-            bank += bank * (r["size"] or 0.01) * r["ret"]
+        if r.get(key) is not None:
+            bank += bank * (r["size"] or 0.01) * r[key]
     return bank
 
 
@@ -536,6 +581,10 @@ def summary(rows: list[dict], scored: int) -> dict:
         "mean": sum(rets) / len(rets) if rets else None, "median": statistics.median(rets) if rets else None,
         "win": sum(x > 0 for x in rets) / len(rets) if rets else None,
         "bank": bankroll(rows), "latency": statistics.median(lat) if lat else None,
+        "x5": sum(1 for r in rows if r.get("kind5") == "5x"),
+        "time5": sum(1 for r in rows if r.get("kind5") == "süre" and r.get("closed5")),
+        "pulled5": sum(1 for r in rows if r.get("chain5") == "çekildi"),
+        "bank5": bankroll(rows, "ret5"),
     }
 
 

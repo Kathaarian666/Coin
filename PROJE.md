@@ -19,7 +19,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| A10 | Gerçek çıkış değeri ölçüldü (§4.4c): "5x'te hepsini sat" haftada ~3,1x (gerçek değerle), şimdiki kurallar ~0,8-1,2x. Açık: (1) kâğıt teste bu kuralı ekleyip ekleme kararı (kullanıcı), (2) final sınavı — 1 Ekim+ için walk-forward seçim yok (1 seçim); yeni günlerle yapılacak | kullanıcı kararı bekliyor |
+| A10 | Gerçek çıkış değeri ölçüldü (§4.4c): "5x'te hepsini sat" haftada ~3,1x (gerçek değerle), şimdiki kurallar ~0,8-1,2x. 6 Ekim: kullanıcı "evet" → 5x kuralı kâğıt teste eklendi (§3), A4'te iki kural yan yana değerlendirilecek. Açık: final sınavı (1 Ekim+ için 1 seçim var) yeni günlerle; `/canli` açılırsa gerçek bildirime de "5x oldu" mesajı eklenmeli (şu an sadece "2x oldu" var) — A4 kararıyla | sunucu güncellemesi bekliyor; değerlendirme A4 ile |
 | D12 | Canlı likidite uyarısı net likidite kuralına geçti (4 Ekim): havuzun oluşumundan beri net likiditesi bir blok sonunda zirvesinin %20'sine ya da altına inince bir kez uyarır (`live.pull_step`); tek tek çıkarmalar sayılmaz (hook'lar likiditeyi aynı işlemde çıkarıp geri koyuyor). Sunucuya bir sonraki güncellemeyle gider; `/canli` kapalı olduğu için şimdilik etkisi yok | yapıldı (sunucu güncellemesi bekliyor) |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
@@ -96,6 +96,13 @@ bırakıldı.
   `/karne` ikisini alt alta gösterir. Holder bilgisi coinin Transfer loglarından (ilk Fomo işleminden 1 saat öncesi /
   lansmandan 5. alıcının bloğuna; coin başına ~0,2-7 sn); 5. alıcı ilk Fomo işleminden 1 saatten geç geldiyse boş
   (araştırmadaki gibi). Canlı hesap araştırma tablosuyla 300 coinde birebir. Gerçek bildirim (`/canli`) ana modelle.
+- **5x kuralı (6 Ekim, §4.4c, kullanıcı "evet"):** aynı seçimlere (iki modelde de) ikinci bir sanal işlem: iki ardışık
+  alım bildirim fiyatının 5 katına ulaşınca hepsi satılır; gelmezse 3 saat sonra son Fomo fiyatıyla satılır, ama o
+  anda coinin en son V4 havuzunun net likiditesi zirvesinin %20'sinin altındaysa değer 0 (`bot.pool_pulled`; havuz yoksa
+  — coin hâlâ lansman curve'ünde — Fomo fiyatı). Zarar-kes yok. `/karne`'de ayrı satır (5x yapan, 3 saatte satılan,
+  likiditesi çekilmiş, sanal kasa), son seçimlerde her birinin 5x durumu. `/kagitbildirim ac` ise 5x anında "🎯 5 katına
+  ulaştı, şimdi hepsi satılır" mesajı gelir (kuralın hız gerektirdiğini pratikte görmek için). Güncellemeden sonra son
+  ~3 günün seçimleri de geriye dönük hesaplanır (eski 5x'ler için mesaj gitmez).
 - **Denetim düzeltmeleri (3 Ekim, §0 D1-D6, D10; kullanıcı onayıyla):** güven raporu §1 kararına göre yeniden yazıldı
   (`safety.py`: tek güven puanı = model; 14 kontrol sabit sırayla ✅/⚠️/❔; GoPlus + GeckoTerminal + DexScreener ikinci
   görüş, `/check` de aynı rapor) · bildirimde ham birim fiyatı yerine piyasa değeri ve 2x hedefi · "2x oldu" 30 gün

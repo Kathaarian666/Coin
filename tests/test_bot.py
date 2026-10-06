@@ -92,4 +92,55 @@ async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_v
     # half sold at 2x; the open half is valued at the median of the last 5 prices (1x here): net about +35 %
     assert row["kind"] == "2x" and not row["closed"] and 0.2 < row["ret"] < 0.5
     assert app.paper_log_h.alerts(0)[0]["kind"] == "2x"  # its virtual trade moves on too
+    # the 5x rule beside it: no 5x, so at 3 hours it is sold, and worth 0 because the pool's liquidity was pulled
+    assert row["kind5"] == "yok" and not row["closed5"]
+    later_now = t0 + paper.HOLD5 + 60
+    app.paper_step(later_now)
+    assert app.paper_log.alerts(0)[0]["kind5"] == "süre" and not app.paper_log.alerts(0)[0]["closed5"]
+    checked = []
+
+    async def pulled(token_, t_exit, now):
+        checked.append((token_, t_exit))
+        return "çekildi"
+    app.pool_pulled = pulled
+    await app.paper5_step(later_now)
+    row = app.paper_log.alerts(0)[0]
+    assert row["closed5"] and row["ret5"] == -1.0 and row["chain5"] == "çekildi"
+    assert checked == [(token, rows[0]["ts"] + paper.HOLD5)]  # once for both models
+    assert app.paper_log_h.alerts(0)[0]["chain5"] == "çekildi"
+    await app.rpc.close()
+
+
+async def test_pool_pulled_reads_the_pools_net_liquidity(tmp_path, monkeypatch):
+    from rhscanner import live
+    app = ScannerApp(Settings(db_path=str(tmp_path / "p.db")))
+
+    async def head():
+        return 1000
+    app.rpc.block_number = head
+    seen = {}
+
+    async def find_pool(rpc, pm, token, at):
+        seen["at"] = at
+        return ("0xpool", ()) if token == "0xa" else None
+
+    async def birth(rpc, pm, pool, before):
+        return 10
+
+    def liq(block, delta):
+        return {"blockNumber": hex(block), "data": "0x" + "00" * 64 + delta.to_bytes(32, "big", signed=True).hex()}
+    deltas = {"now": [liq(10, 1000), liq(500, -900)]}
+
+    async def logs(rpc, pm, pool, lo, hi):
+        seen["range"] = (lo, hi)
+        return deltas["now"]
+    monkeypatch.setattr(live, "find_pool", find_pool)
+    monkeypatch.setattr(live, "pool_birth", birth)
+    monkeypatch.setattr(live, "pool_liquidity_logs", logs)
+    now = time.time()
+    assert await app.pool_pulled("0xa", now - 10, now) == "çekildi"
+    assert seen["at"] == 1000 - 99 and seen["range"] == (10, 901)  # up to the exit's block, from the pool's birth
+    deltas["now"] = [liq(10, 1000), liq(500, -500)]
+    assert await app.pool_pulled("0xa", now, now) == "var"
+    assert await app.pool_pulled("0xb", now, now) == "havuz yok"
     await app.rpc.close()

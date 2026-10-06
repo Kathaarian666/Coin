@@ -140,3 +140,32 @@ def test_warmup_skips_new_coins_only_after_a_fresh_start():
     g.add("0xold", paper.Trade(1.0, 1000, 1, "a", 5.0, 1))
     g.add("0xnew", paper.Trade(2.0, 1100, 1, "a", 5.0, 1))
     assert g.coins["0xnew"].eligible
+
+
+def test_5x_rule_sells_everything_at_5x_or_at_3_hours():
+    p = 1e-6
+    hit = [buy(0, p), buy(100, 5.2 * p), sell(150, 0.1 * p), buy(200, 5.5 * p), buy(201, 5.6 * p)]
+    t = paper.paper_trade_5x(hit, 0, 1000)
+    assert t["kind"] == "5x" and t["open"] == 0 and t["legs"] == [(200, 1.0, 5 * t["p_alert"])]  # sells do not break the two buys
+    slow = [buy(0, p), buy(100, 1.5 * p), buy(200, 1.6 * p), buy(paper.HOLD5 + 100, 6 * p), buy(paper.HOLD5 + 101, 6 * p)]
+    assert paper.paper_trade_5x(slow, 0, 1000)["kind"] == "yok"  # still open, no stop in this rule
+    t = paper.paper_trade_5x(slow, 0, paper.HOLD5 + 500)
+    assert t["kind"] == "süre" and t["open"] == 0 and t["legs"][0][0] == paper.HOLD5  # the 5x came too late
+    assert abs(t["legs"][0][2] / (1.5 * p) - 1) < 1e-5  # median of the last prices before the limit
+
+
+def test_paper_log_keeps_the_5x_trade_beside_the_main_one():
+    db = sqlite3.connect(":memory:")
+    db.execute("CREATE TABLE paper_log (token TEXT PRIMARY KEY, ts REAL NOT NULL, score REAL NOT NULL, bar REAL, "
+               "alert INTEGER NOT NULL DEFAULT 0, size REAL, features TEXT, seen REAL, depth REAL, p_alert REAL, "
+               "p_in REAL, kind TEXT, ret REAL, closed INTEGER NOT NULL DEFAULT 0, closed_ts REAL)")  # before 5x
+    log = paper.PaperLog(db)  # adds the 5x columns
+    log.add("0xa", 1.0, 0.9, 0.5, True, 0.04, {}, 2.0, 5000.0)
+    log.add("0xb", 2.0, 0.9, 0.5, True, 0.02, {}, 3.0, 5000.0)
+    assert [r[0] for r in log.open5()] == ["0xa", "0xb"]
+    log.update5("0xa", "5x", 3.9, True)
+    log.update5("0xb", "süre", -1.0, True, "çekildi")
+    assert log.open5() == []
+    s = paper.summary(log.alerts(0), log.scored(0))
+    assert (s["x5"], s["time5"], s["pulled5"]) == (1, 1, 1)
+    assert abs(s["bank5"] - 1000 * (1 + 0.04 * 3.9) * (1 - 0.02)) < 1e-6
