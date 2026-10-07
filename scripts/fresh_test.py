@@ -2,6 +2,8 @@
 5th-buyer moments after its training data ended, i.e. coins it never saw.
 
   python scripts/fresh_test.py <trades.db> <winners_old.parquet> <winners_new.parquet> [<walk-forward picks.parquet>]
+                               [--picks <out.parquet>]   the bot-like picks (coin, ts, score, is_pons, pct by rank in
+                                                         0.98-1) for scripts/exit_truth.py / exit_truth_rules.py
 
 winners_new = scripts/winner_study.py over the recent days with the latest data (longer follow-up); its coins
 replace theirs in winners_old, which supplies the first buyers' history (rise_study.add_history, outcome known
@@ -81,8 +83,10 @@ def simulate(db, picks: pd.DataFrame) -> str:
 
 
 def main():
-    db = sqlite3.connect(sys.argv[1], timeout=300)
-    old, new = pd.read_parquet(sys.argv[2]), pd.read_parquet(sys.argv[3])
+    out = sys.argv[sys.argv.index("--picks") + 1] if "--picks" in sys.argv else None
+    argv = [a for a in sys.argv if a not in ("--picks", out)]
+    db = sqlite3.connect(argv[1], timeout=300)
+    old, new = pd.read_parquet(argv[2]), pd.read_parquet(argv[3])
     w = pd.concat([old[~old.coin.isin(set(new.coin))], new], ignore_index=True)
     w = rise_study.add_history(w[w.k == K].copy())
     model = paper.Model(json.loads((ROOT / "rhscanner" / "paper_model.json").read_text()))
@@ -108,8 +112,13 @@ def main():
     for day, g in fresh.groupby(fresh.ts // 86400):
         sel = g[g.score >= g.bar]
         print(f"{pd.to_datetime(day * 86400, unit='s'):%d %b}: {len(g)} coin, {len(sel)} seçim · {outcome_line(sel)}")
-    if len(sys.argv) > 4:  # the research's walk-forward top 2 % for comparison
-        ref = pd.read_parquet(sys.argv[4])
+    if out:
+        sel = fresh[fresh.score >= fresh.bar].sort_values("ts").copy()
+        sel["pct"] = 0.98 + 0.02 * sel.score.rank(pct=True)  # their rank among the picks (sizes, top 1 %)
+        sel.to_parquet(out, index=False)
+        print(f"\nseçimler yazıldı: {out}")
+    if len(argv) > 4:  # the research's walk-forward top 2 % for comparison
+        ref = pd.read_parquet(argv[4])
         last = ref[ref.ts >= ref.ts.max() - 7 * 86400]
         print(f"\nKarşılaştırma, araştırmanın walk-forward en iyi %2'si: tümü {len(ref)} seçim · {outcome_line(ref)}")
         print(f"{'son haftası':>28}: {len(last)} seçim · {outcome_line(last)}")
