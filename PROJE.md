@@ -12,14 +12,14 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | # | İş | Durum |
 |---|---|---|
 | A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
-| A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
+| A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); 7 Ekim'de 1-6 Ekim ile tekrarlandı (26 seçim, 2x %71, §4.4c); arşiv 6 Ekim sonuna kadar araştırma DB'sinde. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı. 7 Ekim ara bakış: 14 seçim, ana kural kasa 1,06x, 5x kuralı 1,12x (5x yapan 3/10; en eski 4 seçimin işlem geçmişi silinmişti, 5x kuralında sayılmadı), holder modeli 1,23x / 5x ile 1,26x. Seçim az (günde ~3,5; araştırmada ~10) → **7 Ekim'de bakıldı: bot kaçırmıyor, pazar küçülüyor.** 6 Ekim'de 1 saatte zincirdeki 4.969 Fomo işleminin hepsi botun arşivinde (fark 0). Günlük Fomo işlemi 26 Eyl 312 bin → 1 Eki 242 bin → 2 Eki 202 bin → 4-6 Eki 142 / 135 / 124 bin; 5. alıcıya ulaşan yeni coin Eylül başı ~1.300/gün, Eylül sonu ~350, 4-6 Ekim ~190 (bot ~200 puanlıyor). Kasa büyümesi seçim sayısıyla orantılı → A4'te işlem başı sonuçlara da bakılmalı; seçim payını (%2) büyütmek ayrı bir karar | tarihi bekliyor |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma başladı (§4.5c); tam ölçüm 5-7 gün veriyle (~9-10 Ekim) | sürüyor |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
 | D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| A10 | Gerçek çıkış değeri ölçüldü (§4.4c): "5x'te hepsini sat" haftada ~3,1x (gerçek değerle), şimdiki kurallar ~0,8-1,2x. 6 Ekim: kullanıcı "evet" → 5x kuralı kâğıt teste eklendi (§3), A4'te iki kural yan yana değerlendirilecek. Açık: final sınavı (1 Ekim+ için 1 seçim var) yeni günlerle; `/canli` açılırsa gerçek bildirime de "5x oldu" mesajı eklenmeli (şu an sadece "2x oldu" var) — A4 kararıyla | sunucu güncellemesi bekliyor; değerlendirme A4 ile |
+| A10 | Gerçek çıkış değeri ölçüldü (§4.4c): "5x'te hepsini sat" haftada ~3,1x (gerçek değerle), şimdiki kurallar ~0,8-1,2x. 6 Ekim: kullanıcı "evet" → 5x kuralı kâğıt teste eklendi (§3), A4'te iki kural yan yana değerlendirilecek. Final sınavı yapıldı (7 Ekim, §4.4c): görülmemiş 1-6 Ekim'de 5x kuralı 1,60x, şimdiki kurallar ~0,9x. Açık: `/canli` açılırsa gerçek bildirime de "5x oldu" mesajı eklenmeli (şu an sadece "2x oldu" var) — A4 kararıyla | sunucu güncellemesi bekliyor; değerlendirme A4 ile |
 | D12 | Canlı likidite uyarısı net likidite kuralına geçti (4 Ekim): havuzun oluşumundan beri net likiditesi bir blok sonunda zirvesinin %20'sine ya da altına inince bir kez uyarır (`live.pull_step`); tek tek çıkarmalar sayılmaz (hook'lar likiditeyi aynı işlemde çıkarıp geri koyuyor). Sunucuya bir sonraki güncellemeyle gider; `/canli` kapalı olduğu için şimdilik etkisi yok | yapıldı (sunucu güncellemesi bekliyor) |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
@@ -423,6 +423,14 @@ değer 0. Ölçülemeyen %3-6 (coin başka havuza geçmiş); iki yönde de değe
   gelmeli ve satış birkaç dakika içinde yapılmalı.
 - Sınırlar: sadece 3 hafta; kural aynı haftalarda seçildi (ızgarada 120 kural); 1 Ekim+ final sınavı için yalnız 1
   seçim var → asıl sınav yeni günler ve kâğıt test olacak.
+- **Final sınavı (7 Ekim):** sunucudaki model (`paper_model.json`, 1 Ekim 11:18'e kadar eğitildi) hiç görmediği
+  1 Ekim 11:31 – 6 Ekim günlerinde, bot gibi seçim (son 48 saatin en iyi %2'si; `fresh_test.py --picks`): 1.220 coin
+  5. alıcıya ulaştı, **26 seçim, 2x %71** (17/24; araştırma %64). Gerçek çıkış değeri (`exit_truth.py`): seçimlerin
+  **%35'inde likidite çekilmiş** (araştırmada %20). Aynı simülasyonla (~5,5 gün, tek "hafta"):
+  **5x'te hepsini sat → 1,60x** (1 / 3 / 24 sa sınırı 1,59-1,60x; en iyi işlem hariç 1,39x); şimdiki kurallar
+  (süre sınırıyla) 0,87-0,98x; 5x'te yarı 1,07x; sadece Pons 1,29x. → 3 haftada seçilen kural görülmemiş günlerde de
+  en iyisi ve kârlı; haftalık oran araştırmadan düşük (seçim az: pazar küçüldü, §0 A4). Güven puanı filtresi
+  sınanamadı (güvenlik verisi 2 Ekim'de bitiyor).
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
