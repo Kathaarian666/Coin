@@ -13,7 +13,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 |---|---|---|
 | A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); arşiv 3 Ekim 08:14'e kadar. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
-| A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı | tarihi bekliyor |
+| A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı. 7 Ekim ara bakış: 14 seçim, ana kural kasa 1,06x, 5x kuralı 1,12x (5x yapan 3/10; en eski 4 seçimin işlem geçmişi silinmişti, 5x kuralında sayılmadı), holder modeli 1,23x / 5x ile 1,26x. **Bakılacak:** canlıda günde ~3,5 seçim, araştırmada ~10 (puanlanan coin günde ~200 — neden az?); kasa büyümesi seçim sayısıyla orantılı | tarihi bekliyor |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma başladı (§4.5c); tam ölçüm 5-7 gün veriyle (~9-10 Ekim) | sürüyor |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
