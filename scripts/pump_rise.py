@@ -30,6 +30,34 @@ def line(g: pd.DataFrame) -> str:
             f"mezun %{100 * g.graduated.mean():4.1f}")
 
 
+def walk_forward(d: pd.DataFrame, days: list, importance: bool = True) -> tuple[pd.DataFrame, pd.Series | None]:
+    """Each day from the third on scored by a model trained on the days before it: (test moments with score and
+    pct = the day's score rank, mean permutation importance)."""
+    rows, imps = [], []
+    for day in days[2:]:  # at least two days to learn from
+        tr, te = d[d.day < day], d[d.day == day].copy()
+        m = HistGradientBoostingClassifier(**PARAMS).fit(tr[FEATURES], tr.y)
+        te["score"] = m.predict_proba(te[FEATURES])[:, 1]
+        te["pct"] = te.score.rank(pct=True)
+        rows.append(te)
+        if importance:
+            imps.append(permutation_importance(m, te[FEATURES], te.y, scoring="roc_auc", n_repeats=3,
+                                               random_state=0).importances_mean)
+    imp = pd.Series(np.mean(imps, axis=0), index=FEATURES).sort_values(ascending=False) if imps else None
+    return pd.concat(rows), imp
+
+
+def prepare(d: pd.DataFrame, k: int, h: float, max_curve: float | None) -> pd.DataFrame:
+    """k-th buyer moments with h hours of data after them, label y = 2x within h hours."""
+    d = d[(d.k == k) & (d.obs_h >= h)].copy()
+    if max_curve is not None:
+        d = d[~(d.curve_pct > max_curve)]  # NaN (unknown) stays
+    d["y"] = (d.t2x_h <= h).astype(int)
+    d["old_coin"] = d.old_coin.astype(int)
+    d["day"] = pd.to_datetime(d.ts, unit="s").dt.floor("D")
+    return d
+
+
 def main():
     args, max_curve = sys.argv[1:], None
     if "--max-curve" in args:
@@ -38,27 +66,12 @@ def main():
         del args[i:i + 2]
     k = int(args[1]) if len(args) > 1 else 5
     h = float(args[2]) if len(args) > 2 else 6.0
-    d = pd.read_parquet(args[0])
-    d = d[(d.k == k) & (d.obs_h >= h)].copy()
-    if max_curve is not None:
-        d = d[~(d.curve_pct > max_curve)]  # NaN (unknown) stays
-    d["y"] = (d.t2x_h <= h).astype(int)
-    d["old_coin"] = d.old_coin.astype(int)
-    d["day"] = pd.to_datetime(d.ts, unit="s").dt.floor("D")
+    d = prepare(pd.read_parquet(args[0]), k, h, max_curve)
     days = sorted(d.day.unique())
     print(f"{k}. alıcı, {h:g} saatte 2x; gün gün (hepsi):")
     for day in days:
         print(f"  {pd.Timestamp(day):%d %b}: {line(d[d.day == day])}")
-    rows, imps = [], []
-    for day in days[2:]:  # at least two days to learn from
-        tr, te = d[d.day < day], d[d.day == day].copy()
-        m = HistGradientBoostingClassifier(**PARAMS).fit(tr[FEATURES], tr.y)
-        te["score"] = m.predict_proba(te[FEATURES])[:, 1]
-        te["pct"] = te.score.rank(pct=True)
-        rows.append(te)
-        imp = permutation_importance(m, te[FEATURES], te.y, scoring="roc_auc", n_repeats=3, random_state=0)
-        imps.append(imp.importances_mean)
-    t = pd.concat(rows)
+    t, imp = walk_forward(d, days)
     print(f"\nWalk-forward ({', '.join(f'{pd.Timestamp(x):%d %b}' for x in days[2:])}; her gün önceki günlerle eğitildi):")
     print(f"  {'hepsi':>10}: {line(t)}")
     n_days = t.day.nunique()
@@ -67,7 +80,6 @@ def main():
         print(f"  {'en iyi %' + format(100 * top, 'g'):>10}: {line(sel)} · günde ~{len(sel) / n_days:.0f}")
     for day, g in t.groupby("day"):
         print(f"  {pd.Timestamp(day):%d %b} en iyi %2: {line(g[g.pct > 0.98])}")
-    imp = pd.Series(np.mean(imps, axis=0), index=FEATURES).sort_values(ascending=False)
     print("\nEn etkili kriterler (test günlerinde AUC katkısı):")
     print("  " + " · ".join(f"{c} {v:.3f}" for c, v in imp.head(8).items()))
 
