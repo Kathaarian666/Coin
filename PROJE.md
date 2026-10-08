@@ -14,7 +14,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); 7 Ekim'de 1-6 Ekim ile tekrarlandı (26 seçim, 2x %71, §4.4c); arşiv 6 Ekim sonuna kadar araştırma DB'sinde. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
 | A4 | Kâğıt test değerlendirmesi (~8-10 Ekim): `/karne` ↔ simülasyon; `/canli` açılsın mı. 7 Ekim ara bakış: 14 seçim, ana kural kasa 1,06x, 5x kuralı 1,12x (5x yapan 3/10; en eski 4 seçimin işlem geçmişi silinmişti, 5x kuralında sayılmadı), holder modeli 1,23x / 5x ile 1,26x. Seçim az (günde ~3,5; araştırmada ~10) → **7 Ekim'de bakıldı: bot kaçırmıyor, pazar küçülüyor.** 6 Ekim'de 1 saatte zincirdeki 4.969 Fomo işleminin hepsi botun arşivinde (fark 0). Günlük Fomo işlemi 26 Eyl 312 bin → 1 Eki 242 bin → 2 Eki 202 bin → 4-6 Eki 142 / 135 / 124 bin; 5. alıcıya ulaşan yeni coin Eylül başı ~1.300/gün, Eylül sonu ~350, 4-6 Ekim ~190 (bot ~200 puanlıyor). Kasa büyümesi seçim sayısıyla orantılı → A4'te işlem başı sonuçlara da bakılmalı; seçim payını (%2) büyütmek ayrı bir karar | tarihi bekliyor |
-| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma başladı (§4.5c); tam ölçüm 5-7 gün veriyle (~9-10 Ekim) | sürüyor |
+| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Sıradaki: tuzak/mezuniyet ayrımı, 5x kuralıyla simülasyon (pump.fun'da çıkış fiyatı sorunu), yeni günlerle tekrar | sürüyor |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
@@ -386,6 +386,27 @@ Fomo işlemlerinden (curve + PumpSwap). Tuzak = 1 saat içinde fiyat bildirimin 
   işlemlerini dinlemek dakikada ~13.600 mesaj / 20 MB (günde ~29 GB, 1 GB'lık sunucu için ağır); Helius ücretsiz planı
   kayıt ister. **Kullanıcı kararı (4 Ekim): pump.fun'da holder verisi yok, fiyat + Fomo akışı kriterleriyle devam.**
 
+### 4.5d pump.fun yükseliş modeli, ilk walk-forward (8 Ekim, §0 A8, 2. adımın ilk denemesi)
+Veri: `veri` dalı `solana/` 3 Ekim 07:09 – 7 Ekim (3,47 milyon Fomo işlemi; tek boşluk 7 Ekim 11:14, 8 dk).
+`pump_study.py` → 27.947 yeni coin; 5. alıcıda ~1.280 an/gün (Robinhood'da şu an ~190). `scripts/pump_rise.py`:
+her test günü (5/6/7 Ekim) önceki günlerle eğitilen model (botun ayarları, 20 kriter), seçim = günün en iyi %2 / %5'i.
+Sadece en az h saat izlenmiş anlar (vurmuş/vurmamış fark etmez).
+
+| 5. alıcı | 1 saatte 2x | 6 saatte 2x | 1 sa tuzak | mezun |
+|---|---|---|---|---|
+| hepsi | %24,1 | %25,8 | %4,0 | %25 |
+| en iyi %5 (günde ~60) | %39,9 | %45,4 | %3,7-6,2 | %48-50 |
+| **en iyi %2 (günde ~25)** | **%40,3** | **%39,4** | %6-7 | %47-50 |
+| en iyi %1 | %44,4 | %27,3 | %6-9 | %49-53 |
+
+- Model işe yarıyor (en iyi %2-5'te 2x oranı ~1,6-1,8 katı) ama **Robinhood'dan zayıf**: orada en iyi %2'de 1 saatte 2x
+  %54-60, süresiz %64-71. → "En az Robinhood kadar iyi" hedefi henüz tutmuyor. Buna karşılık seçim sayısı ~7 katı
+  (günde ~25), kasa büyümesi seçim sayısına bağlı (§0 A4).
+- En etkili kriter **piyasa değeri** (sonra curve doluluğu, geliştiricinin önceki coinleri, son 60 sn alım payı). Model
+  mezuniyete yakın coinleri seçiyor (seçimlerin ~%50'si mezun oluyor, hepsinde %25) — 7 Ekim'de en iyi %2'de tuzak
+  %18-25 (mezuniyet çöküşü, §4.5c). Tuzak/mezuniyet riski ayrıca ele alınmalı.
+- Sınırlar: 3 test günü, ~70 seçim; ilk test günü 2 günlük veriyle eğitildi. Günler eklendikçe tekrarlanacak.
+
 ### 4.4b Çıkış kuralları taraması ve satış fiyatı varsayımı (4 Ekim, kullanıcı: "farklı parametrelerle kârlılığı yukarı taşı")
 `scripts/exit_study.py`: araştırmanın walk-forward seçimleri (5. alıcı, 10-30 Eylül; 1 Ekim sonrası **final sınavı,
 dokunulmadı**), kural ızgarası: hedef (1,5/2/3/5x) ve hedefte satılan pay, zarar-kes, zirveden iz, süre sınırı (1-24 sa),
@@ -537,6 +558,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma (§0 A1) | `holder_study.py` | Holder kriterleri modele katkı sağlıyor mu: aynı walk-forward, 2x oranı + kasa simülasyonu |
 | Eğitim (§0 D8) | `retrain.py` | Haftalık: arşiv + bot günleri → anlar → holder özellikleri → iki modelin dışa aktarımı |
 | Araştırma (3. adım) | `exit_study.py` | Çıkış kuralları / seçim / tutar ızgarası, hafta hafta masraflı; final sınavı günleri ayrık |
+| Araştırma (A8) | `pump_rise.py` | pump.fun yükseliş modeli, walk-forward (gün gün), en iyi %1/2/5 |
 | Araştırma (A10) | `exit_truth.py` | Seçimlerin çıkış anındaki gerçek fiyatı: curve + V4 havuzlarındaki bütün işlemler, net likidite çekilmesi |
 | Araştırma (A10) | `exit_truth_rules.py` | Çıkış kuralı taraması, gerçek çıkış değeriyle; Pons / güven puanı filtreleri |
 | Araştırma (A10) | `exit_truth_delay.py` | 5x kuralında satış gecikmesinin etkisi; Fomo 5x'inin zincirde doğrulanması |
