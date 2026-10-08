@@ -1,6 +1,6 @@
 """pump.fun rise criteria, first walk-forward check (PROJE.md §0 A8, step 2; the twin of scripts/profit_study.py).
 
-  python scripts/pump_rise.py <pump_study.parquet> [k=5] [h=6]
+  python scripts/pump_rise.py <pump_study.parquet> [k=5] [h=6] [--max-curve C]
 
 Moments from scripts/pump_study.py at the k-th Fomo buyer. Label: two buys in a row at >= 2x within h hours. Only
 moments with at least h hours of data after them are used (hit or not, so the data end cannot lift the rate).
@@ -8,6 +8,8 @@ Each test day is scored by a model trained on the days before it (HistGradientBo
 the day's top 2 % / 5 % of scores (the day's own quantile: a slight look at the same day's score spread, not at
 outcomes). Reported per pick group: 2x rate, trap (<= 10 % of the alert price within 1 h with no 2x first), graduated;
 and the single criteria that matter most (permutation importance on the test days).
+--max-curve C: coins whose curve is more than C % sold at the moment are left out of training and picks (graduation
+dump: nearly all traps are above ~90 %, PROJE.md §4.5d; seen on the first two days alone too); unknown fill stays.
 """
 
 import sys
@@ -29,10 +31,17 @@ def line(g: pd.DataFrame) -> str:
 
 
 def main():
-    k = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    h = float(sys.argv[3]) if len(sys.argv) > 3 else 6.0
-    d = pd.read_parquet(sys.argv[1])
+    args, max_curve = sys.argv[1:], None
+    if "--max-curve" in args:
+        i = args.index("--max-curve")
+        max_curve = float(args[i + 1])
+        del args[i:i + 2]
+    k = int(args[1]) if len(args) > 1 else 5
+    h = float(args[2]) if len(args) > 2 else 6.0
+    d = pd.read_parquet(args[0])
     d = d[(d.k == k) & (d.obs_h >= h)].copy()
+    if max_curve is not None:
+        d = d[~(d.curve_pct > max_curve)]  # NaN (unknown) stays
     d["y"] = (d.t2x_h <= h).astype(int)
     d["old_coin"] = d.old_coin.astype(int)
     d["day"] = pd.to_datetime(d.ts, unit="s").dt.floor("D")
@@ -52,8 +61,10 @@ def main():
     t = pd.concat(rows)
     print(f"\nWalk-forward ({', '.join(f'{pd.Timestamp(x):%d %b}' for x in days[2:])}; her gün önceki günlerle eğitildi):")
     print(f"  {'hepsi':>10}: {line(t)}")
+    n_days = t.day.nunique()
     for top in (0.05, 0.02, 0.01):
-        print(f"  {'en iyi %' + format(100 * top, 'g'):>10}: {line(t[t.pct > 1 - top])}")
+        sel = t[t.pct > 1 - top]
+        print(f"  {'en iyi %' + format(100 * top, 'g'):>10}: {line(sel)} · günde ~{len(sel) / n_days:.0f}")
     for day, g in t.groupby("day"):
         print(f"  {pd.Timestamp(day):%d %b} en iyi %2: {line(g[g.pct > 0.98])}")
     imp = pd.Series(np.mean(imps, axis=0), index=FEATURES).sort_values(ascending=False)
