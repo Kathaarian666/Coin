@@ -59,6 +59,15 @@ def trust_scores(sec: pd.DataFrame, picks: pd.DataFrame) -> pd.Series:
     return picks.coin.map(out)
 
 
+def risk_flags(sec: pd.DataFrame, picks: pd.DataFrame) -> pd.DataFrame:
+    """Per pick, from its security row (NaN without one): hook_yok = its V4 pool has no hook, sahip = an owner other
+    than the shared launchpad owner (PROJE.md §4.1; nearly all rugs among the picks, §0 B4)."""
+    row = sec.assign(token=sec.token.str.lower()).drop_duplicates("token").set_index("token")
+    f = flags(row)
+    out = pd.DataFrame({"hook_yok": f.hook_yok, "sahip": f.sahip})
+    return out.reindex(picks.coin).set_index(picks.index).astype(float)
+
+
 def main():
     db = sqlite3.connect(sys.argv[1], timeout=300)
     picks = pd.read_parquet(sys.argv[2])
@@ -66,7 +75,10 @@ def main():
     truth = pd.read_parquet(sys.argv[3])
     truth["coin"] = truth.coin.str.lower()
     picks = picks[picks.coin.isin(truth.coin)].sort_values("ts").reset_index(drop=True)
-    picks["trust"] = trust_scores(pd.read_parquet(sys.argv[4]), picks) if len(sys.argv) > 4 else np.nan
+    sec = pd.read_parquet(sys.argv[4]) if len(sys.argv) > 4 else None
+    picks["trust"] = trust_scores(sec, picks) if sec is not None else np.nan
+    risk = risk_flags(sec, picks) if sec is not None else pd.DataFrame(np.nan, index=picks.index, columns=["hook_yok", "sahip"])
+    picks["hook_yok"], picks["sahip"] = risk.hook_yok, risk.sahip
     last = pd.Timestamp(sys.argv[5] if len(sys.argv) > 5 else "2026-09-30").value / 1e9 + 86400
     truth = truth.set_index("coin")
     names = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names WHERE kind = 'token'")}
@@ -82,7 +94,8 @@ def main():
         path = Path_(ts, px, side, r.ts, data_end)
         tr = truth.loc[r.coin]
         a = {"t_in": path.t_in, "p_in": path.p_in, "pct": r.pct, "exam": r.ts >= last,
-             "pons": bool(r.is_pons), "trust": r.trust, "depth": depth_at(px[b], usd[b], ts[b], r.ts)}
+             "pons": bool(r.is_pons), "trust": r.trust,
+             "hook_yok": r.hook_yok == 1, "sahip": r.sahip == 1, "depth": depth_at(px[b], usd[b], ts[b], r.ts)}
         for rule in rules:
             legs = path.legs(*rule)
             t_end = r.ts + 3600 * rule[4]
@@ -106,7 +119,10 @@ def main():
     print(f"{len(alerts)} seçim ({sum(a['exam'] for a in alerts)} final sınavında); ölçülemeyen oran {n_unknown}, "
           f"likiditesi çekilmiş {n_pulled}\n")
     filters = {"hepsi": lambda a: True, "pons": lambda a: a["pons"],
-               "guven50": lambda a: not a["trust"] >= 0 or a["trust"] >= 50}
+               "guven50": lambda a: not a["trust"] >= 0 or a["trust"] >= 50,
+               # risky picks out where the security row knows it (unknown stays): §0 B4
+               "sahipsiz": lambda a: not a["sahip"], "hookvar": lambda a: not a["hook_yok"],
+               "ikisi": lambda a: not a["sahip"] and not a["hook_yok"]}
     rows = []
     for pick, (fname, keep), rule, mode, sizing in itertools.product(
             PICKS, filters.items(), rules, ("hi", "lo"), ("ranked", "flat")):
