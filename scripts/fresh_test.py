@@ -7,6 +7,7 @@
                                [--holder]                the second model (paper_model_h.json; winners with holder
                                                          features, scripts/transfer_features.py)
                                [--top <share>=0.02]      the pick share (the bot: paper.TOP)
+                               [--model <model.json>]    another exported model (e.g. last week's, for a fair test)
 
 winners_new = scripts/winner_study.py over the recent days with the latest data (longer follow-up); its coins
 replace theirs in winners_old, which supplies the first buyers' history (rise_study.add_history, outcome known
@@ -87,15 +88,13 @@ def simulate(db, picks: pd.DataFrame) -> str:
 
 def main():
     argv = list(sys.argv)
-    out = top = None
-    for flag in ("--picks", "--top"):
+    opts = {}
+    for flag in ("--picks", "--top", "--model"):
         if flag in argv:
             i = argv.index(flag)
-            if flag == "--picks":
-                out = argv[i + 1]
-            else:
-                top = float(argv[i + 1])
+            opts[flag] = argv[i + 1]
             del argv[i:i + 2]
+    out, top = opts.get("--picks"), float(opts["--top"]) if "--top" in opts else None
     holder = "--holder" in argv
     argv = [a for a in argv if a != "--holder"]
     top = top or paper.TOP
@@ -103,7 +102,8 @@ def main():
     old, new = pd.read_parquet(argv[2]), pd.read_parquet(argv[3])
     w = pd.concat([old[~old.coin.isin(set(new.coin))], new], ignore_index=True)
     w = rise_study.add_history(w[w.k == K].copy())
-    model = paper.Model(json.loads((paper.MODEL_H_PATH if holder else paper.MODEL_PATH).read_text()))
+    path = Path(opts["--model"]) if "--model" in opts else paper.MODEL_H_PATH if holder else paper.MODEL_PATH
+    model = paper.Model(json.loads(path.read_text()))
     w["score"] = [model.score({c: getattr(r, c) for c in model.features}) for r in w.itertuples()]
     w = w.sort_values("ts").reset_index(drop=True)
     ts, sc = w.ts.values, w.score.values
