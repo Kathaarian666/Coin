@@ -3,7 +3,10 @@
 
   python scripts/fresh_test.py <trades.db> <winners_old.parquet> <winners_new.parquet> [<walk-forward picks.parquet>]
                                [--picks <out.parquet>]   the bot-like picks (coin, ts, score, is_pons, pct by rank in
-                                                         0.98-1) for scripts/exit_truth.py / exit_truth_rules.py
+                                                         1-top..1) for scripts/exit_truth.py / exit_truth_rules.py
+                               [--holder]                the second model (paper_model_h.json; winners with holder
+                                                         features, scripts/transfer_features.py)
+                               [--top <share>=0.02]      the pick share (the bot: paper.TOP)
 
 winners_new = scripts/winner_study.py over the recent days with the latest data (longer follow-up); its coins
 replace theirs in winners_old, which supplies the first buyers' history (rise_study.add_history, outcome known
@@ -83,20 +86,31 @@ def simulate(db, picks: pd.DataFrame) -> str:
 
 
 def main():
-    out = sys.argv[sys.argv.index("--picks") + 1] if "--picks" in sys.argv else None
-    argv = [a for a in sys.argv if a not in ("--picks", out)]
+    argv = list(sys.argv)
+    out = top = None
+    for flag in ("--picks", "--top"):
+        if flag in argv:
+            i = argv.index(flag)
+            if flag == "--picks":
+                out = argv[i + 1]
+            else:
+                top = float(argv[i + 1])
+            del argv[i:i + 2]
+    holder = "--holder" in argv
+    argv = [a for a in argv if a != "--holder"]
+    top = top or paper.TOP
     db = sqlite3.connect(argv[1], timeout=300)
     old, new = pd.read_parquet(argv[2]), pd.read_parquet(argv[3])
     w = pd.concat([old[~old.coin.isin(set(new.coin))], new], ignore_index=True)
     w = rise_study.add_history(w[w.k == K].copy())
-    model = paper.Model(json.loads((ROOT / "rhscanner" / "paper_model.json").read_text()))
+    model = paper.Model(json.loads((paper.MODEL_H_PATH if holder else paper.MODEL_PATH).read_text()))
     w["score"] = [model.score({c: getattr(r, c) for c in model.features}) for r in w.itertuples()]
     w = w.sort_values("ts").reset_index(drop=True)
     ts, sc = w.ts.values, w.score.values
     bars = []
     for i, t in enumerate(ts):
         lo = np.searchsorted(ts, t - WINDOW)
-        bars.append(np.percentile(sc[lo:i], 100 * (1 - paper.TOP)) if i - lo >= 200 else np.nan)
+        bars.append(np.percentile(sc[lo:i], 100 * (1 - top)) if i - lo >= 200 else np.nan)
     w["bar"] = bars
     fresh = w[w.ts > model.trained_until]
     data_end = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0]
@@ -104,7 +118,7 @@ def main():
           f"{pd.to_datetime(fresh.ts.min(), unit='s'):%d %b %H:%M} – {pd.to_datetime(fresh.ts.max(), unit='s'):%d %b %H:%M}, "
           f"{len(fresh)} coin 5. alıcıya ulaştı; veri sonu {pd.to_datetime(data_end, unit='s'):%d %b %H:%M}.\n")
     print(f"{'hepsi':>28}: {outcome_line(fresh)}")
-    for label, sel in [("en iyi %2 (bot gibi, 48 sa)", fresh[fresh.score >= fresh.bar]),
+    for label, sel in [(f"en iyi %{100 * top:g} (bot gibi, 48 sa)", fresh[fresh.score >= fresh.bar]),
                        (f"en iyi %2 (sabit eşik {model.bar:.3f})", fresh[fresh.score >= model.bar])]:
         print(f"{label:>28}: {len(sel)} seçim · {outcome_line(sel)}")
         if len(sel):
@@ -114,7 +128,7 @@ def main():
         print(f"{pd.to_datetime(day * 86400, unit='s'):%d %b}: {len(g)} coin, {len(sel)} seçim · {outcome_line(sel)}")
     if out:
         sel = fresh[fresh.score >= fresh.bar].sort_values("ts").copy()
-        sel["pct"] = 0.98 + 0.02 * sel.score.rank(pct=True)  # their rank among the picks (sizes, top 1 %)
+        sel["pct"] = 1 - top + top * sel.score.rank(pct=True)  # their rank among the picks (sizes, top 1 %)
         sel.to_parquet(out, index=False)
         print(f"\nseçimler yazıldı: {out}")
     if len(argv) > 4:  # the research's walk-forward top 2 % for comparison

@@ -35,7 +35,7 @@ SHARES = (0.0, 0.5, 1.0)
 STOPS = (0.5, None)
 TRAILS = (0.5, None)
 HOLDS = (1, 3, 6, 24)
-PICKS = (0.01, 0.02)
+PICKS = (0.01, 0.02, 0.03, 0.05)  # 3 / 5 %: the pick share question (PROJE.md §0 B3)
 
 
 def trust_scores(sec: pd.DataFrame, picks: pd.DataFrame) -> pd.Series:
