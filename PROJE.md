@@ -1,7 +1,47 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 3 Ekim (genel denetim, §0 D-maddeleri). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 9 Ekim (yeni sohbete devir, aşağıda). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
+
+## Yeni sohbete devir (9 Ekim) — yeni oturum önce bunu okusun
+
+**Nerede kaldık (bir paragraf):** Bot Robinhood Chain'de kâğıt testte (`/canli` kapalı — kullanıcı: "henüz istediğimiz
+seviyede değiliz"). 9 Ekim kararlarıyla sunucuda: **ana model** (3 Eyl – 7 Eki verisiyle eğitildi), **seçim payı %5**
+(günde ~11), **satış kuralı 5x** (5x'te hepsi, 3 saatte gelmezse kalanı; `/karne` bunu ana kural gösteriyor). Gerçek
+çıkış fiyatıyla (zincirden, `exit_truth.py`) ölçülen sonuç: modelin görmediği 1-8 Ekim'de en iyi %5 + 5x kuralı
+**1,72x/hafta**; eski kural (2x'te yarı, zarar-kes) her ölçümde zararda (~0,8-0,9x). Hedef haftada 2x → iyileştirme
+çalışmaları (§0 B4). pump.fun araştırması kârsız çıktı ve **bekletiliyor** (§4.5d); odak Robinhood.
+
+**Kullanıcıdan cevap bekleyen öneri (§0 B4, §4.8):** riskli seçimler (havuzunda hook yok ya da launchpad dışı sahibi
+var; seçimlerin ~%40'ı) 5x kuralının asıl kazananları — elemek kasayı yarıya indiriyor (iki ayda doğrulandı). Öneri:
+(1) riskli seçimlerde süre sınırı 15 dk (5x gelmezse çık; Eylül 2,69x ↔ 2,60x, Ekim 1,78x ↔ 1,45x işlem başı),
+normalde 3 sa kalır; (2) bildirimde "⚠️ rug riski yüksek: 5x'te hemen sat, 15 dk'da gelmezse çık". Bot için her
+seçimde havuz hook'u + owner() okunmalı (seçim başına birkaç RPC). Yeni sohbette önce bunu sor.
+
+**Takvim:** her Perşembe 08:53 (İstanbul) haftalık yeniden eğitim Routine'i (`trig_01Vd1J2yVyuye8obmrZqtzzV`) — **eski
+sohbete bağlı** (session_01M7n2kGPGBseuUoNifzaKAW). Yeni sohbette: bunu kapat (`update_trigger enabled=false` ya da
+sil) ve aynı içerikle yeni sohbete bağlı yeniden kur (create_trigger, varsayılan bağlama), kullanıcıya söyle. İlk
+çalışma 15 Ekim. Ertelenenler: A8 pump.fun, A9 veri dalı (~1 Kasım'dan önce hatırlat), A7 Base, K3 token (Aralık sonu).
+
+**Araştırma ortamını yeniden kurmak** (`/tmp` her oturumda silinir; ~1-2 saat, çoğu arka planda):
+1. `python scripts/retrain.py <iş klasörü>` → `veri` dalından araştırma DB'si (arşiv + `robinhood/` günleri + arada
+   boşluk varsa zincirden), arz, Pons lansmanları, 5. alıcı anları, holder verisi, iki modelin dışa aktarımı. Modeli
+   değiştirmek istemiyorsan dışa aktarım adımından önce dur (ya da `git checkout rhscanner/paper_model*.json`).
+2. Haftalık final sınavı (geçen haftanın modeliyle, yeniden eğitmeden önce): `fresh_test.py <db> <winners> <winners>
+   --model <eski model.json> --top 0.05 --picks picks.parquet` (holder için `--holder` + winners_h5) →
+   `exit_truth.py <db> picks.parquet truth.parquet 0.95` (zincirden, coin başına ~30 sn; önbellek `.cache.jsonl`,
+   yarıda kalırsa kaldığı yerden) → `exit_truth_rules.py <db> picks.parquet truth.parquet <güvenlik.parquet> 2026-12-31`
+   (5x kuralı satırı: tp 5, share 1, hold 3, size ranked, mode lo).
+3. Riskli seçim ölçümü: `security_study.py <db> sec.parquet <başlangıç günü>` (owner) → `pick_flags.py <db> picks.parquet
+   sec.parquet flags.parquet` (hook) → `risky_picks.py <db> picks.parquet truth.cache.jsonl flags.parquet` ve
+   `exit_truth_rules.py ... flags.parquet` (filtreler `sahipsiz` / `hookvar` / `ikisi`).
+4. pump.fun (bekliyor): `solana_import.py /tmp/veri sol.db` → `pump_study.py` → `pump_rise.py --max-curve 90` →
+   `pump_sim.py` / `pump_profit.py`.
+
+**Bu sohbetin ana bulguları (ayrıntı bölümlerde):** satış fiyatı varsayımı kârı belirliyor → zincirden gerçek çıkış
+ölçümü (§4.4c) · 5x kuralı her ölçümde en iyi (§4.4c, §4.7) · seçim payı %5 (§4.7 sonu) · ana model holder'dan iyi
+(§0 B2) · riskli seçimler kazanç kaynağı (§4.8) · pazar küçülüyor, bot işlem kaçırmıyor (§0 A4 eski notu, 7 Ekim) ·
+pump.fun: model seçiyor ama seçimler hızlı yükselip daha sert düşüyor, hiçbir kuralla kârlı değil (§4.5d).
 
 ## 0. Açık işler (kullanıcı kuralı, 3 Ekim: hiçbir iş atlanmaz)
 
@@ -16,7 +56,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | B1 | Satış kuralı 5x (kullanıcı "evet", 9 Ekim): **yapıldı** — `/canli` takibi "2x oldu" yerine 5x'te "🎯 5x oldu, şimdi hepsini sat" (`bot.watch_target`), 3 saatte "⏱ 3 saat doldu, kalanı sat" (`live_step`), takip penceresi 6 saat (`live.LIVE_WINDOW`); bildirimde "5x satış hedefi"; `/karne`'de 5x kuralı ana kural, eski kural karşılaştırma için | yapıldı, sunucuda (9 Ekim) |
 | B2 | Model seçimi ("kârlı olan hangi modelse o", 9 Ekim): final sınavı 1-8 Ekim, gerçek çıkış değeri, 5x kuralı (1-7 Ekim haftası): **ana model 1,57x** (33 seçim, 2x %67) ↔ holder modeli 1,25x (31 seçim, 2x %62; 23 seçim ortak); şimdiki kuralla ikisi de ~0,85x. Kâğıt testteki holder önü (1,13x ↔ 1,06x) küçük örnek + iyimser değerleme → **ana model** (gerçek bildirim de onunla); holder kâğıt testte sürüyor, her yeniden eğitimde tekrar bakılır | yapıldı: ana model |
 | B3 | Seçim payı ölçüldü (9 Ekim, §4.7): 5x kuralı, gerçek çıkış, kasanın %4/%2/%1'i. **Araştırma 10-30 Eyl** (walk-forward): %2 3,15x/hafta · %3 3,30x · %5 3,12x (en kötü hafta 1,75 → 1,78 → **2,34**). **Taze 1-8 Eki** (geçen haftanın modeli): %2 1,29x · %3 1,47x · **%5 1,72x** (86 seçim, günde ~11; en iyi işlem hariç 1,54x). %5'te likiditesi çekilen pay daha az (taze %16-19 ↔ en iyi %2'de %33). Şimdiki kural her payda zararda. → Küçülen pazarda %5 daha iyi, araştırmada eşit ama daha kararlı. **Kullanıcı "ok" (9 Ekim): seçim payı %5** (`paper.TOP = 0.05`; kâğıt test ve gerçek bildirim; tutar sıraya göre üçte birlerle %4/%2/%1; bildirimdeki 2x ihtimali en iyi %5'in walk-forward oranı: ana 0,51, holder 0,628) | yapıldı, sunucuda (9 Ekim) |
-| B4 | Hedef (haftada kasa 2x) tutmadı (gerçek değerle ~1,2-1,7x) → **iyileştirme çalışmaları** (kullanıcı, 9 Ekim); `/canli` hedefe yaklaşınca yeniden konuşulacak. **1. Rug ayırma (9 Ekim, §4.8): elemek zararlı** — riskli seçimler (hook yok / launchpad dışı sahip) 5x kuralının asıl kazananları (işlem başı ~2,6x ↔ normal ~1,3x); elenince araştırmada kasa 3,1x → 1,6-1,8x. Hepsi sonunda çekiliyor ama 5x → çekilme ortanca ~14 dk (26'nın 3'ü 1 dk içinde) → hızlı satış şart. **Ekim'le doğrulandı** (1-8 Ekim, 86 seçim: elemek 1,72x → 1,04-1,27x; riskli seçimlerde 5x ya da 15 dk 1,78x ↔ 3 sa 1,45x). Öneri: riskli seçimleri tut, 5x gelmezse 15 dk'da çık + bildirimde "⚠️ rug riski" uyarısı — kullanıcıya soruldu | kullanıcı kararı bekliyor |
+| B4 | Hedef (haftada kasa 2x) tutmadı (gerçek değerle ~1,2-1,7x) → **iyileştirme çalışmaları** (kullanıcı, 9 Ekim); `/canli` hedefe yaklaşınca yeniden konuşulacak. **1. Rug ayırma (9 Ekim, §4.8): elemek zararlı** — riskli seçimler (hook yok / launchpad dışı sahip) 5x kuralının asıl kazananları (işlem başı ~2,6x ↔ normal ~1,3x); elenince araştırmada kasa 3,1x → 1,6-1,8x. Hepsi sonunda çekiliyor ama 5x → çekilme ortanca ~14 dk (26'nın 3'ü 1 dk içinde) → hızlı satış şart. **Ekim'le doğrulandı** (1-8 Ekim, 86 seçim: elemek 1,72x → 1,04-1,27x; riskli seçimlerde 5x ya da 15 dk 1,78x ↔ 3 sa 1,45x). Öneri: riskli seçimleri tut, 5x gelmezse 15 dk'da çık + bildirimde "⚠️ rug riski" uyarısı — kullanıcıya soruldu, cevap yeni sohbette alınacak | kullanıcı kararı bekliyor |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kullanıcı kararı (9 Ekim, "7 a"): son deneme kâr hedefli model → **o da kârsız** (5x kuralı 0,71x, §4.5d). **Kullanıcı kararı (9 Ekim): "pump.fun'u bekletelim, Robinhood'a odaklanalım"** — sunucu veri toplamaya devam eder; ileride daha çok veri ya da yeni fikirle dönülür | **ertelendi** (her adım sonunda hatırlatılacak) |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
@@ -77,6 +117,13 @@ bırakıldı.
 | **6** | **Diğer zincirler** (Solana/pump.fun, BNB, Base…): Fomo'daki diğer zincirlere aynı yöntem; her zincir için ayrı veri ve güvenlik kontrolleri. | **sürüyor, öncelik pump.fun** (3 Ekim, kullanıcı: "pump.fun'da en az Robinhood kadar iyi"): pump.fun ve BNB verisi toplanıyor (§4.5, §4.5b); araştırma ~9-10 Ekim (A8); Base ertelendi |
 
 ## 3. Şu anki durum
+
+**Güncel (9 Ekim) — aşağıdaki eski maddelerden önce gelir:** kâğıt testte seçim payı **%5** (`paper.TOP`), modeller 7 Ekim'e
+kadar eğitildi (`paper_model.json` ana, `paper_model_h.json` holder; gerçek bildirim ana modelle), satış kuralı **5x**
+(`/karne` önce 5x kuralını, sonra eski kuralı karşılaştırma için gösterir; `/canli` açılırsa takip "🎯 5x oldu, sat" /
+"⏱ 3 saat doldu, kalanı sat", 6 saat pencere, likidite uyarısı net-likidite kuralıyla). `/canli` kapalı. Üç servis
+(`rhscanner`, `fomosol`, `fombnb`) ve gece veri gönderimi çalışıyor. Aşağıdaki "en iyi %2", "2x oldu" geçen eski
+maddeler tarihçedir.
 
 **Sunucudaki bot (`rhscanner/`, systemd servisi):**
 - (Eski akış, bildirimleri kapalı) Fomo işlemlerini izliyor. Bir coin 10 dakikada yeterli alıcıya (`/minalici`) ve
@@ -635,6 +682,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma (A8) | `pump_sim.py` | pump.fun seçimlerinin işlem simülasyonu, çıkış değeri curve rezervlerinden |
 | Araştırma (A8) | `pump_profit.py` | pump.fun kâr hedefli model (kural sonucuna göre regresyon) ↔ 2x modeli |
 | Araştırma (B4) | `risky_picks.py` | Riskli seçimler (hook yok / sahip var) 5x kuralında: süre seçenekleri, 5x → çekilme süresi |
+| Araştırma (B4) | `pick_flags.py` | Seçimlerin havuz hook'u (Initialize) + owner (security_study) → risk bayrakları |
 | Araştırma (A10) | `exit_truth.py` | Seçimlerin çıkış anındaki gerçek fiyatı: curve + V4 havuzlarındaki bütün işlemler, net likidite çekilmesi |
 | Araştırma (A10) | `exit_truth_rules.py` | Çıkış kuralı taraması, gerçek çıkış değeriyle; Pons / güven puanı filtreleri |
 | Araştırma (A10) | `exit_truth_delay.py` | 5x kuralında satış gecikmesinin etkisi; Fomo 5x'inin zincirde doğrulanması |
