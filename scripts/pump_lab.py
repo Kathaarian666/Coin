@@ -235,12 +235,13 @@ def grad_net(r, mcap_in, mcap_out, stake: float):
 
 def grad_coin(args):
     mint, t_grad, c, lag = args  # lag: minutes from a signal (or a rule firing) to the trade
+    empty = pd.DataFrame(), np.zeros((0, 3 * len(GRAD_RULES)), np.float32)
     if len(c) < 2:
-        return [], []
+        return empty
     c = np.asarray(c, float)
     ts, close, vol = c[:, 0], c[:, 4], c[:, 5]
     if ts[0] > t_grad:  # the candles do not reach back to the graduation (a coin with > 1000 active minutes)
-        return [], []
+        return empty
     m = np.arange(np.floor(ts[0] / 60) * 60, ts[-1] + 60, 60)  # every minute, gaps keep the last close
     kk = np.searchsorted(ts, m, side="right") - 1
     px = close[kk]
@@ -296,7 +297,7 @@ def grad_coin(args):
             else:
                 r_lim.append(px[e + n] / p_in)
         res.append(r_out + mc_out + r_lim)
-    return rows, res
+    return pd.DataFrame(rows), np.asarray(res, np.float32).reshape(len(res), 3 * len(GRAD_RULES))
 
 
 def grad_build(grads_path: str, candles_path: str, out_path: str, lag: str = "1"):
@@ -311,11 +312,12 @@ def grad_build(grads_path: str, candles_path: str, out_path: str, lag: str = "1"
     rows, res = [], []
     with Pool() as pool:
         for r, v in pool.imap_unordered(grad_coin, jobs, chunksize=16):
-            rows += r
-            res += v
+            if len(r):
+                rows.append(r)
+                res.append(v)
     names = [f"tp{tp or '-'}_sl{sl or '-'}_h{h:g}" for tp, sl, h in GRAD_RULES]
     cols = [f"r_{n}" for n in names] + [f"mo_{n}" for n in names] + [f"rl_{n}" for n in names]
-    out = pd.concat([pd.DataFrame(rows), pd.DataFrame(res, columns=cols)], axis=1)
+    out = pd.concat([pd.concat(rows, ignore_index=True), pd.DataFrame(np.concatenate(res), columns=cols)], axis=1)
     out = out.sort_values("ts", kind="stable").reset_index(drop=True)
     out.to_parquet(out_path, index=False)
     print(f"{len(jobs)} coin, {out.mint.nunique()} mumları mezuniyete uzanan, {len(out)} an")
