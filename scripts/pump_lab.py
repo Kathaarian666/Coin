@@ -3,7 +3,7 @@ on chain prices with the user's delay and costs. The pool is every coin Fomo use
 PumpSwap coins, which carry ~86 % of the volume), not only new coins at their 5th Fomo buyer (scripts/pump_study.py).
 
   python scripts/pump_lab.py build <solana.db> <out.parquet> [<every min>=10]
-  python scripts/pump_lab.py grad <grads.parquet> <candles.jsonl> <out.parquet>
+  python scripts/pump_lab.py grad <grads.parquet> <candles.jsonl> <out.parquet> [<lag min>=1]
 
 build: candidate moments = the first Fomo buy of each coin in each <every>-minute bucket (only what is known then;
 no "coins that later ..." universe, PROJE.md §6). Features from the coin's Fomo trades up to that buy: new Fomo buyers
@@ -18,8 +18,8 @@ the level (PROJE.md §6 rule 4); at the time limit the lower of the last price b
 Only moments with the longest time limit fully inside the data are kept.
 grad: the same on full-market one-minute candles (scripts/pump_fetch.py candles) of coins Fomo saw graduate; moments are
 the minutes from the graduation Fomo saw (its first PumpSwap trade; known then, so no "coins that will graduate"
-universe) to GRAD_H hours after. Cautious minute execution: the signal is a minute's close, the buy the next minute's
-close (~1 min late), a rule fires on a minute's close and sells at the next minute's close; a minute without trades
+universe) to GRAD_H hours after. Cautious minute execution: the signal is a minute's close, the buy <lag> minutes
+later at that minute's close, a rule fires on a minute's close and sells <lag> minutes later; a minute without trades
 keeps the last close. Features from the candles up to the signal: minutes since graduation, market cap, returns
 1/5/15 min and since graduation, distance from the high since graduation, $ volume 1/5/15 min and since graduation,
 active minutes in the last 15. Per rule the price multiple r_ and the exit market cap mo_; grad_net() turns them into
@@ -213,7 +213,7 @@ def build(db_path: str, out_path: str, every_min: float = 10):
 
 
 GRAD_H = 3.0
-GRAD_TPS, GRAD_SLS, GRAD_HOLDS = (1.2, 1.3, 1.5, 2.0, 3.0), (0.15, 0.3, 0.5), (5 / 60, 15 / 60, 0.5, 1.0, 3.0)
+GRAD_TPS, GRAD_SLS, GRAD_HOLDS = (1.2, 1.3, 1.5, 2.0, 3.0), (0.15, 0.3, 0.5), (3 / 60, 5 / 60, 10 / 60, 15 / 60, 0.5, 1.0, 3.0)
 GRAD_RULES = [(tp, sl, h) for tp in GRAD_TPS + (None,) for sl in GRAD_SLS + (None,) for h in GRAD_HOLDS]
 POOL_USD, POOL_MCAP = 8500.0, 54000.0  # a fresh PumpSwap pool: SOL side $ at market cap $ (medians, 3-8 Oct)
 
@@ -234,7 +234,7 @@ def grad_net(r, mcap_in, mcap_out, stake: float):
 
 
 def grad_coin(args):
-    mint, t_grad, c = args
+    mint, t_grad, c, lag = args  # lag: minutes from a signal (or a rule firing) to the trade
     if len(c) < 2:
         return [], []
     c = np.asarray(c, float)
@@ -252,8 +252,8 @@ def grad_coin(args):
     g0 = int(np.searchsorted(m, t_grad, side="left"))
     p_grad = px[g0 - 1] if g0 > 0 else px[0]
     rows, res = [], []
-    for i in range(g0, min(len(m) - 2, g0 + int(GRAD_H * 60))):
-        p_in = px[i + 1]  # bought at the next minute's close
+    for i in range(g0, min(len(m) - 1 - lag, g0 + int(GRAD_H * 60))):
+        p_in = px[i + lag]  # bought lag minutes later, at that minute's close
         if not (p_in > 0):
             continue
         hi = px[g0:i + 1].max()
@@ -264,11 +264,12 @@ def grad_coin(args):
             f[f"ret{w}"] = px[i] / px[max(0, i - w)]
             f[f"vol{w}"] = cv[i + 1] - cv[max(0, i + 1 - w)]
         rows.append(f)
-        fut, fhi, flo = px[i + 2:], high[i + 2:], low[i + 2:]
+        e = i + lag  # the entry minute; rules watch the minutes after it
+        fut, fhi, flo = px[e + 1:], high[e + 1:], low[e + 1:]
         r_out, mc_out, r_lim = [], [], []
         for tp, sl, h in GRAD_RULES:
             n = int(round(h * 60))
-            if i + 1 + n >= len(m):
+            if e + n >= len(m):
                 r_out.append(np.nan)
                 mc_out.append(np.nan)
                 r_lim.append(np.nan)
@@ -280,7 +281,7 @@ def grad_coin(args):
             if sl:
                 hit |= w <= (1 - sl) * p_in
             j = np.flatnonzero(hit)
-            p_out = px[i + 3 + j[0]] if len(j) and i + 3 + j[0] < len(m) else px[i + 1 + n]
+            p_out = px[e + 1 + j[0] + lag] if len(j) and e + 1 + j[0] + lag < len(m) else px[e + n]
             r_out.append(p_out / p_in)
             mc_out.append(p_out * 1e9)
             # standing orders: the target fills at the target once a minute's high reaches it, the stop at the lower
@@ -293,12 +294,12 @@ def grad_coin(args):
             elif ju < n:
                 r_lim.append(tp)
             else:
-                r_lim.append(px[i + 1 + n] / p_in)
+                r_lim.append(px[e + n] / p_in)
         res.append(r_out + mc_out + r_lim)
     return rows, res
 
 
-def grad_build(grads_path: str, candles_path: str, out_path: str):
+def grad_build(grads_path: str, candles_path: str, out_path: str, lag: str = "1"):
     import json
     from multiprocessing import Pool
     grads = pd.read_parquet(grads_path)["ts"]
@@ -306,7 +307,7 @@ def grad_build(grads_path: str, candles_path: str, out_path: str):
     for line in open(candles_path):
         x = json.loads(line)
         if x["mint"] in grads.index:
-            jobs.append((x["mint"], float(grads[x["mint"]]), x["candles"]))
+            jobs.append((x["mint"], float(grads[x["mint"]]), x["candles"], int(lag)))
     rows, res = [], []
     with Pool() as pool:
         for r, v in pool.imap_unordered(grad_coin, jobs, chunksize=16):
@@ -322,6 +323,6 @@ def grad_build(grads_path: str, candles_path: str, out_path: str):
 
 if __name__ == "__main__":
     if sys.argv[1] == "grad":
-        grad_build(*sys.argv[2:5])
+        grad_build(*sys.argv[2:6])
     if sys.argv[1] == "build":
         build(sys.argv[2], sys.argv[3], *(float(a) for a in sys.argv[4:5]))
