@@ -56,6 +56,32 @@ def load(db, mint: str, sol: pd.DataFrame) -> pd.DataFrame:
     return g
 
 
+def make_alert(g: pd.DataFrame, t_alert: float, data_end: float, rules: dict,
+               modes=("son", "temkinli")) -> tuple[dict, Path_]:
+    """The user's trade on one moment: entry (30 s late, pump.fun fee), depth, and per (rule name, mode) the legs
+    [(time, share, price after the fee)]; held at the limit = the venue's spot then ("temkinli": the lower of it and
+    the next Fomo trade's)."""
+    ts, px, side, spot = g.ts.values, g.px.values, g.side.values, g.spot.values
+    path = Path_(ts, px, side, t_alert, data_end)
+    before = np.flatnonzero(ts <= t_alert)
+    a = {"t_in": path.t_in, "p_in": path.p_in * (1 + PUMP_FEE),
+         "depth": float(g.depth.values[before[-1]]) if len(before) else np.nan, "legs": {}}
+    for name, rule in rules.items():
+        legs = path.legs(*rule)
+        t_end = t_alert + 3600 * rule[4]
+        i = np.searchsorted(ts, t_end, side="right") - 1  # last Fomo trade before the limit
+        for mode in modes:
+            out = []
+            for when, share, price in legs:
+                if when >= t_end - 1e-6:  # still held at the limit: the venue's spot then
+                    price = spot[i]
+                    if mode == "temkinli" and i + 1 < len(ts):
+                        price = min(price, spot[i + 1])
+                out.append((when, share, price * (1 - PUMP_FEE)))
+            a["legs"][(name, mode)] = out
+    return a, path
+
+
 def main():
     db = sqlite3.connect(sys.argv[1])
     top = float(sys.argv[3]) if len(sys.argv) > 3 else 0.02
@@ -69,28 +95,15 @@ def main():
     for r in picks.itertuples():
         g = load(db, r.coin, sol)
         ts, px, side, spot = g.ts.values, g.px.values, g.side.values, g.spot.values
-        path = Path_(ts, px, side, r.ts, data_end)
-        before = np.flatnonzero(ts <= r.ts)
-        a = {"t_in": path.t_in, "p_in": path.p_in * (1 + PUMP_FEE), "pct": r.pct, "day": r.day,
-             "depth": float(g.depth.values[before[-1]]) if len(before) else np.nan, "legs": {}}
-        for name, rule in RULES.items():
-            legs = path.legs(*rule)
-            t_end = r.ts + 3600 * rule[4]
-            i = np.searchsorted(ts, t_end, side="right") - 1  # last Fomo trade before the limit
-            for mode in ("son", "temkinli"):
-                out = []
-                for when, share, price in legs:
-                    if when >= t_end - 1e-6:  # still held at the limit: the venue's spot then
-                        price = spot[i]
-                        if mode == "temkinli" and i + 1 < len(ts):
-                            price = min(price, spot[i + 1])
-                    out.append((when, share, price * (1 - PUMP_FEE)))
-                a["legs"][(name, mode)] = out
-            if rule == (5.0, 1.0, None, None, 3):
-                stale.append({"since_last_min": (t_end - ts[i]) / 60,
-                              "to_next_min": (ts[i + 1] - t_end) / 60 if i + 1 < len(ts) else np.nan,
-                              "next_over_last": spot[i + 1] / spot[i] if i + 1 < len(ts) else np.nan,
-                              "hit5": legs[0][0] < t_end - 1e-6 and abs(legs[0][2] / (5 * path.p_alert) - 1) < 1e-9})
+        a, path = make_alert(g, r.ts, data_end, RULES)
+        a.update(pct=r.pct, day=r.day)
+        t_end = r.ts + 3 * 3600
+        i = np.searchsorted(ts, t_end, side="right") - 1
+        legs = path.legs(5.0, 1.0, None, None, 3)
+        stale.append({"since_last_min": (t_end - ts[i]) / 60,
+                      "to_next_min": (ts[i + 1] - t_end) / 60 if i + 1 < len(ts) else np.nan,
+                      "next_over_last": spot[i + 1] / spot[i] if i + 1 < len(ts) else np.nan,
+                      "hit5": legs[0][0] < t_end - 1e-6 and abs(legs[0][2] / (5 * path.p_alert) - 1) < 1e-9})
         alerts.append(a)
     med = np.nanmedian([a["depth"] for a in alerts])
     ranks = pd.Series([a["pct"] for a in alerts]).rank(pct=True).values

@@ -17,7 +17,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | B2 | Model seçimi: "kârlı olan hangi modelse o" (kullanıcı, 9 Ekim) → holder modelinin de final sınavı (1-8 Ekim, gerçek çıkış) ana modelle aynı ölçüyle; kâğıt testte ikisi yan yana sürüyor | yapılıyor |
 | B3 | Seçim payı: en iyi %5 (ve %3) gerçek çıkış değeriyle ölçülsün (kullanıcı "evet", 9 Ekim); karar sonra | yapılıyor |
 | B4 | Hedef (haftada kasa 2x) tutmadı (gerçek değerle ~1,2-1,6x) → **iyileştirme çalışmaları** (kullanıcı, 9 Ekim); `/canli` hedefe yaklaşınca yeniden konuşulacak. Konular: seçim payı (B3), model (B2), haftalık yeniden eğitim (D8), likiditesi çekilecek coinleri önceden ayırmak (seçimlerin ~%33'ü) | sürüyor |
-| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kullanıcı kararı (9 Ekim, "7 a"): son deneme kâr hedefli model; sonuç çıkmazsa veri toplanmaya devam edip araştırma bekletilir | sürüyor |
+| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kullanıcı kararı (9 Ekim, "7 a"): son deneme kâr hedefli model → **o da kârsız** (5x kuralı 0,71x, §4.5d). Öneri: veri toplanmaya devam, araştırma bekletilsin — kullanıcıya soruldu | kullanıcı kararı bekliyor |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
 | D8 | Robinhood gece arşivi kuruldu; haftalık yeniden eğitim `scripts/retrain.py` (oturumda). **İlk eğitim 9 Ekim (kullanıcı "evet")**: 8 Ekim'e kadarki veri; önce eski holder modelinin final sınavı (B2), sonra iki model dışa aktarılır, sunucu güncellenir; ardından haftalık Routine önerilecek | yapılıyor |
@@ -433,6 +433,12 @@ Sadece en az h saat izlenmiş anlar (vurmuş/vurmamış fark etmez).
   - **Alternatifler (anlaşıldığı gibi):** düşük hedef + kısa süre (1,3x / 1,5x / 2x, 10 dk – 1 sa): 0,59-0,67x;
     işlem başı ortalama 0,84-0,92x, yani **pump.fun ücreti dahil brüt bile zararda** (yükselen çok ama düşenler sert
     düşüyor). **3. alıcı anı** daha kötü (111 seçim, 0,19-0,52x). Kalan deneme: kâr hedefli model.
+  - **Kâr hedefli model (9 Ekim, kullanıcı "7 a", `scripts/pump_profit.py`):** her 5. alıcı anının (5.963, curve ≤ %90)
+    üç satış kuralıyla işlem sonucu (Fomo komisyonu öncesi; ortalama 0,78-0,81x — anların çoğu zararla biter), model
+    2x yerine bu sonuca göre eğitildi (regresyon, walk-forward). En iyi %2 (82 seçim, 5-8 Ekim): 5x kuralı **0,71x**
+    (2x modeli 0,67x), 2x'te hepsi 1 sa 0,74x (0,57x), 1,5x 1 sa 0,60x (0,65x); tahmin ↔ gerçek sıra korelasyonu
+    0,10-0,20. → Biraz daha iyi seçiyor ama **hâlâ kârsız**. pump.fun'da 5. Fomo alıcısı anındaki Fomo akışı + fiyat
+    kriterleriyle (30 sn gecikme, Robinhood'daki masraf varsayımıyla) kâr edilemiyor.
 
 ### 4.4b Çıkış kuralları taraması ve satış fiyatı varsayımı (4 Ekim, kullanıcı: "farklı parametrelerle kârlılığı yukarı taşı")
 `scripts/exit_study.py`: araştırmanın walk-forward seçimleri (5. alıcı, 10-30 Eylül; 1 Ekim sonrası **final sınavı,
@@ -602,6 +608,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma (3. adım) | `exit_study.py` | Çıkış kuralları / seçim / tutar ızgarası, hafta hafta masraflı; final sınavı günleri ayrık |
 | Araştırma (A8) | `pump_rise.py` | pump.fun yükseliş modeli, walk-forward (gün gün), en iyi %1/2/5 |
 | Araştırma (A8) | `pump_sim.py` | pump.fun seçimlerinin işlem simülasyonu, çıkış değeri curve rezervlerinden |
+| Araştırma (A8) | `pump_profit.py` | pump.fun kâr hedefli model (kural sonucuna göre regresyon) ↔ 2x modeli |
 | Araştırma (A10) | `exit_truth.py` | Seçimlerin çıkış anındaki gerçek fiyatı: curve + V4 havuzlarındaki bütün işlemler, net likidite çekilmesi |
 | Araştırma (A10) | `exit_truth_rules.py` | Çıkış kuralı taraması, gerçek çıkış değeriyle; Pons / güven puanı filtreleri |
 | Araştırma (A10) | `exit_truth_delay.py` | 5x kuralında satış gecikmesinin etkisi; Fomo 5x'inin zincirde doğrulanması |
