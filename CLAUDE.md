@@ -35,9 +35,10 @@ taramasını geçemeyenleri sessizce eler, kalanları **güven puanı + 2x ihtim
 bildirim fiyatının 5x'ine ulaşınca "5x oldu, sat", 3 saatte ulaşmazsa "süre doldu" der (9 Ekim'den beri satış kuralı 5x; seçim ölçüsü hâlâ 2x). Alım-satım kararı kullanıcının; bot işlem yapmaz.
 **Adım adım ilerlenir, her adım sonunda kullanıcıyla durulur** (`PROJE.md` §2): 0 temizlik · 1 güvenlik kriterleri ·
 2 yükseliş kriterleri (backtest) · 3 simülasyon (karar kapısı) · 4 bot · 5 canlı izleme. Adımı atlama, hızlıca sonuca
-koşma; kriterler kesinleşmeden bota dokunma. **Kapsam:** bot Robinhood Chain'de (kâğıt test); 3 Ekim'den beri
-**öncelik pump.fun** (kullanıcı: "en az Robinhood kadar iyi"), pump.fun ve BNB verisi sunucuda toplanıyor, Base ertelendi —
-**her adım sonunda kapsamı hatırlat**. "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
+koşma; kriterler kesinleşmeden bota dokunma. **Kapsam:** bot Robinhood Chain'de (kâğıt test); 3-9 Ekim arası öncelik
+pump.fun'du; araştırması kârsız çıktı (`PROJE.md` §4.5d) → **9 Ekim'den beri odak Robinhood iyileştirmeleri** (kullanıcı:
+"pump.fun'u bekletelim, Robinhood'a odaklanalım"); pump.fun ve BNB verisi sunucuda toplanmaya devam ediyor, pump.fun
+araştırması ve Base ertelendi — **her adım sonunda kapsamı ve ertelenenleri hatırlat**. "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
 ## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte sonuç üretti; ayrıntı `PROJE.md` §6)
