@@ -11,16 +11,16 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 
 | # | İş | Durum |
 |---|---|---|
-| A1 | Holder'lı ikinci model kâğıt testte (3 Ekim, §3/§4.6): sunucu güncellenince başlar; değerlendirme A4 ile birlikte | A4'te bakılacak |
 | A2 | Taze gün testi: yapıldı (§4.6, 2x %80, 11 seçim); 7 Ekim'de 1-6 Ekim ile tekrarlandı (26 seçim, 2x %71, §4.4c); arşiv 6 Ekim sonuna kadar araştırma DB'sinde. Her gün yeni günler eklenip tekrarlanacak (kâğıt testle birlikte) | sürekli |
-| A4 | Kâğıt test değerlendirmesi (9 Ekim, karne: 3-8 Ekim, ~5,5 gün): **ana model** 19 seçim, şimdiki kural kasa 1,02x (son Fomo fiyatıyla, iyimser), 5x kuralı 1,06x (15 seçim; 5x yapan 4, 3 sa satılan 11, likiditesi çekilmiş 2); **holder modeli** 17 seçim, 1,14x / 5x ile 1,13x (5x yapan 5). Aynı dönemde final sınavı (bot gibi seçim, gerçek çıkış değeri, 22 seçim): 5x kuralı 1,20-1,27x, şimdiki kurallar 0,86-0,91x → karne sınavla tutarlı, şimdiki kural gerçekte zararda. Seçim az (günde ~3,5; pazar küçülüyor, bot kaçırmıyor). Kararlar kullanıcıda: satış kuralı, /canli, model, seçim payı, D7 | kullanıcı kararı bekliyor |
-| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kalan: kâr hedefli model — ya da pump.fun'u bekletmek (kullanıcı kararı) | sürüyor |
+| A4 | Kâğıt test değerlendirmesi yapıldı (9 Ekim, §4.7): karne 3-8 Ekim ana model 19 seçim 1,02x (şimdiki kural, iyimser) / 5x kuralı 1,06x; holder modeli 1,14x / 1,13x; aynı günlerin final sınavı (gerçek çıkış) 5x 1,20-1,27x, şimdiki kural 0,86-0,91x. **Kararlar (kullanıcı, 9 Ekim):** 1 satış kuralı 5x → B1 · 2 `/canli` **açılmıyor** ("henüz istediğimiz seviyede değiliz") · 3 model: kârlı olan hangisiyse → B2 · 4 seçim payı %5 ölçülsün → B3 · 5 hedef tutmadı → iyileştirme çalışmaları (B4) · 6 yeniden eğitim → D8 · 7 pump.fun: kâr hedefli model (A8) | kararlar alındı |
+| B1 | Satış kuralı 5x (kullanıcı "evet", 9 Ekim): `/canli` açıldığında takip "2x oldu" yerine 5x'te "🎯 5x oldu, sat" ve 3 saatte "süre doldu, sat"; `/karne`'de 5x kuralı ana kural | yapılıyor |
+| B2 | Model seçimi: "kârlı olan hangi modelse o" (kullanıcı, 9 Ekim) → holder modelinin de final sınavı (1-8 Ekim, gerçek çıkış) ana modelle aynı ölçüyle; kâğıt testte ikisi yan yana sürüyor | yapılıyor |
+| B3 | Seçim payı: en iyi %5 (ve %3) gerçek çıkış değeriyle ölçülsün (kullanıcı "evet", 9 Ekim); karar sonra | yapılıyor |
+| B4 | Hedef (haftada kasa 2x) tutmadı (gerçek değerle ~1,2-1,6x) → **iyileştirme çalışmaları** (kullanıcı, 9 Ekim); `/canli` hedefe yaklaşınca yeniden konuşulacak. Konular: seçim payı (B3), model (B2), haftalık yeniden eğitim (D8), likiditesi çekilecek coinleri önceden ayırmak (seçimlerin ~%33'ü) | sürüyor |
+| A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kullanıcı kararı (9 Ekim, "7 a"): son deneme kâr hedefli model; sonuç çıkmazsa veri toplanmaya devam edip araştırma bekletilir | sürüyor |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
-| D7 | (kullanıcı: "sonra") Denetim: 3. adım karar kapısı ("haftada kasa 2x") geçilmeden kâğıt teste geçildi (kullanıcı kararı); son hafta masraflı 1,66x, taze günler ~1,3x/hafta → A4'te hedef tutmazsa ne yapılacağı kararlaştırılmalı | A4 ile |
-| D8 | Robinhood gece arşivi kuruldu (bot gördüğü her Fomo işlemini `fomo_log`'a yazar, gece `robinhood/<gün>/`); haftalık yeniden eğitim `scripts/retrain.py` (oturumda; sunucuda değil). İlk eğitim A4'ten sonra (karne iki modeli karıştırmasın), sonra haftada bir | A4 sonrası |
-| A10 | Gerçek çıkış değeri ölçüldü (§4.4c): "5x'te hepsini sat" haftada ~3,1x (gerçek değerle), şimdiki kurallar ~0,8-1,2x. 6 Ekim: kullanıcı "evet" → 5x kuralı kâğıt teste eklendi (§3), A4'te iki kural yan yana değerlendirilecek. Final sınavı yapıldı (7 Ekim, §4.4c): görülmemiş 1-6 Ekim'de 5x kuralı 1,60x, şimdiki kurallar ~0,9x. Açık: `/canli` açılırsa gerçek bildirime de "5x oldu" mesajı eklenmeli (şu an sadece "2x oldu" var) — A4 kararıyla | sunucuda (6 Ekim); değerlendirme A4 ile |
-| D12 | Canlı likidite uyarısı net likidite kuralına geçti (4 Ekim): havuzun oluşumundan beri net likiditesi bir blok sonunda zirvesinin %20'sine ya da altına inince bir kez uyarır (`live.pull_step`); tek tek çıkarmalar sayılmaz (hook'lar likiditeyi aynı işlemde çıkarıp geri koyuyor). Sunucuya bir sonraki güncellemeyle gider; `/canli` kapalı olduğu için şimdilik etkisi yok | yapıldı, sunucuda (6 Ekim) |
+| D8 | Robinhood gece arşivi kuruldu; haftalık yeniden eğitim `scripts/retrain.py` (oturumda). **İlk eğitim 9 Ekim (kullanıcı "evet")**: 8 Ekim'e kadarki veri; önce eski holder modelinin final sınavı (B2), sonra iki model dışa aktarılır, sunucu güncellenir; ardından haftalık Routine önerilecek | yapılıyor |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
@@ -32,8 +32,8 @@ bulur, güvenlik taramasından geçemeyenleri sessizce eler, kalanları kullanı
 | Konu | Karar |
 |---|---|
 | Rapor | **Güven puanı** + **2x ihtimali** (model puanı ve detayı: puanı en çok etkileyen nedenler) + bildirim fiyatı |
-| Başarı | Coin **bildirim anındaki fiyatın brüt 2x'ine** ulaşır. Süre önemsiz, üst sınır yok. Kayma ve komisyon başarı tanımına girmez. |
-| Bildirimden sonra | Bot coin 2x'e ulaşınca **"2x oldu"**, likidite çekilirse **"⚠️ likidite çekiliyor"** haberi verir. Satış kararı kullanıcının. |
+| Başarı | Coin **bildirim anındaki fiyatın brüt 2x'ine** ulaşır. Süre önemsiz, üst sınır yok. Kayma ve komisyon başarı tanımına girmez. (Seçim ölçüsü; kâr satış kuralına bağlı: 9 Ekim'den beri 5x kuralı, aşağıda.) |
+| Bildirimden sonra | **9 Ekim'den beri (kullanıcı "evet"): bot coin bildirim fiyatının 5x'ine ulaşınca "🎯 5x oldu, sat", 3 saatte ulaşmazsa "süre doldu, sat"** der (önce: "2x oldu"); likidite çekilirse **"⚠️ likidite çekiliyor"**. Satış kararı kullanıcının. |
 | Bildirim sayısı | Mümkün olduğunca az. Eşik, backtest'in "günde kaç bildirim · yüzde kaçı 2x" tablosuna bakılarak birlikte seçilir. |
 | Güvenlik — eleme | **Sadece satılamama elenir:** honeypot ya da toplam alım+satım vergisi **≥ %10**. Satılabilirlik doğrulanamazsa coin elenmez, raporda "⚠️ satılabilirlik doğrulanamadı" yazar. |
 | Güvenlik — rapor | Diğer 14 kontrol **eleme yapmaz**, raporda tek tek görünür (bilinmeyen "bilinmiyor" yazar). Ayrıca 0-100 **güven puanı**; her kontrolün puana etkisi geçmiş veride tuzak oranını ne kadar artırdığına göre belirlenir. |
@@ -483,6 +483,17 @@ değer 0. Ölçülemeyen %3-6 (coin başka havuza geçmiş); iki yönde de değe
   1 sa 2x %52; likiditesi çekilmiş %33. Gerçek çıkış değeriyle 1-7 Ekim haftası (8 Ekim 3 günden kısa, hafta sayılmadı):
   **5x'te hepsi → 1,58x** (1/3/24 sa sınırı 1,55-1,58x); şimdiki kurallar **0,82-0,85x**; sadece Pons + şimdiki
   kurallar ~1,0x. → Sonuç 7 Ekim'deki sınavla aynı: 5x kuralı görülmemiş günlerde de kârlı, şimdiki kurallar zararda.
+
+### 4.7 Kâğıt test değerlendirmesi ve kararlar (9 Ekim, §0 A4)
+Karne (3-8 Ekim, ~5,5 gün; model 1 Ekim'e kadarki veriyle eğitildi): ana model 1.038 coin puanladı, **19 seçim**, 2x yapan
+9, zarar-kes 9; şimdiki kural kasa **1,02x** (açık/kalan pay son Fomo fiyatıyla → iyimser), 5x kuralı **1,06x** (15
+seçim, en eski 4'ünün işlem geçmişi silinmişti; 5x yapan 4, 3 saatte satılan 11, likiditesi çekilmiş 2). Holder modeli:
+17 seçim, **1,14x** / 5x ile **1,13x** (5x yapan 5). Aynı dönemin final sınavı (bot gibi seçim, `exit_truth` gerçek çıkış,
+22 seçim): 5x kuralı 1,20-1,27x, şimdiki kurallar 0,86-0,91x → karne sınavla tutarlı; şimdiki kural gerçekte zararda.
+Seçim günde ~3,5 (pazar küçülüyor, §0 A4 eski notu: bot işlem kaçırmıyor). Hedef (haftada kasa 2x) tutmadı.
+**Kullanıcı kararları:** 1 satış kuralı 5x (B1) · 2 `/canli` açılmıyor ("henüz istediğimiz seviyede değiliz") · 3 model:
+"kârlı olan hangi modelse o" (B2) · 4 seçim payı %5 ölçülsün (B3) · 5 iyileştirme çalışmaları (B4) · 6 yeniden eğitim
+(D8) · 7 pump.fun'da kâr hedefli model (A8).
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
