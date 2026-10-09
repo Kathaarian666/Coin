@@ -92,13 +92,16 @@ def candles(mint: str) -> dict:
 
 def gecko(mint: str, pool: str, ts_start: float, ts_end: float) -> dict:
     out, before = [], int(ts_end) + 60
-    while before > ts_start:
+    for _ in range(20):
+        if before <= ts_start:
+            break
         x = get(GECKO.format(pool=pool, before=before))["data"]["attributes"]["ohlcv_list"]
         time.sleep(2.1)
-        if not x:
+        oldest = int(min(c[0] for c in x)) if x else before
+        if oldest >= before:  # nothing older: the pool's start
             break
         out += x
-        before = int(min(c[0] for c in x))
+        before = oldest
     return {"mint": mint, "candles": sorted([int(c[0]), *map(float, c[1:6])] for c in out if c[0] <= ts_end)}
 
 
