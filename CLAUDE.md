@@ -28,7 +28,7 @@ bildirim gönderen bot + yükselecek coinleri erken bulma araştırması. Proje 
 
 ## Proje durumu → `PROJE.md`
 **Yeni sohbette ilk iş: `PROJE.md` başındaki "Yeni sohbete devir (9 Ekim)" bölümü** (nerede kaldık, bekleyen karar,
-eski sohbete bağlı haftalık Routine'in yeni sohbete taşınması, araştırma ortamını yeniden kurma adımları).
+haftalık Routine'in sohbete bağlı olması — sohbet değişince taşınır, araştırma ortamını yeniden kurma adımları).
 **Önce `PROJE.md`'yi oku**: amaç, botun şu anki hali, kanıtlanmış bulgular, denenip bırakılanlar, ölçüm kuralları,
 betiklerin durumu ve yol haritası orada (tek özet; bu dosyada tekrarlanmaz). Her önemli bulgu/karar sonrası
 `PROJE.md` güncellenir.

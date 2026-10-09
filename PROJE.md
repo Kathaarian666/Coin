@@ -18,10 +18,12 @@ var; seçimlerin ~%40'ı) 5x kuralının asıl kazananları — elemek kasayı y
 normalde 3 sa kalır; (2) bildirimde "⚠️ rug riski yüksek: 5x'te hemen sat, 15 dk'da gelmezse çık". Bot için her
 seçimde havuz hook'u + owner() okunmalı (seçim başına birkaç RPC). Yeni sohbette önce bunu sor.
 
-**Takvim:** her Perşembe 08:53 (İstanbul) haftalık yeniden eğitim Routine'i (`trig_01Vd1J2yVyuye8obmrZqtzzV`) — **eski
-sohbete bağlı** (session_01M7n2kGPGBseuUoNifzaKAW). Yeni sohbette: bunu kapat (`update_trigger enabled=false` ya da
-sil) ve aynı içerikle yeni sohbete bağlı yeniden kur (create_trigger, varsayılan bağlama), kullanıcıya söyle. İlk
-çalışma 15 Ekim. Ertelenenler: A8 pump.fun, A9 veri dalı (~1 Kasım'dan önce hatırlat), A7 Base, K3 token (Aralık sonu).
+**Takvim:** her Perşembe 08:53 (İstanbul) haftalık yeniden eğitim Routine'i (`trig_01JPfYL4syxBEs2mUJrHQfkL`) — 9 Ekim
+akşamı yeni sohbete taşındı (session_011bYiHCLQjErPB583Lm4dPd); eski sohbete bağlı olan
+(`trig_01Vd1J2yVyuye8obmrZqtzzV`) kapatıldı. Sohbet yine değişirse aynısı yapılır: yenisini aynı içerikle
+create_trigger (varsayılan bağlama) ile kur, eskisini `update_trigger enabled=false` ile kapat, kullanıcıya söyle. İlk
+çalışma 15 Ekim. Ertelenenler: A8 pump.fun, A9 veri dalı (~1 Kasım'dan önce hatırlat), A7 Base, K3 token (Aralık
+sonu).
 
 **Araştırma ortamını yeniden kurmak** (`/tmp` her oturumda silinir; ~1-2 saat, çoğu arka planda):
 1. `python scripts/retrain.py <iş klasörü>` → `veri` dalından araştırma DB'si (arşiv + `robinhood/` günleri + arada
@@ -60,7 +62,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kullanıcı kararı (9 Ekim, "7 a"): son deneme kâr hedefli model → **o da kârsız** (5x kuralı 0,71x, §4.5d). **Kullanıcı kararı (9 Ekim): "pump.fun'u bekletelim, Robinhood'a odaklanalım"** — sunucu veri toplamaya devam eder; ileride daha çok veri ya da yeni fikirle dönülür | **ertelendi** (her adım sonunda hatırlatılacak) |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
-| D8 | Robinhood gece arşivi kuruldu; haftalık yeniden eğitim `scripts/retrain.py` (oturumda). **İlk eğitim 9 Ekim yapıldı**: 3 Eylül – 7 Ekim (22.052 an, 2x 7.178), iki model (`paper_model.json` 20 kriter, başlangıç eşiği 0,5317; `paper_model_h.json` 28 kriter), canlı kriter eşitliği tamam; sunucuda (9 Ekim akşamı, karne doğrulandı). Kâğıt testte eski model seçimleri ile yenileri karneyi karıştırır (karne alt satırı eğitim tarihini gösterir). **Haftalık Routine kuruldu** (kullanıcı "evet", 9 Ekim): her Perşembe 08:53 (İstanbul) bu oturuma, `trig_01Vd1J2yVyuye8obmrZqtzzV`; önce eski modellerin haftalık final sınavı (ana ↔ holder), sonra yeniden eğitim | yapıldı; ilk Routine 15 Ekim |
+| D8 | Robinhood gece arşivi kuruldu; haftalık yeniden eğitim `scripts/retrain.py` (oturumda). **İlk eğitim 9 Ekim yapıldı**: 3 Eylül – 7 Ekim (22.052 an, 2x 7.178), iki model (`paper_model.json` 20 kriter, başlangıç eşiği 0,5317; `paper_model_h.json` 28 kriter), canlı kriter eşitliği tamam; sunucuda (9 Ekim akşamı, karne doğrulandı). Kâğıt testte eski model seçimleri ile yenileri karneyi karıştırır (karne alt satırı eğitim tarihini gösterir). **Haftalık Routine kuruldu** (kullanıcı "evet", 9 Ekim): her Perşembe 08:53 (İstanbul), `trig_01JPfYL4syxBEs2mUJrHQfkL` (9 Ekim akşamı yeni sohbete taşındı; eskisi `trig_01Vd1J2yVyuye8obmrZqtzzV` kapalı); önce eski modellerin haftalık final sınavı (ana ↔ holder), sonra yeniden eğitim | yapıldı; ilk Routine 15 Ekim |
 | K3 | `VERI_GITHUB_TOKEN` ~1 Ocak'ta dolar → yenileme hatırlatması (Aralık sonu) | Aralık |
 
 ## 1. Amaç (kullanıcı kararları, 2 Ekim)
