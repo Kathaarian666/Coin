@@ -479,6 +479,10 @@ değer 0. Ölçülemeyen %3-6 (coin başka havuza geçmiş); iki yönde de değe
   (süre sınırıyla) 0,87-0,98x; 5x'te yarı 1,07x; sadece Pons 1,29x. → 3 haftada seçilen kural görülmemiş günlerde de
   en iyisi ve kârlı; haftalık oran araştırmadan düşük (seçim az: pazar küçüldü, §0 A4). Güven puanı filtresi
   sınanamadı (güvenlik verisi 2 Ekim'de bitiyor).
+- **Final sınavı, yeni günlerle (9 Ekim):** 1-8 Ekim (model hâlâ görmedi), 1.540 coin, **33 seçim, 2x %67** (20/30),
+  1 sa 2x %52; likiditesi çekilmiş %33. Gerçek çıkış değeriyle 1-7 Ekim haftası (8 Ekim 3 günden kısa, hafta sayılmadı):
+  **5x'te hepsi → 1,58x** (1/3/24 sa sınırı 1,55-1,58x); şimdiki kurallar **0,82-0,85x**; sadece Pons + şimdiki
+  kurallar ~1,0x. → Sonuç 7 Ekim'deki sınavla aynı: 5x kuralı görülmemiş günlerde de kârlı, şimdiki kurallar zararda.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
