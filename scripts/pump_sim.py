@@ -1,6 +1,6 @@
 """pump.fun trade simulation of the walk-forward picks (PROJE.md §0 A8, step 3; the twin of scripts/exit_truth_rules.py).
 
-  python scripts/pump_sim.py <solana.db> <pump_study.parquet> [<top share>=0.02]
+  python scripts/pump_sim.py <solana.db> <pump_study.parquet> [<top share>=0.02] [k=5]
 
 Picks: scripts/pump_rise.py walk-forward model (5th Fomo buyer, 2x within 1 h, coins over 90 % of the curve left
 out), the day's top share; only picks with 3 h of data after them. The user's trade as on Robinhood
@@ -35,6 +35,12 @@ RULES = {  # (target x alert price, share sold there, stop, trail, hours)
     "3x'te hepsi, 3 sa": (3.0, 1.0, None, None, 3),
     "5x'te hepsi, 1 sa": (5.0, 1.0, None, None, 1),
     "10x'te hepsi, 3 sa": (10.0, 1.0, None, None, 3),
+    # low target, short time (9 Oct, PROJE.md §4.5d: the picks rise fast and fall fast)
+    "1,3x'te hepsi, 10 dk": (1.3, 1.0, None, None, 1 / 6),
+    "1,5x'te hepsi, 10 dk": (1.5, 1.0, None, None, 1 / 6),
+    "2x'te hepsi, 10 dk": (2.0, 1.0, None, None, 1 / 6),
+    "1,5x'te hepsi, 30 dk": (1.5, 1.0, None, None, 0.5),
+    "1,5x'te hepsi, 1 sa": (1.5, 1.0, None, None, 1),
 }
 
 
@@ -53,7 +59,8 @@ def load(db, mint: str, sol: pd.DataFrame) -> pd.DataFrame:
 def main():
     db = sqlite3.connect(sys.argv[1])
     top = float(sys.argv[3]) if len(sys.argv) > 3 else 0.02
-    d = prepare(pd.read_parquet(sys.argv[2]), 5, 1, 90)
+    k = int(sys.argv[4]) if len(sys.argv) > 4 else 5
+    d = prepare(pd.read_parquet(sys.argv[2]), k, 1, 90)
     t, _ = walk_forward(d, sorted(d.day.unique()), importance=False)
     picks = t[(t.pct > 1 - top) & (t.obs_h >= HOLD_MIN)].sort_values("ts")
     sol = pd.read_sql("SELECT ts, usd FROM sol_price ORDER BY ts", db)
@@ -92,13 +99,13 @@ def main():
         a["size"] = 0.04 if q > 2 / 3 else 0.02 if q > 1 / 3 else 0.01
     days = sorted({a["day"] for a in alerts})
     s = pd.DataFrame(stale)
-    print(f"{len(alerts)} seçim (en iyi %{100 * top:g}, {', '.join(f'{pd.Timestamp(x):%d %b}' for x in days)}); "
+    print(f"{k}. alıcı, {len(alerts)} seçim (en iyi %{100 * top:g}, {', '.join(f'{pd.Timestamp(x):%d %b}' for x in days)}); "
           f"5x'e 3 saatte ulaşan {int(s.hit5.sum())}")
     held = s[~s.hit5]
     print(f"3. saatte elde kalanlar ({len(held)}): son Fomo işleminden bu yana medyan {held.since_last_min.median():.1f} dk "
           f"(%{100 * (held.since_last_min > 15).mean():.0f}'i 15 dk'dan eski), sonraki Fomo işlemine medyan "
           f"{held.to_next_min.median():.1f} dk; sonraki / son fiyat medyan {held.next_over_last.median():.2f}\n")
-    print(f"{'kural':<48} {'değer':<9} {'3 gün':>6} {'gün gün':<20} {'işlem başı ort / medyan':<24} en iyi 1 hariç")
+    print(f"{'kural':<48} {'değer':<9} {'toplam':>6} {'gün gün':<26} {'işlem başı ort / medyan':<24} en iyi 1 hariç")
     for name in RULES:
         for mode in ("son", "temkinli"):
             for a in alerts:
@@ -108,7 +115,7 @@ def main():
             mult = np.array([sum(sh * p for _, sh, p in a["legs"][(name, mode)]) / a["p_in"] for a in alerts])
             best = int(np.argmax(mult))
             luck = trade_sim.simulate([a for j, a in enumerate(alerts) if j != best], "x", 1000, True) / 1000
-            print(f"{name:<48} {mode:<9} {bank:6.2f}x {' / '.join(f'{x:.2f}' for x in per_day):<20} "
+            print(f"{name:<48} {mode:<9} {bank:6.2f}x {' / '.join(f'{x:.2f}' for x in per_day):<26} "
                   f"{mult.mean():5.2f}x / {np.median(mult):4.2f}x{'':<10} {luck:.2f}x")
 
 
