@@ -22,8 +22,11 @@ universe) to GRAD_H hours after. Cautious minute execution: the signal is a minu
 close (~1 min late), a rule fires on a minute's close and sells at the next minute's close; a minute without trades
 keeps the last close. Features from the candles up to the signal: minutes since graduation, market cap, returns
 1/5/15 min and since graduation, distance from the high since graduation, $ volume 1/5/15 min and since graduation,
-active minutes in the last 15. Costs as above (PumpSwap fee; depth from a fresh PumpSwap pool, ~$9k SOL side, growing
-with the square root of the price).
+active minutes in the last 15. Per rule the price multiple r_ and the exit market cap mo_; grad_net() turns them into
+the net multiple of any stake (costs as above with the PumpSwap fee; depth of a fresh PumpSwap pool ~$8.5k SOL side
+at ~$54k market cap, growing with the square root of the price: $1000 moves a fresh pool ~12 % each way).
+rl_: the same rules as standing orders in the app (no delay on the way out): the target fills at the target when a
+minute's high reaches it, the stop at the lower of its level and that minute's close (a minute reaching both: stop).
 """
 
 import sqlite3
@@ -212,7 +215,22 @@ def build(db_path: str, out_path: str, every_min: float = 10):
 GRAD_H = 3.0
 GRAD_TPS, GRAD_SLS, GRAD_HOLDS = (1.2, 1.3, 1.5, 2.0, 3.0), (0.15, 0.3, 0.5), (5 / 60, 15 / 60, 0.5, 1.0, 3.0)
 GRAD_RULES = [(tp, sl, h) for tp in GRAD_TPS + (None,) for sl in GRAD_SLS + (None,) for h in GRAD_HOLDS]
-POOL_USD = 9000.0  # SOL side of a fresh PumpSwap pool, $
+POOL_USD, POOL_MCAP = 8500.0, 54000.0  # a fresh PumpSwap pool: SOL side $ at market cap $ (medians, 3-8 Oct)
+
+
+def pool_depth(mcap):
+    """SOL side of a PumpSwap pool in $: grows with the square root of the price (constant product)."""
+    return POOL_USD * np.sqrt(np.maximum(mcap, 1.0) / POOL_MCAP)
+
+
+def grad_net(r, mcap_in, mcap_out, stake: float):
+    """Net multiple of a stake-dollar trade bought at market cap mcap_in and sold at r times the price: Fomo fee each
+    way, PumpSwap fee, price impact stake / pool depth (vectorised)."""
+    fee_in = np.maximum(FOMO_MIN, FOMO_FEE * stake)
+    tokens = (stake - fee_in) / (1 + VENUE_FEE[2] + stake / pool_depth(mcap_in))
+    gross = tokens * r
+    gross = gross * np.clip(1 - VENUE_FEE[2] - gross / pool_depth(mcap_out), 0, None)
+    return np.where(gross > 0, (gross - np.maximum(FOMO_MIN, FOMO_FEE * gross)) / stake, 0.0)
 
 
 def grad_coin(args):
@@ -224,8 +242,10 @@ def grad_coin(args):
     if ts[0] > t_grad:  # the candles do not reach back to the graduation (a coin with > 1000 active minutes)
         return [], []
     m = np.arange(np.floor(ts[0] / 60) * 60, ts[-1] + 60, 60)  # every minute, gaps keep the last close
-    k = np.searchsorted(ts, m, side="right") - 1
-    px = close[k]
+    kk = np.searchsorted(ts, m, side="right") - 1
+    px = close[kk]
+    have = ts[kk] == m  # a candle in that minute (else no trade: high = low = the last close)
+    high, low = np.where(have, c[kk, 2], px), np.where(have, c[kk, 3], px)
     v = np.zeros(len(m))
     v[np.searchsorted(m, ts)] = vol
     cv = np.concatenate([[0], np.cumsum(v)])
@@ -237,21 +257,21 @@ def grad_coin(args):
         if not (p_in > 0):
             continue
         hi = px[g0:i + 1].max()
-        f = {"mint": mint, "ts": m[i] + 60, "min_since_grad": i - g0, "mcap": px[i] * 1e9, "ret_grad": px[i] / p_grad,
-             "dd_hi": px[i] / hi, "vol_grad": cv[i + 1] - cv[g0], "act15": int((v[max(0, i - 14):i + 1] > 0).sum())}
+        f = {"mint": mint, "ts": m[i] + 60, "min_since_grad": i - g0, "mcap": px[i] * 1e9, "mcap_in": p_in * 1e9,
+             "ret_grad": px[i] / p_grad, "dd_hi": px[i] / hi, "vol_grad": cv[i + 1] - cv[g0],
+             "act15": int((v[max(0, i - 14):i + 1] > 0).sum())}
         for w in (1, 5, 15):
             f[f"ret{w}"] = px[i] / px[max(0, i - w)]
             f[f"vol{w}"] = cv[i + 1] - cv[max(0, i + 1 - w)]
         rows.append(f)
-        depth_in = POOL_USD * np.sqrt(max(p_in / p_grad, 0.01))
-        cost = p_in * (1 + VENUE_FEE[2] + STAKE / depth_in)
-        tokens = (STAKE - fee(STAKE)) / cost
-        fut = px[i + 2:]
-        out = []
+        fut, fhi, flo = px[i + 2:], high[i + 2:], low[i + 2:]
+        r_out, mc_out, r_lim = [], [], []
         for tp, sl, h in GRAD_RULES:
             n = int(round(h * 60))
             if i + 1 + n >= len(m):
-                out.append(np.nan)
+                r_out.append(np.nan)
+                mc_out.append(np.nan)
+                r_lim.append(np.nan)
                 continue
             w = fut[:n]
             hit = np.zeros(len(w), bool)
@@ -260,11 +280,21 @@ def grad_coin(args):
             if sl:
                 hit |= w <= (1 - sl) * p_in
             j = np.flatnonzero(hit)
-            p_out = px[i + 2 + j[0] + 1] if len(j) and i + 3 + j[0] < len(m) else px[i + 1 + n]
-            depth = POOL_USD * np.sqrt(max(p_out / p_grad, 0.01))
-            gross = tokens * p_out * max(0.0, 1 - VENUE_FEE[2] - STAKE * p_out / p_in / depth)
-            out.append((gross - fee(gross)) / STAKE if gross > 0 else 0.0)
-        res.append(out)
+            p_out = px[i + 3 + j[0]] if len(j) and i + 3 + j[0] < len(m) else px[i + 1 + n]
+            r_out.append(p_out / p_in)
+            mc_out.append(p_out * 1e9)
+            # standing orders: the target fills at the target once a minute's high reaches it, the stop at the lower
+            # of its level and that minute's close; a minute reaching both counts as the stop (cautious)
+            up = fhi[:n] >= tp * p_in if tp else np.zeros(n, bool)
+            down = flo[:n] <= (1 - sl) * p_in if sl else np.zeros(n, bool)
+            ju, jd = (int(np.argmax(x)) if x.any() else n for x in (up, down))
+            if jd <= ju and jd < n:
+                r_lim.append(min(1 - sl, fut[jd] / p_in))
+            elif ju < n:
+                r_lim.append(tp)
+            else:
+                r_lim.append(px[i + 1 + n] / p_in)
+        res.append(r_out + mc_out + r_lim)
     return rows, res
 
 
@@ -283,7 +313,8 @@ def grad_build(grads_path: str, candles_path: str, out_path: str):
             rows += r
             res += v
     names = [f"tp{tp or '-'}_sl{sl or '-'}_h{h:g}" for tp, sl, h in GRAD_RULES]
-    out = pd.concat([pd.DataFrame(rows), pd.DataFrame(res, columns=[f"n_{n}" for n in names])], axis=1)
+    cols = [f"r_{n}" for n in names] + [f"mo_{n}" for n in names] + [f"rl_{n}" for n in names]
+    out = pd.concat([pd.DataFrame(rows), pd.DataFrame(res, columns=cols)], axis=1)
     out = out.sort_values("ts", kind="stable").reset_index(drop=True)
     out.to_parquet(out_path, index=False)
     print(f"{len(jobs)} coin, {out.mint.nunique()} mumları mezuniyete uzanan, {len(out)} an")
