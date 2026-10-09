@@ -40,7 +40,9 @@ bildirim fiyatının 5x'ine ulaşınca "5x oldu, sat", 3 saatte ulaşmazsa "sür
 koşma; kriterler kesinleşmeden bota dokunma. **Kapsam:** bot Robinhood Chain'de (kâğıt test); 3-9 Ekim arası öncelik
 pump.fun'du; araştırması kârsız çıktı (`PROJE.md` §4.5d) → **9 Ekim'den beri odak Robinhood iyileştirmeleri** (kullanıcı:
 "pump.fun'u bekletelim, Robinhood'a odaklanalım"); pump.fun ve BNB verisi sunucuda toplanmaya devam ediyor, pump.fun
-araştırması ve Base ertelendi — **her adım sonunda kapsamı ve ertelenenleri hatırlat**. "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
+araştırması ve Base ertelendi — **her adım sonunda kapsamı ve ertelenenleri hatırlat**. **9 Ekim akşamı kullanıcı pump.fun'u
+yeniden açtı ve öncelik yaptı** ("kârlılık için pump.fun şart, dar havuzdayız") → `PROJE.md` §4.5e (strateji
+laboratuvarı, pump.fun'un ücretsiz tüm-pazar API'si). "Bot alıp 1 saat tutar" / $ kâr / kayma araştırması hedef dışıydı, bırakıldı.
 Kullanıcı kararları: sadece ücretsiz kaynak (X API yok), Fomo "thesis" yazıları kullanılmaz, karar sadece zincir verisiyle.
 
 ## Araştırmada uyulacak ölçüm kuralları (her biri bir kez sahte sonuç üretti; ayrıntı `PROJE.md` §6)
