@@ -3,21 +3,23 @@ known at the alert (no hook on the V4 pool, or an owner other than the shared la
 multiple when it sells at 5x or else after 5 min - 3 h (on-chain value as scripts/exit_truth.py, 0 once pulled), and
 for the risky ones that reach 5x the time from the 5x to the liquidity pull.
 
-  python scripts/risky_picks.py   (paths: /tmp/claude-0/data/, the research session's layout)
+  python scripts/risky_picks.py <trades.db> <picks.parquet> <exit_truth cache .jsonl> <security.parquet>
+
+picks: the research walk-forward top 5 % (profit_study) or fresh_test.py --picks; the cache: exit_truth.py's events
+of those picks; security: security_study.py + security_extra.py (rows at the 3rd buyer, known before the 5th).
 """
 import json, sqlite3, sys
 import numpy as np, pandas as pd
-sys.path.insert(0, '/home/user/Coin/scripts')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
 from trust_export import flags
-D = '/tmp/claude-0/data'
 BPS = 9.93
-p = pd.read_parquet(f'{D}/profit_k5_2x_0.05.parquet'); p['coin'] = p.coin.str.lower()
-s = pd.read_parquet(f'{D}/security_old.parquet'); s['token'] = s.token.str.lower(); row = s.drop_duplicates('token').set_index('token')
+p = pd.read_parquet(sys.argv[2]); p['coin'] = p.coin.str.lower()
+s = pd.read_parquet(sys.argv[4]); s['token'] = s.token.str.lower(); row = s.drop_duplicates('token').set_index('token')
 f = flags(row)
 p = p[p.coin.isin(f.index)].copy()
 p['risky'] = ((f.hook_yok + f.sahip).reindex(p.coin).values > 0)
-ev = {t: [tuple(x) for x in e] for t, e in (json.loads(l) for l in open(f'{D}/top5/truth.cache.jsonl'))}
-db = sqlite3.connect(f'{D}/fomo.db')
+ev = {t: [tuple(x) for x in e] for t, e in (json.loads(line) for line in open(sys.argv[3]))}
+db = sqlite3.connect(sys.argv[1])
 names = {a.lower(): i for i, a in db.execute("SELECT id, addr FROM names WHERE kind='token'")}
 
 def value_at(e, fomo_blk, fomo_px, exit_blk):
@@ -62,6 +64,7 @@ for r in p.itertuples():
             out[h] = v / p_in if v == v else np.nan
     rows.append(out)
 x = pd.DataFrame(rows)
+print(f"{len(p)} seçim güvenlik bilgisiyle; riskli {int(p.risky.sum())}")
 for k, g in x.groupby('risky'):
     print('riskli' if k else 'normal', len(g))
     for h in HOLDS:
