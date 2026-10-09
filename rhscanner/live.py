@@ -4,7 +4,7 @@ Before a pick is sent it must not be unsellable (the user's only elimination rul
 template cannot block sells), any other coin is sold in a simulation into its Uniswap V4 pool by a real holder
 (contracts/V4SellProbe.sol through an eth_call state override, nothing is spent). A revert or a transfer tax of
 10 % or more drops the pick; when nothing can be simulated (no pool or holder found) it is sent with a warning.
-The message gives the 2x chance (what the top 2 % did in the walk-forward test) and the 3 criteria that lift the
+The message gives the 2x chance (what the top paper.TOP did in the walk-forward test) and the 3 criteria that lift the
 score most; the safety report with the trust score (trust_model.json, PROJE.md §4.1) follows as a reply.
 Afterwards, the 5x rule (PROJE.md §4.4c, user 9 Oct): "5x oldu, sat" when two buys in a row reach 5x the alert price
 (paper.TP5), "süre doldu, sat" when paper.HOLD5 passes without it; and a warning when the liquidity of the coin's

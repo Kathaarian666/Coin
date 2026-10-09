@@ -70,7 +70,7 @@ class ScannerApp:
             self.storage,
         )
         self.tracker = FomoTracker()
-        # paper test (PROJE.md §2 step 4/5): new coins scored at the 5th Fomo buyer, top 2 % get a virtual trade
+        # paper test (PROJE.md §2 step 4/5): new coins scored at the 5th Fomo buyer, top paper.TOP get a virtual trade
         self.paper_model = Model.load()
         self.paper_log = PaperLog(self.storage.db)
         # the same with the holder criteria (PROJE.md §4.6), side by side: own scores, bar and virtual trades

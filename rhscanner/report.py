@@ -4,6 +4,7 @@ import time
 from html import escape
 
 from .config import DEXSCREENER_CHAIN
+from .paper import TOP
 from .scoring import level
 
 ICONS = {"critical": "⛔", "high": "🔴", "medium": "🟠", "low": "🟡", "info": "ℹ️", "good": "✅"}
@@ -118,7 +119,7 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
     the old rule stays beside it for comparison."""
     span = f"son {hours:g} saat" if hours else "başından beri"
     lines = [f"🧪 <b>Kâğıt test</b> — {span} (para harcanmaz)",
-             "Fomo'da 5. alıcıya ulaşan her yeni coin puanlanır; en iyi %2 seçilir. Her seçim için sanal işlem: "
+             f"Fomo'da 5. alıcıya ulaşan her yeni coin puanlanır; en iyi %{100 * TOP:g} seçilir. Her seçim için sanal işlem: "
              "30 sn sonra alış; komisyon ve kayma dahil.",
              f"Puanlanan coin: {s['scored']} · seçilen: <b>{s['alerts']}</b>"
              + (f" · seçim gecikmesi (medyan) {s['latency']:.0f} sn" if s["latency"] is not None else ""),
@@ -146,7 +147,7 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
             res5 = f" <b>{_pct(r['ret5'])}</b>" if r.get("ret5") is not None else ""
             lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {rule5}{res5} · eski: {state}{res}")
     if other is not None:
-        lines += ["", "🧪 <b>İkinci model (+ holder kriterleri)</b>, aynı coinler, kendi en iyi %2'si:",
+        lines += ["", f"🧪 <b>İkinci model (+ holder kriterleri)</b>, aynı coinler, kendi en iyi %{100 * TOP:g}'i:",
                   f"Puanlanan: {other['scored']} · seçilen: <b>{other['alerts']}</b> · 5x yapan: {other['x5']}",
                   f"Sanal kasa, 5x kuralı: <b>${other['bank5']:,.0f}</b> ({other['bank5'] / 1000:.2f}x) · eski kural: "
                   f"${other['bank']:,.0f} ({other['bank'] / 1000:.2f}x)"]
@@ -172,7 +173,7 @@ def format_paper_5x(symbol: str, token: str, minutes: float) -> str:
 def format_paper_alert(symbol: str, token: str, fdv: float | None, score: float, size: float | None, delay: float) -> str:
     """Optional message for each paper-test pick (/kagitbildirim ac)."""
     return (f"🧪 <b>Kâğıt test seçimi: {escape(symbol, quote=False)}</b>\n"
-            f"Puan {score:.3f} (en iyi %2) · sanal tutar kasanın %{100 * (size or 0):.0f}'i\n"
+            f"Puan {score:.3f} (en iyi %{100 * TOP:g}) · sanal tutar kasanın %{100 * (size or 0):.0f}'i\n"
             f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra\n"
             f"<code>{token}</code>\n"
             f"<i>Sadece test: gerçek alım önerisi değildir.</i>")
@@ -189,7 +190,7 @@ def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float 
     gate_line = ("✅ " if status == "ok" else "⚠️ Satılabilirlik doğrulanamadı: ") + escape(detail, quote=False)
     lines = [f"🚀 <b>{escape(symbol, quote=False)}</b> — yeni coin, Fomo'da 5. alıcı",
              f"2x ihtimali: <b>~%{100 * chance:.0f}</b> (geçmişte bu seviyedeki seçimler)" if chance else
-             "2x ihtimali: en iyi %2",
+             f"2x ihtimali: en iyi %{100 * TOP:g}",
              "Neden seçildi:"]
     lines += [f"• {escape(name, quote=False)}: {escape(value, quote=False)}" for name, value in reasons] or ["• -"]
     lines += [gate_line,

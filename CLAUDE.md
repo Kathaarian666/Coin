@@ -92,7 +92,7 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 ise bildirim) · `fomo.py` Fomo işlemleri · `analyzer.py`/`checks/`/`scoring.py` güven skoru (Fomo churn = sahte
 hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches.py` Pons lansman indeksi
 (geliştirici geçmişi) · `paper.py` + `paper_model.json` + `paper_book.json` kâğıt test (5. alıcıda
-puan, en iyi %2'ye sanal işlem + yanında "5x'te hepsini sat" kuralı (`paper_trade_5x`, 3 sa sonra likidite çekilmişse 0), `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
+puan, en iyi %5'e (9 Ekim'e kadar %2) sanal işlem + yanında "5x'te hepsini sat" kuralı (`paper_trade_5x`, 3 sa sonra likidite çekilmişse 0), `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
 `scripts/paper_export.py` ile; ikinci model + holder kriterleri `paper_model_h.json` / tablo `paper_log_h`,
 `paper_export.py --holder`) · `live.py` gerçek bildirim (`/canli`, kapalı; satılamama elemesi V4SellProbe ile,
 güven puanı `trust_model.json`, 5x kuralı takibi — 5x'te "sat", 3 saatte "süre doldu" — ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri

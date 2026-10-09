@@ -115,8 +115,9 @@ def main():
                  "rows": int(len(df)), "positives": int(y.sum()), "k": K,
                  # typical values: an alert's reasons = the criteria whose typical value would lower its score most
                  "medians": {c: float(df[c].median()) for c in cols},
-                 # what the top 2 % did in the walk-forward test (PROJE.md §4.4 C): shown as the 2x chance
-                 "top_hit_rate": 0.745 if holder else 0.61})
+                 # what the top paper.TOP did in the walk-forward test, shown as the 2x chance: top 2 % 0.61 / holder
+                 # 0.745 (PROJE.md §4.4 C, §4.6); top 5 % 0.51 (profit_study k=5) / holder 0.628 (§4.6)
+                 "top_hit_rate": {0.02: (0.61, 0.745), 0.05: (0.51, 0.628)}[paper.TOP][int(holder)]})
     model = paper.Model(data)
     sample = df.sample(min(2000, len(df)), random_state=0)
     ours = np.array([model.score({c: row[c] for c in cols}) for _, row in sample.iterrows()])

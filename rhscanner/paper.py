@@ -2,7 +2,7 @@
 
 Every new coin (never traded on Fomo before) is followed from its first Fomo trade. At its 5th distinct Fomo buyer
 the research features are computed (scripts/winner_study.py, same formulas), the 2x model scores them and a coin
-in the top 2 % of the last 2 days' scores is an alert. Each alert opens a virtual trade with the user's rules
+in the top TOP (5 %) of the last 2 days' scores is an alert. Each alert opens a virtual trade with the user's rules
 (scripts/trade_sim.py): bought 30 s later at the last price then, half sold when the bot's "2x" comes (two buys in
 a row at >= 2x the alert price), the rest sold once two trades in a row are at <= half of the highest price held
 (two buys), everything sold at -50 % before a 2x; Fomo's fee and price impact included. /karne reads the record.
@@ -31,7 +31,7 @@ MAX_HOLD = 3 * 86400  # a paper trade still open after this is closed at the las
 FOLLOW = 26 * 3600  # a coin short of 5 buyers after this is dropped
 WARMUP_BLOCKS = 6000  # coins first seen this soon after the bot started may have an older history
 BLOCKS_PER_S = 9.93
-TOP = 0.02  # alert share
+TOP = 0.05  # alert share (2 % until 9 Oct; 5 %: user, PROJE.md §0 B3 — fewer coins in a smaller market)
 BANKROLL = 1000.0
 TP5 = 5.0  # second rule beside the main one (PROJE.md §4.4c, A10): everything sold at 5x the alert price ...
 HOLD5 = 3 * 3600  # ... or at this many seconds after the alert (worth 0 if the pool's liquidity was pulled by then)
@@ -188,10 +188,10 @@ class Model:
         self.features = data["features"]
         self.baseline = data["baseline"]
         self.trees = data["trees"]  # each: list of nodes [feature, threshold, missing_left, left, right, leaf, value]
-        self.bar = data["bar"]  # starting top-2 % bar, until the bot has its own 2 days of scores
+        self.bar = data["bar"]  # starting top-TOP bar, until the bot has its own 2 days of scores
         self.trained_until = data.get("trained_until")
         self.medians = data.get("medians", {})  # typical values, for an alert's reasons (live.reasons)
-        self.top_hit_rate = data.get("top_hit_rate")  # what the top 2 % did in the walk-forward test
+        self.top_hit_rate = data.get("top_hit_rate")  # what the top TOP did in the walk-forward test
 
     @classmethod
     def load(cls, path: Path = MODEL_PATH) -> "Model | None":
@@ -506,7 +506,7 @@ class PaperLog:
             self._pending = 0
 
     def bar(self, model: Model, now: float, min_rows: int = 300) -> float:
-        """Top-2 % bar: the last 2 days' scores once there are enough, else the model's starting bar."""
+        """Top-TOP bar: the last 2 days' scores once there are enough, else the model's starting bar."""
         scores = sorted(s for (s,) in self.db.execute(f"SELECT score FROM {self.t} WHERE ts >= ?", (now - 2 * 86400,)))
         if len(scores) < min_rows:
             return model.bar
@@ -557,7 +557,7 @@ class PaperLog:
 
 
 def size_for(pct: float) -> float:
-    """Bankroll share by rank inside the top 2 % (PROJE.md §1: 4 / 2 / 1 %)."""
+    """Bankroll share by rank inside the top TOP, in thirds (PROJE.md §1: 4 / 2 / 1 %)."""
     return 0.04 if pct >= 1 - TOP / 3 else 0.02 if pct >= 1 - 2 * TOP / 3 else 0.01
 
 
