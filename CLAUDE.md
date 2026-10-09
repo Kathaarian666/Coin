@@ -32,7 +32,7 @@ betiklerin durumu ve yol haritası orada (tek özet; bu dosyada tekrarlanmaz). H
 `PROJE.md` güncellenir.
 Kısaca (2 Ekim, yeniden hizalama): bot yeni Fomo coinlerinden **yükselme ihtimali en yüksekleri** bulur, güvenlik
 taramasını geçemeyenleri sessizce eler, kalanları **güven puanı + 2x ihtimali (nedenleriyle)** olarak bildirir; coin
-bildirim fiyatının **brüt 2x**'ine ulaşınca "2x oldu" der. Alım-satım kararı kullanıcının; bot işlem yapmaz.
+bildirim fiyatının 5x'ine ulaşınca "5x oldu, sat", 3 saatte ulaşmazsa "süre doldu" der (9 Ekim'den beri satış kuralı 5x; seçim ölçüsü hâlâ 2x). Alım-satım kararı kullanıcının; bot işlem yapmaz.
 **Adım adım ilerlenir, her adım sonunda kullanıcıyla durulur** (`PROJE.md` §2): 0 temizlik · 1 güvenlik kriterleri ·
 2 yükseliş kriterleri (backtest) · 3 simülasyon (karar kapısı) · 4 bot · 5 canlı izleme. Adımı atlama, hızlıca sonuca
 koşma; kriterler kesinleşmeden bota dokunma. **Kapsam:** bot Robinhood Chain'de (kâğıt test); 3 Ekim'den beri
@@ -94,7 +94,7 @@ hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches
 puan, en iyi %2'ye sanal işlem + yanında "5x'te hepsini sat" kuralı (`paper_trade_5x`, 3 sa sonra likidite çekilmişse 0), `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
 `scripts/paper_export.py` ile; ikinci model + holder kriterleri `paper_model_h.json` / tablo `paper_log_h`,
 `paper_export.py --holder`) · `live.py` gerçek bildirim (`/canli`, kapalı; satılamama elemesi V4SellProbe ile,
-güven puanı `trust_model.json`, 2x ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri
+güven puanı `trust_model.json`, 5x kuralı takibi — 5x'te "sat", 3 saatte "süre doldu" — ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 

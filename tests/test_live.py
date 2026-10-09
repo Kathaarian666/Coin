@@ -32,7 +32,7 @@ def test_reasons_name_the_criteria_that_lift_the_score():
     assert got == [("a", "1")]
 
 
-def test_2x_is_sent_once_on_two_buys_in_a_row_and_survives_a_restart(tmp_path):
+def test_5x_is_sent_once_on_two_buys_in_a_row_and_survives_a_restart(tmp_path):
     def make():
         app = ScannerApp(Settings(db_path=str(tmp_path / "l.db")))
         sent = []
@@ -55,17 +55,45 @@ def test_2x_is_sent_once_on_two_buys_in_a_row_and_survives_a_restart(tmp_path):
 
     async def feed(a, trades):
         for x in trades:
-            a.watch_2x(token, x)
+            a.watch_target(token, x)
         await asyncio.gather(*list(a.tasks))
-    asyncio.run(feed(app, [paper.Trade(t0 + 60, 2, 1, "b", 20.0, 10 ** 7)]))  # one buy at 2x: not yet
+    asyncio.run(feed(app, [paper.Trade(t0 + 60, 2, 1, "b", 20.0, 10 ** 7),  # 2x: no longer a message
+                           paper.Trade(t0 + 61, 3, 1, "b", 50.0, 10 ** 7)]))  # one buy at 5x: not yet
     assert sent == []
     asyncio.run(app.rpc.close())
     app, sent = make()  # restarted: the watch comes back from live_log
     assert token in app.live_watch
-    asyncio.run(feed(app, [paper.Trade(t0 + 61, 3, 1, "c", 21.0, 10 ** 7), paper.Trade(t0 + 62, 4, 1, "d", 22.0, 10 ** 7),
-                           paper.Trade(t0 + 63, 5, 1, "e", 23.0, 10 ** 7)]))
-    assert len(sent) == 1 and "2 katına" in sent[0] and token not in app.live_watch
+    asyncio.run(feed(app, [paper.Trade(t0 + 62, 4, 1, "c", 51.0, 10 ** 7), paper.Trade(t0 + 63, 5, 1, "d", 52.0, 10 ** 7),
+                           paper.Trade(t0 + 64, 6, 1, "e", 53.0, 10 ** 7)]))
+    assert len(sent) == 1 and "5 katına" in sent[0] and "hepsini sat" in sent[0] and token not in app.live_watch
     assert app.live_log.get(token)["sent_2x"] == 1
+    asyncio.run(app.live_step(time.time() + paper.HOLD5))  # the target came: no time-limit message later
+    assert len(sent) == 1
+    asyncio.run(app.rpc.close())
+
+
+def test_time_limit_message_when_5x_does_not_come(tmp_path):
+    app = ScannerApp(Settings(db_path=str(tmp_path / "t.db")))
+    sent = []
+
+    async def fake_send(text, reply_to=None):
+        sent.append(text)
+        return {}
+    app.send = fake_send
+
+    async def sym(token):
+        return "TST"
+    app.symbol = sym
+    token = "0x" + "5" * 40
+    now = time.time()
+    app.live_log.add(token, now - 600, 1e-6, 1, None, {}, "ok")
+    app.live_watch[token] = [1e-6, False]
+    asyncio.run(app.live_step(now))
+    assert sent == []  # still inside its 3 hours
+    asyncio.run(app.live_step(now - 600 + paper.HOLD5 + 1))
+    assert len(sent) == 1 and "3 saat doldu" in sent[0] and token not in app.live_watch
+    asyncio.run(app.live_step(now - 600 + paper.HOLD5 + 120))
+    assert len(sent) == 1  # once
     asyncio.run(app.rpc.close())
 
 

@@ -84,7 +84,7 @@ Loglar: `journalctl -u rhscanner -f` · Yeniden başlatma: `sudo systemctl resta
 | `/durum` | Son taranan blok, izlenen coin sayısı, kuyruk, ayarlar |
 | `/karne 24` | Kâğıt test: modelin seçtiği yeni coinler ve sanal işlemlerin sonucu (para harcanmaz) |
 | `/kagitbildirim ac` | Kâğıt testin her seçimi için mesaj (varsayılan kapalı) |
-| `/canli ac` | Gerçek bildirim: seçilen coin (satılamayanlar elenir) + güven raporu + "2x oldu" / likidite uyarısı (varsayılan kapalı) |
+| `/canli ac` | Gerçek bildirim: seçilen coin (satılamayanlar elenir) + güven raporu + 5x kuralı takibi ("5x oldu, sat" / "3 saat doldu, sat") / likidite uyarısı (varsayılan kapalı) |
 
 Botu açmadan terminalden de kullanabilirsiniz:
 ```bash

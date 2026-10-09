@@ -3,8 +3,9 @@ command then answers nothing. Only <b>, <i>, <code> and <a href> are used."""
 
 import re
 
-from rhscanner.report import (format_2x, format_liquidity_warning, format_live_alert, format_paper,
-                              format_paper_5x, format_paper_alert, format_report, format_safety)
+from rhscanner.report import (format_5x, format_liquidity_warning, format_live_alert, format_paper,
+                              format_paper_5x, format_paper_alert, format_report, format_safety,
+                              format_time_up)
 
 ALLOWED = re.compile(r"</?(b|i|code)>|<a href=\"[^\"]*\">|</a>")
 
@@ -48,4 +49,5 @@ def test_live_messages_are_valid_telegram_html():
                   format_safety("<X>", token, 87, [("Fomo'da satış", "ok", "2 <satıcı>"), ("Likidite", "warn", "a&b"),
                                                      ("LP kilidi", "unknown", "bilinmiyor")], [("GoPlus", True), ("Gecko", False)]),
                   format_safety("Y", token, None, [], []),
-                  format_2x("<X>", token, 14.0), format_liquidity_warning("<X>", token, 85.0)])
+                  format_5x("<X>", token, 14.0), format_time_up("<X>", token, 3),
+                  format_liquidity_warning("<X>", token, 85.0)])

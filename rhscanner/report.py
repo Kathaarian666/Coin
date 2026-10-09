@@ -114,44 +114,42 @@ def _pct(x: float | None) -> str:
 def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], trained_until: float | None,
                  other: dict | None = None) -> str:
     """/karne: the paper test (nothing is bought). `recent`: (symbol, alert row); `other`: the summary of the second
-    model (+ holder criteria, PROJE.md §4.6) run beside it."""
+    model (+ holder criteria, PROJE.md §4.6) run beside it. The sell rule is the 5x rule since 9 Oct (PROJE.md §0 B1);
+    the old rule stays beside it for comparison."""
     span = f"son {hours:g} saat" if hours else "başından beri"
     lines = [f"🧪 <b>Kâğıt test</b> — {span} (para harcanmaz)",
              "Fomo'da 5. alıcıya ulaşan her yeni coin puanlanır; en iyi %2 seçilir. Her seçim için sanal işlem: "
-             "30 sn sonra alış, 2x'te yarısı satılır, kalan zirveden %50 düşünce, %50 zarar-kes; komisyon ve kayma dahil.",
+             "30 sn sonra alış; komisyon ve kayma dahil.",
+             f"Puanlanan coin: {s['scored']} · seçilen: <b>{s['alerts']}</b>"
+             + (f" · seçim gecikmesi (medyan) {s['latency']:.0f} sn" if s["latency"] is not None else ""),
              "",
-             f"Puanlanan coin: {s['scored']} · seçilen: <b>{s['alerts']}</b> · kapanan işlem: {s['closed']}",
-             f"2x yapan: {s['x2']} · zarar-kese takılan: {s['stop']}"]
+             "🎯 <b>Satış kuralı: 5x</b> (5x'te hepsi satılır, gelmezse 3 saatte kalanı; o anda havuzun likiditesi "
+             "çekilmişse değer 0):",
+             f"5x yapan: <b>{s['x5']}</b> · 3 saatte satılan: {s['time5']} (likiditesi çekilmiş: {s['pulled5']})",
+             f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${s['bank5']:,.0f}</b> ({s['bank5'] / 1000:.2f}x)",
+             "",
+             "Eski kural, karşılaştırma için (2x'te yarısı, kalan zirveden %50 düşünce, %50 zarar-kes; açık işlemler son "
+             "fiyatla, iyimser):",
+             f"2x yapan: {s['x2']} · zarar-kese takılan: {s['stop']} · kapanan: {s['closed']}"]
     if s["mean"] is not None:
-        lines.append(f"İşlem başına net: ort <b>{_pct(s['mean'])}</b> · medyan {_pct(s['median'])} · "
-                     f"kârlı %{100 * s['win']:.0f}")
-    lines.append(f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${s['bank']:,.0f}</b> "
-                 f"({s['bank'] / 1000:.2f}x; açık işlemler son fiyatla)")
-    if s["latency"] is not None:
-        lines.append(f"Seçim gecikmesi (5. alıcıdan sonra, medyan): {s['latency']:.0f} sn")
-    lines += ["", "🎯 <b>5x kuralı</b> (aynı seçimler; 5x'te hepsi satılır, gelmezse 3 saat sonra; o anda havuzun "
-                  "likiditesi çekilmişse değer 0):",
-              f"5x yapan: <b>{s['x5']}</b> · 3 saatte satılan: {s['time5']} (likiditesi çekilmiş: {s['pulled5']})",
-              f"Sanal kasa: <b>${s['bank5']:,.0f}</b> ({s['bank5'] / 1000:.2f}x)"]
+        lines.append(f"İşlem başına net: ort {_pct(s['mean'])} · medyan {_pct(s['median'])} · kârlı %{100 * s['win']:.0f}")
+    lines.append(f"Sanal kasa: ${s['bank']:,.0f} ({s['bank'] / 1000:.2f}x)")
     if recent:
-        lines += ["", "Son seçimler:"]
+        lines += ["", "Son seçimler (5x kuralı · eski kural):"]
         for symbol, r in recent:
             state = {"2x": "2x ✅", "stop": "zarar-kes ❌", "yok": "bekliyor"}.get(r["kind"] or "", "giriş bekliyor")
-            res = f" · net {_pct(r['ret'])}{'' if r['closed'] else ' (açık)'}" if r["ret"] is not None else ""
+            res = f" {_pct(r['ret'])}{'' if r['closed'] else ' (açık)'}" if r["ret"] is not None else ""
             when = time.strftime("%d.%m %H:%M", time.gmtime(r["ts"]))
             k5 = r.get("kind5")
             rule5 = {"5x": "5x ✅", "süre": "3 sa" + (" (likidite çekilmiş ❌)" if r.get("chain5") == "çekildi" else "")
                      }.get(k5 or "", "bekliyor")
-            res5 = f" {_pct(r['ret5'])}" if r.get("ret5") is not None else ""
-            lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {state}{res} · 5x kuralı: {rule5}{res5}")
+            res5 = f" <b>{_pct(r['ret5'])}</b>" if r.get("ret5") is not None else ""
+            lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {rule5}{res5} · eski: {state}{res}")
     if other is not None:
         lines += ["", "🧪 <b>İkinci model (+ holder kriterleri)</b>, aynı coinler, kendi en iyi %2'si:",
-                  f"Puanlanan: {other['scored']} · seçilen: <b>{other['alerts']}</b> · 2x yapan: {other['x2']} · "
-                  f"zarar-kese takılan: {other['stop']}"]
-        if other["mean"] is not None:
-            lines.append(f"İşlem başına net: ort <b>{_pct(other['mean'])}</b> · kârlı %{100 * other['win']:.0f}")
-        lines.append(f"Sanal kasa: <b>${other['bank']:,.0f}</b> ({other['bank'] / 1000:.2f}x) · 5x kuralıyla "
-                     f"${other['bank5']:,.0f} ({other['bank5'] / 1000:.2f}x, 5x yapan {other['x5']})")
+                  f"Puanlanan: {other['scored']} · seçilen: <b>{other['alerts']}</b> · 5x yapan: {other['x5']}",
+                  f"Sanal kasa, 5x kuralı: <b>${other['bank5']:,.0f}</b> ({other['bank5'] / 1000:.2f}x) · eski kural: "
+                  f"${other['bank']:,.0f} ({other['bank'] / 1000:.2f}x)"]
     if trained_until:
         lines.append(f"\n<i>Model {time.strftime('%d.%m', time.gmtime(trained_until))} tarihine kadarki veriyle eğitildi.</i>")
     return "\n".join(lines)
@@ -161,7 +159,7 @@ def _mcap(fdv: float | None) -> str:
     """The alert's level as Fomo shows it: market cap (price x supply), not the price of a raw unit (PROJE.md §0 D3)."""
     if fdv is None or fdv != fdv or fdv <= 0:
         return "Piyasa değeri: bilinmiyor (arz okunamadı)"
-    return f"Piyasa değeri (bildirimde): <b>{_usd(fdv)}</b> · 2x hedefi: {_usd(2 * fdv)}"
+    return f"Piyasa değeri (bildirimde): <b>{_usd(fdv)}</b> · 5x satış hedefi: {_usd(5 * fdv)}"
 
 
 def format_paper_5x(symbol: str, token: str, minutes: float) -> str:
@@ -197,6 +195,7 @@ def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float 
     lines += [gate_line,
               f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra",
               f"<code>{token}</code> · {_gecko(token)}",
+              "Satış kuralı: 5x'te hepsi, 3 saatte gelmezse kalanı sat (bot haber verir).",
               "<i>Güven raporu birazdan bu mesaja yanıt olarak gelecek. Karar senin.</i>"]
     return "\n".join(lines)
 
@@ -224,9 +223,18 @@ def format_safety(symbol: str, token: str, trust: int | None, items: list[tuple[
     return "\n".join(lines)
 
 
-def format_2x(symbol: str, token: str, minutes: float) -> str:
-    return (f"✅ <b>{escape(symbol, quote=False)}</b> bildirimdeki piyasa değerinin 2 katına ulaştı ({minutes:.0f} dk sonra).\n"
-            f"Kısmi ya da tam satış kararı senin. <code>{token}</code> · {_gecko(token)}")
+def format_5x(symbol: str, token: str, minutes: float) -> str:
+    """The 5x rule's target (PROJE.md §4.4c, user 9 Oct): the moment to sell everything."""
+    return (f"🎯 <b>{escape(symbol, quote=False)}</b> bildirimdeki piyasa değerinin <b>5 katına</b> ulaştı "
+            f"({minutes:.0f} dk sonra). 5x kuralı: <b>şimdi hepsini sat</b> — gecikme pahalı (15 dk sonra seçimlerin bir "
+            f"kısmında likidite çekilmiş oluyor). Karar senin.\n<code>{token}</code> · {_gecko(token)}")
+
+
+def format_time_up(symbol: str, token: str, hours: float) -> str:
+    """The 5x rule's time limit without the target: sell what is left."""
+    return (f"⏱ <b>{escape(symbol, quote=False)}</b>: {hours:g} saat doldu, 5x gelmedi. 5x kuralı: <b>kalanı sat</b> "
+            f"(bekleyen seçimlerin çoğu sonradan düşüyor ya da likiditesi çekiliyor). Karar senin.\n"
+            f"<code>{token}</code> · {_gecko(token)}")
 
 
 def format_liquidity_warning(symbol: str, token: str, pulled_pct: float) -> str:

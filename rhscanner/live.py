@@ -6,7 +6,8 @@ template cannot block sells), any other coin is sold in a simulation into its Un
 10 % or more drops the pick; when nothing can be simulated (no pool or holder found) it is sent with a warning.
 The message gives the 2x chance (what the top 2 % did in the walk-forward test) and the 3 criteria that lift the
 score most; the safety report with the trust score (trust_model.json, PROJE.md §4.1) follows as a reply.
-Afterwards: "2x oldu" when two buys in a row reach 2x the alert price, and a warning when the liquidity of the coin's
+Afterwards, the 5x rule (PROJE.md §4.4c, user 9 Oct): "5x oldu, sat" when two buys in a row reach 5x the alert price
+(paper.TP5), "süre doldu, sat" when paper.HOLD5 passes without it; and a warning when the liquidity of the coin's
 V4 pool is pulled: its net liquidity (every ModifyLiquidity since the pool's creation) at the end of a block falls to
 PULL_SHARE of its peak or less. Single removals are no signal: launchpad hooks take liquidity out and put it back all
 the time, often in the same transaction (PROJE.md §0 D12, as scripts/exit_truth.py).
@@ -35,7 +36,7 @@ MAX_TAX = 0.10
 LIQ_WATCH = 6 * 3600  # s after the alert the pool is watched for liquidity removal
 PULL_SHARE = 0.2  # net liquidity at or under this share of its peak = pulled
 LIQ_CHUNK = 100_000  # blocks per pool log query (the node refuses wider address-filtered ranges for some queries)
-LIVE_2X_DAYS = 30  # "2x oldu" is watched this long ("süre önemsiz", PROJE.md §1)
+LIVE_WINDOW = 6 * 3600  # s an alert is followed: the 5x rule's time limit and the liquidity watch (PROJE.md §0 B1)
 
 LABELS = {  # criterion -> (Turkish name, how to show its value)
     "mins_to_k": ("5. alıcıya kadar geçen süre", lambda v: f"{v:.1f} dk"),
@@ -210,11 +211,13 @@ class LiveLog:
         self.db = db
         db.execute("""CREATE TABLE IF NOT EXISTS live_log (token TEXT PRIMARY KEY, ts REAL, p_alert REAL, block INTEGER,
                       pool TEXT, msg TEXT, gate TEXT, sent_2x INTEGER DEFAULT 0, warned INTEGER DEFAULT 0,
-                      checked_block INTEGER, liq_net TEXT, liq_peak TEXT)""")
+                      checked_block INTEGER, liq_net TEXT, liq_peak TEXT, sent_end INTEGER DEFAULT 0)""")
         cols = {r[1] for r in db.execute("PRAGMA table_info(live_log)")}
-        for c in ("liq_net", "liq_peak"):  # int256 sums, kept as text; NULL = the pool's history not read yet
+        # liq_*: int256 sums, kept as text, NULL = the pool's history not read yet; sent_2x = the target message
+        # (5x since 9 Oct), sent_end = the time-limit message
+        for c, kind in (("liq_net", "TEXT"), ("liq_peak", "TEXT"), ("sent_end", "INTEGER DEFAULT 0")):
             if c not in cols:
-                db.execute(f"ALTER TABLE live_log ADD COLUMN {c} TEXT")
+                db.execute(f"ALTER TABLE live_log ADD COLUMN {c} {kind}")
         db.commit()
 
     def add(self, token, ts, p_alert, block, pool, msg, gate):
@@ -223,9 +226,9 @@ class LiveLog:
         self.db.commit()
 
     def open(self, now: float) -> list[dict]:
-        """Alerts still waiting for their "2x oldu" (up to LIVE_2X_DAYS) or their liquidity watch."""
-        cur = self.db.execute("SELECT * FROM live_log WHERE ts >= ? AND (sent_2x = 0 OR warned = 0)",
-                              (now - LIVE_2X_DAYS * 86400,))
+        """Alerts still followed (LIVE_WINDOW): waiting for their target / time-limit message or liquidity watch."""
+        cur = self.db.execute("SELECT * FROM live_log WHERE ts >= ? AND ((sent_2x = 0 AND sent_end = 0) OR warned = 0)",
+                              (now - LIVE_WINDOW,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
 

@@ -20,8 +20,8 @@ from .fomo import FomoTrade, FomoTracker, FomoWatcher
 from .hooks import REGISTRY
 from . import live
 from .live import LiveLog
-from .report import (format_2x, format_liquidity_warning, format_live_alert, format_paper, format_paper_5x,
-                     format_paper_alert, format_report, format_safety)
+from .report import (format_5x, format_liquidity_warning, format_live_alert, format_paper, format_paper_5x,
+                     format_paper_alert, format_report, format_safety, format_time_up)
 from . import safety
 from .rpc import RpcClient
 from . import paper
@@ -81,8 +81,9 @@ class ScannerApp:
         self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
         self.follower = Follower(known, since, on_new=self.paper_log.remember, db=self.storage.db)
-        # "2x oldu" for sent alerts: token -> [alert price, last buy was at 2x], up to LIVE_2X_DAYS (PROJE.md §0 D4)
-        self.live_watch = {r["token"]: [r["p_alert"], False] for r in self.live_log.open(time.time()) if not r["sent_2x"]}
+        # the 5x rule for sent alerts: token -> [alert price, last buy was at the target] (PROJE.md §0 B1)
+        self.live_watch = {r["token"]: [r["p_alert"], False] for r in self.live_log.open(time.time())
+                           if not r["sent_2x"] and not r["sent_end"]}
         # every Fomo trade the bot sees, for the research archive (nightly export, PROJE.md §0 D8)
         self.storage.db.executescript("""CREATE TABLE IF NOT EXISTS fomo_log (block INTEGER, ts REAL, token TEXT,
                                          side INTEGER, trader TEXT, usd REAL, amount TEXT);
@@ -133,7 +134,7 @@ class ScannerApp:
             for t in sorted(trades, key=lambda x: x.block):
                 ts = t.timestamp - (top - t.block) / paper.BLOCKS_PER_S
                 trade = Trade(ts, t.block, int(t.side == "buy"), t.trader.lower(), t.usd or 0.0, t.amount or 0)
-                self.watch_2x(t.token.lower(), trade)
+                self.watch_target(t.token.lower(), trade)
                 idx = self.follower.add(t.token, trade)
                 if idx is not None:
                     moments.append((t.token, idx))
@@ -277,33 +278,39 @@ class ScannerApp:
         return format_safety(str(report.get("symbol") or "?"), report["token"], trust, items,
                              safety.sources(report, gp, gt))
 
-    def watch_2x(self, token: str, trade: Trade):
-        """Two buys in a row at >= 2x a sent alert's price: "2x oldu" (no trade history needed, survives restarts)."""
+    def watch_target(self, token: str, trade: Trade):
+        """Two buys in a row at >= 5x a sent alert's price within its time limit: "5x oldu, sat" (no trade history
+        needed, survives restarts)."""
         w = self.live_watch.get(token)
         if w is None or trade.side != 1 or not trade.price:
             return
-        hit = trade.price >= 2 * w[0]
+        hit = trade.price >= paper.TP5 * w[0]
         if hit and w[1]:
             del self.live_watch[token]
             self.live_log.mark(token, sent_2x=1)
-            task = asyncio.create_task(self.send_2x(token, trade.ts))
+            task = asyncio.create_task(self.send_target(token, trade.ts))
             self.tasks.append(task)
             task.add_done_callback(lambda done: self.tasks.remove(done) if done in self.tasks else None)
         else:
             w[1] = hit
 
-    async def send_2x(self, token: str, ts: float):
+    async def send_target(self, token: str, ts: float):
         row = self.live_log.get(token)
         if row:
-            await self.send(format_2x(await self.symbol(token), token, (ts - row["ts"]) / 60), json.loads(row["msg"] or "{}"))
+            await self.send(format_5x(await self.symbol(token), token, (ts - row["ts"]) / 60), json.loads(row["msg"] or "{}"))
 
     async def live_step(self, now: float):
-        """Follow-ups of sent alerts: '2x oldu' once, and a warning when liquidity leaves the coin's V4 pool."""
+        """Follow-ups of sent alerts: the 5x rule's time-limit message, and a warning when liquidity leaves the coin's
+        V4 pool (the 5x target itself is seen in watch_target)."""
         rows = self.live_log.open(now)
         head = await self.rpc.block_number() if any(r["pool"] and not r["warned"] for r in rows) else None
         pm = self.settings.v4_pool_manager
         for r in rows:
             token, reply = r["token"], json.loads(r["msg"] or "{}")
+            if not r["sent_2x"] and not r["sent_end"] and now - r["ts"] >= paper.HOLD5:  # no 5x in time: sell the rest
+                self.live_watch.pop(token, None)
+                self.live_log.mark(token, sent_end=1)
+                await self.send(format_time_up(await self.symbol(token), token, paper.HOLD5 / 3600), reply)
             if r["pool"] and not r["warned"] and head:
                 if now - r["ts"] > live.LIQ_WATCH:
                     self.live_log.mark(token, warned=1)  # watched long enough
