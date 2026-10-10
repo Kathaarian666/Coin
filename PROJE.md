@@ -559,6 +559,18 @@ mezun mu / ne zamandır, yaş) ve 144 çıkış kuralının sonucu (hedef 1,3-5x
   hacim ≥ $100 bin) dayanıyor; (3) 6 gün, ~100 işlem. → **aday, kanıt değil**: ancak ≤ 1 dk'da uygulanırsa ve yeni
   günlerde tutarsa. Canlı uygulama için tüm-pazar verisi gerçek zamanlı gerekir (mezuniyetten sonraki 3 saatteki
   ~70 coin; pump.fun API'si dakikada ~20 istek → coin başına websocket ya da benzeri).
+- **İleri test ilk gün (9 Ekim, `research/pump_forward.csv`):** 548 mezuniyet, 20 işlem, $100'da 1,00x (ortanca 0,85x,
+  en iyi hariç 0,96x; 2 dk gecikmede 0,89x). Kullanıcı (10 Ekim): "kâr etmeyeni kâr ettirmeye çalışmanın anlamı yok,
+  geçeriz; neden sadece mezuniyet?" → ileri test otomatik sürer, ~1 haftada kâr yoksa kapatılır.
+- **Yeni coinler, tüm-pazar verisiyle (10 Ekim):** 3-9 Ekim'de curve'deyken 3. Fomo alıcısına ulaşan 10.452 coinden
+  karışık sırayla indirilen tarafsız %26'sı (2.742 coin; mumu 3. alıcıya uzanmayan 88'i GeckoTerminal'in curve +
+  PumpSwap havuzlarından tamamlandı), o andan 3 saat her dakika, 1 dk gecikme, curve maliyeti (`curve_net`: ücret %1,25,
+  derinlik = curve'ün sanal SOL'u; taze curve'de $100 gidiş-dönüş **~%10**). 4 aile (3. alıcıda al, momentum, genç +
+  hacim, dip), 51.600 kural, seçim 3-7 / sınav 8-9 Ekim: rastgele an 0,91x; eğitimde > 1 olanların sınavda > 1 payı
+  **%5** (eğitimde ≤ 1 olanlarda %11) → kalıcılık yok; en iyi momentum eğitim 1,07x → sınav 0,78x. Tek ipucu "dip"
+  (giriş sonrası zirveden %70+ düşmüş, piyasa değeri ≥ $20 bin, işlem sürüyor; 30-60 dk'da 1,3-2x'te sat): eğitim
+  1,02-1,10x, sınav 1,06-1,16x ama sınavda 27 işlem ve 51.600 içinden 8 kural → şans düzeyinde; indirme tamamlanınca
+  (kalan %74) aynı kuralla tekrar bakılır, değilse bırakılır. **Sonuç: yeni pump.fun coinlerinde insan hızında kâr yok.**
 - **Fomo'nun pazar payı (9 Ekim akşamı, canlı örnek):** Robinhood ~20 dk'da V4 swap işlemlerinin **%10,5**'i Fomo
   (Fomo'nun dokunduğu havuzlarda **%21**); BNB ~40 dk'da flap.sh portal işlemlerinin **%5-8**'i; pump.fun örnek
   coinlerde hacmin %3-6'sı. → BNB de pump.fun'a benziyor; Robinhood'da Fomo akışı pazarı daha çok belirliyor.
