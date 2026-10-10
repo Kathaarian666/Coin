@@ -3,7 +3,7 @@ on chain prices with the user's delay and costs. The pool is every coin Fomo use
 PumpSwap coins, which carry ~86 % of the volume), not only new coins at their 5th Fomo buyer (scripts/pump_study.py).
 
   python scripts/pump_lab.py build <solana.db> <out.parquet> [<every min>=10]
-  python scripts/pump_lab.py grad <grads.parquet> <candles.jsonl> <out.parquet> [<lag min>=1]
+  python scripts/pump_lab.py grad <grads.parquet | starts.csv> <candles.jsonl> <out.parquet> [<lag min>=1]
 
 build: candidate moments = the first Fomo buy of each coin in each <every>-minute bucket (only what is known then;
 no "coins that later ..." universe, PROJE.md §6). Features from the coin's Fomo trades up to that buy: new Fomo buyers
@@ -25,6 +25,8 @@ keeps the last close. Features from the candles up to the signal: minutes since 
 active minutes in the last 15. Per rule the price multiple r_ and the exit market cap mo_; grad_net() turns them into
 the net multiple of any stake (costs as above with the PumpSwap fee; depth of a fresh PumpSwap pool ~$8.5k SOL side
 at ~$54k market cap, growing with the square root of the price: $1000 moves a fresh pool ~12 % each way).
+The same on any start moments (starts.csv: mint, ts), e.g. new coins from their 3rd Fomo buyer on the curve: the
+"_grad" features then count from that moment, and curve_net() prices a coin still on its bonding curve.
 rl_: the same rules as standing orders in the app (no delay on the way out): the target fills at the target when a
 minute's high reaches it, the stop at the lower of its level and that minute's close (a minute reaching both: stop).
 """
@@ -233,6 +235,25 @@ def grad_net(r, mcap_in, mcap_out, stake: float):
     return np.where(gross > 0, (gross - np.maximum(FOMO_MIN, FOMO_FEE * gross)) / stake, 0.0)
 
 
+CURVE_K = 30 * 1.073e9  # a pump.fun curve's virtual SOL x virtual tokens (30 SOL, 1.073B tokens)
+CURVE_END_SOL = 410.9  # market cap in SOL when the curve completes (115 SOL / 279.9M tokens x 1B)
+
+
+def curve_net(r, mcap_in, mcap_out, sol_usd, stake: float):
+    """grad_net for a coin that may still be on its bonding curve: below CURVE_END_SOL the venue is the curve (fee
+    1.25 %, depth = its virtual SOL reserve, exact from the price: sqrt(CURVE_K x price)), above it PumpSwap."""
+    def venue(mcap):
+        on_curve = mcap < CURVE_END_SOL * sol_usd
+        depth = np.where(on_curve, np.sqrt(CURVE_K * np.maximum(mcap, 1.0) / 1e9 * sol_usd), pool_depth(mcap))
+        return np.where(on_curve, VENUE_FEE[1], VENUE_FEE[2]), depth
+    f_in, d_in = venue(mcap_in)
+    f_out, d_out = venue(mcap_out)
+    fee_in = np.maximum(FOMO_MIN, FOMO_FEE * stake)
+    gross = (stake - fee_in) / (1 + f_in + stake / d_in) * r
+    gross = gross * np.clip(1 - f_out - gross / d_out, 0, None)
+    return np.where(gross > 0, (gross - np.maximum(FOMO_MIN, FOMO_FEE * gross)) / stake, 0.0)
+
+
 def grad_coin(args):
     mint, t_grad, c, lag = args  # lag: minutes from a signal (or a rule firing) to the trade
     empty = pd.DataFrame(), np.zeros((0, 3 * len(GRAD_RULES)), np.float32)
@@ -258,7 +279,8 @@ def grad_coin(args):
         if not (p_in > 0):
             continue
         hi = px[g0:i + 1].max()
-        f = {"mint": mint, "ts": m[i] + 60, "min_since_grad": i - g0, "mcap": px[i] * 1e9, "mcap_in": p_in * 1e9,
+        f = {"mint": mint, "ts": m[i] + 60, "min_since_grad": i - g0, "age_min": (m[i] + 60 - ts[0]) / 60,
+             "mcap": px[i] * 1e9, "mcap_in": p_in * 1e9,
              "ret_grad": px[i] / p_grad, "dd_hi": px[i] / hi, "vol_grad": cv[i + 1] - cv[g0],
              "act15": int((v[max(0, i - 14):i + 1] > 0).sum())}
         for w in (1, 5, 15):
@@ -303,7 +325,10 @@ def grad_coin(args):
 def grad_build(grads_path: str, candles_path: str, out_path: str, lag: str = "1"):
     import json
     from multiprocessing import Pool
-    grads = pd.read_parquet(grads_path)["ts"]
+    if grads_path.endswith(".csv"):  # any start moments: mint, ts (e.g. new coins at their 3rd Fomo buyer)
+        grads = pd.read_csv(grads_path).set_index("mint")["ts"]
+    else:
+        grads = pd.read_parquet(grads_path)["ts"]
     jobs = []
     for line in open(candles_path):
         x = json.loads(line)
