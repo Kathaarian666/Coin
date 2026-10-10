@@ -10,6 +10,8 @@ bildirim gönderen bot + yükselecek coinleri erken bulma araştırması. Proje 
 - **Şirket bilgisayarı kullanılmaz.** Her şey Oracle Cloud Shell + sunucu üzerinden.
 - Telegram token, seed phrase, private key, Fomo girişi **asla sohbete yazdırılmaz**. Token sadece sunucudaki
   `.env` içinde (commit edilmez).
+- **Türkiye'den Robinhood erişimi yasak** (kullanıcı, 10 Ekim): işlem sadece **Fomo'da yayınlanan coinlerde** yapılabilir.
+  Strateji evreni Fomo coinleriyle sınırlı; tüm-pazar verisi sadece bu coinler için sinyal olarak kullanılabilir.
 - Sadece ücretsiz kaynaklar. Ücretli bir şey (ör. Twitter API) önce fiyatıyla birlikte sorulur.
 - Kullanım limiti önemli: gereksiz canlı test / uzun keşif yapma; bir iş beklenmedik uzarsa dur ve sor.
 - Kullanıcıdan bulabileceğin bilgiyi isteme (ör. coin adresleri: GeckoTerminal/DexScreener aramasıyla bul).

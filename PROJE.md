@@ -571,6 +571,9 @@ mezun mu / ne zamandır, yaş) ve 144 çıkış kuralının sonucu (hedef 1,3-5x
   (giriş sonrası zirveden %70+ düşmüş, piyasa değeri ≥ $20 bin, işlem sürüyor; 30-60 dk'da 1,3-2x'te sat): eğitim
   1,02-1,10x, sınav 1,06-1,16x ama sınavda 27 işlem ve 51.600 içinden 8 kural → şans düzeyinde; indirme tamamlanınca
   (kalan %74) aynı kuralla tekrar bakılır, değilse bırakılır. **Sonuç: yeni pump.fun coinlerinde insan hızında kâr yok.**
+- **Kullanıcı (10 Ekim): Türkiye'den Robinhood erişimi yasak → sadece Fomo'da yayınlanan coinlerde işlem yapılabilir.**
+  "Fomo'nun dokunmadığı coinlere de gir" fikri düştü; tüm-pazar verisi ancak Fomo coinleri için daha iyi sinyal olarak
+  kullanılabilir (aynı coinler, daha zengin bilgi).
 - **Fomo'nun pazar payı (9 Ekim akşamı, canlı örnek):** Robinhood ~20 dk'da V4 swap işlemlerinin **%10,5**'i Fomo
   (Fomo'nun dokunduğu havuzlarda **%21**); BNB ~40 dk'da flap.sh portal işlemlerinin **%5-8**'i; pump.fun örnek
   coinlerde hacmin %3-6'sı. → BNB de pump.fun'a benziyor; Robinhood'da Fomo akışı pazarı daha çok belirliyor.
