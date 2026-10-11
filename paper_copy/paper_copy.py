@@ -15,7 +15,7 @@ Kullanım:
   python3 paper_copy.py test-tg    # Telegram'a deneme mesajı gönder
   python3 paper_copy.py replay SIG # geçmiş bir işlemi sinyal gibi işle (test)
 """
-import asyncio, collections, json, os, sqlite3, statistics, sys, threading, time, urllib.request
+import asyncio, collections, html, json, os, sqlite3, statistics, sys, threading, time, urllib.request
 from datetime import datetime, timezone, timedelta
 
 # ---------------------------------------------------------------- ayarlar
@@ -156,7 +156,8 @@ def tg(text):
         log("telegram hata", e)
 
 def short(a): return a[:4] + "…" + a[-4:]
-def link_tok(m): return f'<a href="https://dexscreener.com/solana/{m}">{symbol(m)}</a>'
+def esc(s): return html.escape(str(s), quote=False)
+def link_tok(m): return f'<a href="https://dexscreener.com/solana/{m}">{esc(symbol(m))}</a>'
 def link_tx(s): return f'<a href="https://solscan.io/tx/{s}">tx</a>'
 
 # ---------------------------------------------------------------- veritabanı
@@ -183,7 +184,9 @@ WALLETS = {}
 def handle_sig(sig, wallet, now_live=True):
     if q("SELECT 1 FROM seen WHERE sig=?", (sig,), True): return
     q("INSERT OR IGNORE INTO seen VALUES(?,?)", (sig, int(time.time())))
-    tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1}])
+    tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1, "commitment": "confirmed"}])
+    if tx is None:  # RPC hatası ya da henüz indekslenmedi: yedek tarama tekrar denesin
+        q("DELETE FROM seen WHERE sig=?", (sig,)); return
     c = classify(tx, wallet)
     if not c: return
     side, mint, qty, sol = c; t = tx["blockTime"]; label = WALLETS.get(wallet, short(wallet))
@@ -198,7 +201,7 @@ def handle_sig(sig, wallet, now_live=True):
         open_ = q("SELECT 1 FROM positions WHERE wallet=? AND mint=? AND status IN ('bekliyor','acik')", (wallet, mint), True)
         if is_new and not open_:
             if NOTIFY_SIGNALS:
-                tg(f"🔔 <b>{label}</b> aldı: {link_tok(mint)} — {sol:.2f} SOL {link_tx(sig)}")
+                tg(f"🔔 <b>{esc(label)}</b> aldı: {link_tok(mint)} — {sol:.2f} SOL {link_tx(sig)}")
             for d in DELAYS:
                 q("""INSERT INTO positions(wallet,label,mint,delay,signal_t,signal_sig,size_sol,status)
                      VALUES(?,?,?,?,?,?,?, 'bekliyor')""", (wallet, label, mint, d, t, sig, SIZE_SOL))
@@ -241,7 +244,9 @@ def process_due():
     for (pid, mint, d, lbl, epx, qty, size, ent) in q(
             "SELECT id,mint,delay,label,entry_px,qty,size_sol,entry_t FROM positions WHERE status='acik'", (), True):
         if ent and now > ent + MAX_HOLD_H * 3600:
-            close(pid, mint, d, now - 30, lbl, epx, qty, size, f"süre doldu ({MAX_HOLD_H:.0f} sa)")
+            # sabit çıkış anı: fiyat bulunamazsa close() 600 sn sonra sıfır sayıp kapatır
+            # (now kullanılırsa her 10 sn'de yeniden denenir ve kredi tüketir)
+            close(pid, mint, d, ent + MAX_HOLD_H * 3600, lbl, epx, qty, size, f"süre doldu ({MAX_HOLD_H:.0f} sa)")
 
 def close(pid, mint, d, t, lbl, epx, qty, size, reason):
     px, how = price_at(mint, t)
@@ -254,7 +259,7 @@ def close(pid, mint, d, t, lbl, epx, qty, size, reason):
     q("UPDATE positions SET status='kapali', exit_t=?, exit_px=?, pnl_pct=?, pnl_sol=?, reason=? WHERE id=?",
       (int(t), px, pct, pnl, reason, pid))
     emo = "🟢" if pnl > 0 else "🔴"
-    tg(f"{emo} <b>{lbl}</b> {link_tok(mint)} (+{d}sn kopya): <b>{pct:+.0%}</b> ({pnl:+.3f} SOL) — {reason}")
+    tg(f"{emo} <b>{esc(lbl)}</b> {link_tok(mint)} (+{d}sn kopya): <b>{pct:+.0%}</b> ({pnl:+.3f} SOL) — {reason}")
     log("SANAL ÇIKIŞ", lbl, symbol(mint), f"+{d}s", f"{pct:+.1%}", reason)
 
 def summary(since=None):
@@ -339,8 +344,8 @@ async def timers(queue):
         if now.hour >= REPORT_HOUR and last_report_day != now.date():
             last_report_day = now.date()
             since = int((now - timedelta(days=1)).timestamp())
-            tg("📊 <b>Günlük kâğıt kopyalama raporu</b> (son 24 saat)\n" + summary(since) +
-               "\n\n<b>Başlangıçtan beri</b>\n" + summary() +
+            tg("📊 <b>Günlük kâğıt kopyalama raporu</b> (son 24 saat)\n" + esc(summary(since)) +
+               "\n\n<b>Başlangıçtan beri</b>\n" + esc(summary()) +
                f"\n\nAPI çağrısı (servis açıldığından beri): {sum(CALLS.values())}")
 
 async def main():
@@ -360,7 +365,7 @@ if __name__ == "__main__":
     elif cmd == "replay":
         WALLETS = load_wallets()
         sig = sys.argv[2]
-        tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1}])
+        tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 1, "commitment": "confirmed"}])
         keys = [k["pubkey"] for k in tx["transaction"]["message"]["accountKeys"]]
         w = next((k for k in keys if k in WALLETS), keys[0])
         print("cüzdan", w, "sınıf", classify(tx, w)); handle_sig(sig, w)
