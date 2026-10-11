@@ -22,7 +22,11 @@ arka plan işleri ölüyor → indirme aktif turda izlenmeli; Pons coinleri ~3/s
 yoksa baştan) → `rh_market.py features ...` → `market_study.py`. 2x oranı belirgin artarsa 5x kuralıyla gerçek çıkış
 (`exit_truth.py`) kâr ölçümü.
 
-**Bu sohbete bağlı Routine'ler — yeni sohbette taşı** (create_trigger aynı içerikle, eskisini `update_trigger
+**11 Ekim gece (yeni sohbet):** iki Routine bu sohbete taşındı (artık her çalışma yeni oturum açar, depoyu kendi klonlar):
+haftalık yeniden eğitim `trig_01FWthyECauW2xYUgpiRz1u5`, günlük pump.fun `trig_01FWwy5Q52vcrrTCfKxohadr`; eskileri kapalı.
+B5 ön sonucu §4.9 (belirgin iyileşme yok, karar bekliyor).
+
+**(Eski not) Bu sohbete bağlı Routine'ler — yeni sohbette taşı** (create_trigger aynı içerikle, eskisini `update_trigger
 enabled=false`, kullanıcıya söyle): haftalık yeniden eğitim `trig_01JPfYL4syxBEs2mUJrHQfkL` (Perşembe 08:53 İstanbul,
 ilki 15 Ekim) · günlük pump.fun ileri testi `trig_01EfipfycmUZZEWP3m7oQT9M` (her gün 06:52, `scripts/pump_forward.py`,
 `research/pump_forward.csv`). Tek seferlik "tüm-pazar analizi" hatırlatması kapatıldı. Ertelenenler: A9 veri dalı
@@ -42,7 +46,7 @@ satırı silinir (sonucu ilgili bölüme yazılır).
 | B2 | Model seçimi ("kârlı olan hangi modelse o", 9 Ekim): final sınavı 1-8 Ekim, gerçek çıkış değeri, 5x kuralı (1-7 Ekim haftası): **ana model 1,57x** (33 seçim, 2x %67) ↔ holder modeli 1,25x (31 seçim, 2x %62; 23 seçim ortak); şimdiki kuralla ikisi de ~0,85x. Kâğıt testteki holder önü (1,13x ↔ 1,06x) küçük örnek + iyimser değerleme → **ana model** (gerçek bildirim de onunla); holder kâğıt testte sürüyor, her yeniden eğitimde tekrar bakılır | yapıldı: ana model |
 | B3 | Seçim payı ölçüldü (9 Ekim, §4.7): 5x kuralı, gerçek çıkış, kasanın %4/%2/%1'i. **Araştırma 10-30 Eyl** (walk-forward): %2 3,15x/hafta · %3 3,30x · %5 3,12x (en kötü hafta 1,75 → 1,78 → **2,34**). **Taze 1-8 Eki** (geçen haftanın modeli): %2 1,29x · %3 1,47x · **%5 1,72x** (86 seçim, günde ~11; en iyi işlem hariç 1,54x). %5'te likiditesi çekilen pay daha az (taze %16-19 ↔ en iyi %2'de %33). Şimdiki kural her payda zararda. → Küçülen pazarda %5 daha iyi, araştırmada eşit ama daha kararlı. **Kullanıcı "ok" (9 Ekim): seçim payı %5** (`paper.TOP = 0.05`; kâğıt test ve gerçek bildirim; tutar sıraya göre üçte birlerle %4/%2/%1; bildirimdeki 2x ihtimali en iyi %5'in walk-forward oranı: ana 0,51, holder 0,628) | yapıldı, sunucuda (9 Ekim) |
 | B4 | Hedef (haftada kasa 2x) tutmadı (gerçek değerle ~1,2-1,7x) → **iyileştirme çalışmaları** (kullanıcı, 9 Ekim); `/canli` hedefe yaklaşınca yeniden konuşulacak. **1. Rug ayırma (9 Ekim, §4.8): elemek zararlı** — riskli seçimler (hook yok / launchpad dışı sahip) 5x kuralının asıl kazananları (işlem başı ~2,6x ↔ normal ~1,3x); elenince araştırmada kasa 3,1x → 1,6-1,8x. Hepsi sonunda çekiliyor ama 5x → çekilme ortanca ~14 dk (26'nın 3'ü 1 dk içinde) → hızlı satış şart. **Ekim'le doğrulandı** (1-8 Ekim, 86 seçim: elemek 1,72x → 1,04-1,27x; riskli seçimlerde 5x ya da 15 dk 1,78x ↔ 3 sa 1,45x). Öneri: riskli seçimleri tut, 5x gelmezse 15 dk'da çık + bildirimde "⚠️ rug riski" uyarısı — kullanıcıya soruldu, cevap yeni sohbette alınacak (9 Ekim akşamı kullanıcı: "bunlar ikincil" — öncelik pump.fun kârlılığı) **Kullanıcı (11 Ekim): "evet"** → bota eklendi: seçim anında `live.risk_check` (havuzun hook'u + `owner()`, satılabilirlik kontrolüyle paralel, 15 sn sınırlı; okunamazsa normal kural), riskli seçimde 5x süre sınırı **15 dk** (`paper.hold5`, kâğıt test ve `/canli`), bildirimde "⚠️ Rug riski yüksek: 5x'te hemen sat, 15 dk'da gelmezse çık", `/karne`'de riskli sayısı ve ⚠️ | **yapıldı, sunucuda (11 Ekim)** |
-| B5 | Robinhood modeline tüm-pazar kriterleri (kullanıcı "evet", 11 Ekim; Bitquery ücretli → ücretsiz RPC): `rh_market.py` + `market_study.py`; indirme yarım (devir notu) | **sürüyor** |
+| B5 | Robinhood modeline tüm-pazar kriterleri (kullanıcı "evet", 11 Ekim; Bitquery ücretli → ücretsiz RPC): `rh_market.py` + `market_study.py`. 11 Ekim gece ön sonuç (§4.9, Pons coinleri, 24 gün): belirgin iyileşme yok (%5'te 2x %47 → %55 ±7, ama sıfırlı günler; %1'de kötü). İndirme yarım (11.255/22.609; kalan 6-7 saat) | **karar bekliyor**: indirmeyi bitir ↔ kapat |
 | A8 | Pump.fun araştırması (Robinhood'daki adımlar: güvenlik, yükseliş kriterleri, simülasyon, kâğıt test). 4 Ekim: ön çalışma (§4.5c). 8 Ekim: 4,7 günle ilk walk-forward model (§4.5d): en iyi %2'de 1 sa 2x %40 (Robinhood %54-60), günde ~25 seçim, mezuniyet çöküşü riski. Mezuniyet ayrımı: curve %90+ coinler hariç → en iyi %2'de 2x %47, tuzak %0 (§4.5d). 8 Ekim simülasyon: kârsız (5x kuralı 0,81x, 2x'te hepsi 0,85x; seçimler 2x yapıp 3 saatte 0,2'ye çöküyor, §4.5d). Kullanıcı kararı (8 Ekim, "ok"): 9-10 Ekim'de A4 ile birlikte yeni günlerle tekrar (`solana_import` → `pump_study` → `pump_rise --max-curve 90` → `pump_sim`); 9 Ekim: yeni günlerle de kârsız (0,69x); düşük hedef/kısa süre ve 3. alıcı da kârsız (§4.5d). Kullanıcı kararı (9 Ekim, "7 a"): son deneme kâr hedefli model → **o da kârsız** (5x kuralı 0,71x, §4.5d). **Kullanıcı kararı (9 Ekim): "pump.fun'u bekletelim, Robinhood'a odaklanalım"** — sunucu veri toplamaya devam eder; ileride daha çok veri ya da yeni fikirle dönülür **Yeniden açıldı (kullanıcı, 9 Ekim akşamı: "kârlılık istediğim seviyede değil çünkü pump.fun'u yapamadık; strateji belirleyip backtest yapmanın bir yolu olmalı; çok dar bir havuzda çalışıyoruz")** → strateji laboratuvarı + tüm-pazar verisi (§4.5e) **Sonuç (9 Ekim gece): insan hızında pump.fun'da sürekli kâr yok** (§4.5e: mezuniyet çevresi tüm-pazar mumlarıyla, büyük coinler) → kullanıcıya a/b/c seçenekleri sunuldu **Tam veriyle (9 Ekim gece): aday strateji** — mezuniyet sonrası hacim patlaması, 5 dk tut (1 dk gecikmeyle 1,13x/işlem, 2 dk'da yok; §4.5e) → önerilen: yeni günlerde ileri test **Kullanıcı (10 Ekim): "a" → günlük ileri test** (`pump_forward.py`, Routine `trig_01EfipfycmUZZEWP3m7oQT9M` her gün 06:52 İstanbul; kural donmuş, ilk ileri gün 9 Ekim; sonuçlar `research/pump_forward.csv`) | **ileri test sürüyor** (1-2 hafta) |
 | A7 | BNB toplayıcı sunucuda çalışıyor (3 Ekim, `fombnb`: dakikada ~110-250 Fomo işlemi, 10-45 flap.sh lansmanı); Base bekletiliyor (kullanıcı onayı; geçmişi istendiğinde indirilir) | Base: ertelendi |
 | A9 | `veri` dalı büyüyor (~120 MB/gün: pump.fun + BNB) → ~1 ay sonra GitHub'ın önerdiği sınıra (~5 GB) yaklaşır; daha sıkı biçim (adres sözlüğü, imza sütununu atma) ya da başka depolama gerekecek | **ertelendi** (kullanıcı, 4 Ekim: "acelesi yok, ileride"); ~1 Kasım'dan önce hatırlatılacak |
@@ -649,6 +653,27 @@ geliyor; 5x'te **hemen** satılırsa yakalanıyor. Sınır: 2 hafta, 50 riskli s
 3 sa 1,45x, **5x ya da 10-15 dk 1,76-1,78x**; normal 1,27-1,41x (süreye pek bağlı değil). Riskli 11'i 5x yaptı; 5x →
 çekilme 4,5-44 dk (2 dk içinde hiç), 4'ü hiç çekilmedi. Eylül'de de riskli seçimlerde 15 dk (2,69x) ≥ 3 sa (2,60x).
 → İki ayda tutarlı: riskli seçimleri **tutmak**, ama 5x gelmezse **15 dk'da çıkmak**; normal seçimlerde 3 sa kalabilir.
+
+### 4.9 Tüm-pazar kriterleri, ön sonuç (11 Ekim gece, §0 B5)
+
+Araştırma DB 3 Eylül – 11 Ekim (oturum ortamı 7 GB RAM: `winner_study.py` takas alanı olmadan çöküyor → 12 GB swap).
+5. alıcı anı 22.609 coin (15.283 Pons, 7.326 V4). `rh_market.py download ... 5 8`: ilk saat ~200 coin/dk, sonra ~27/dk
+(kalan: yoğun günlerin Pons coinleri 30 Eyl – 2 Eki, 6-7 Eki + bütün V4 coinleri; tahmin 6-7 saat). 11.255 Pons coinle
+**ön karşılaştırma**: sadece Pons coinleri, kapsaması ≥%95 olan 24 gün (10-28 Eyl, 3-4 ve 9-11 Eki; 8.908 an) — evren
+bot'unkinden dar (V4 ve yoğun günler yok), sonuç yön gösterir.
+
+Tek tek: 2x olanlar ↔ olmayanlar farkı küçük (son 5 dk işlem/alım biraz yüksek: 127 ↔ 107, 83 ↔ 68; Fomo payı ikisinde
+de %2,8). Walk-forward (`market_study.py`, ilk test günü 14 Eyl, 18 gün):
+
+| Seçim | 20 kriter | + tüm pazar |
+|---|---|---|
+| en iyi %5 | 2x %46,9 (±7), en kötü gün %28 | 2x %55,1 (±6), en kötü gün **%0** |
+| en iyi %2 | %49,1 (±10), en kötü %25 | %55,4 (±11), en kötü %0 |
+| en iyi %1 | %63,8 (±14) | %55,0 (±15) |
+
+17 Eyl'den (15 gün) %5'te 48,0 ↔ 52,1; 26 Eyl'den (6 gün) 56,5 ↔ 55,0. → Botun çalıştığı %5'te +4-8 puan ama
+güven aralığı içinde, gün gün kararsız (sıfırlı günler), %1'de kötüleşiyor. **Belirgin iyileşme yok**; kâr ölçümü
+(`exit_truth.py`) yapılmadı. Karar kullanıcıda: indirmeyi bitirip tam evrenle tekrar ↔ B5'i kapat.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
