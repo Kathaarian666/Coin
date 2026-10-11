@@ -3,7 +3,7 @@
 dRPC as a fallback; Bitquery would cost money). The user can only trade coins listed on Fomo, so the coins stay the
 same - only what is known about them at the moment grows.
 
-  python scripts/rh_market.py download <fomo.db> <winners.parquet> <out.jsonl> [k=5]
+  python scripts/rh_market.py download <fomo.db> <winners.parquet> <out.jsonl> [k=5] [workers=4]
   python scripts/rh_market.py features <fomo.db> <winners.parquet> <market.jsonl> <out.parquet> [k=5]
 
 download: per coin with a k-th-buyer moment (scripts/winner_study.py), from its launch (a Pons coin) or an hour before
@@ -27,9 +27,11 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import exit_truth as et  # noqa: E402
+from rhscanner.hooks import TOPIC_V4_INITIALIZE  # noqa: E402
 
-CURVE_BUY = "0xec36bf571f136799e8dc0b0b8bea4b04d8bd3d43de838aab0d5fc21d4cbfc455"
-CURVE_SELL = "0x8113d738abdcb6b38357e9d53a54a7157861a09031b453651f0fe7fe151f59df"
+et.TOPIC_V4_INITIALIZE = TOPIC_V4_INITIALIZE
+
+CURVE_BUY, CURVE_SELL = et.CURVE_BUY, et.CURVE_SELL  # as scripts/exit_truth.py (checked on the chain 11 Oct)
 BLOCKS_PER_S = 10.0
 LOOKBACK = 36_000  # blocks (~1 h) before the first Fomo trade of a coin that is not a Pons launch
 
@@ -51,33 +53,54 @@ def moments(db, winners: str, k: int) -> pd.DataFrame:
         first, block = db.execute("SELECT MIN(block), MAX(CASE WHEN ts <= ? THEN block END) FROM trades WHERE token = ?",
                                   (r.ts, tid)).fetchone()
         curve, launch = launches.get(r.coin.lower(), (None, None))
-        rows.append({"coin": r.coin.lower(), "ts": r.ts, "block": block, "first": first, "curve": curve,
+        rows.append({"coin": r.coin.lower(), "ts": r.ts, "block": block, "first": first, "curve": curve or "",
                      "start": launch if launch else max(0, first - LOOKBACK)})
     return pd.DataFrame(rows)
 
 
-def download(db_path: str, winners: str, out: str, k: int = 5):
+def pools_after(token: str, lo: int, hi: int) -> dict:
+    """A Pons coin's V4 pools (its graduation) between its launch and the moment: {pool id: (token is currency0,
+    creation block)}. et.find_pools would also search 2M blocks back, ~40 rate-limited queries for nothing."""
+    t = "0x" + "0" * 24 + token[2:].lower()
+    found = {}
+    for topics in ([et.TOPIC_V4_INITIALIZE, None, t], [et.TOPIC_V4_INITIALIZE, None, None, t]):
+        for e in et.logs(lo, hi, topics, et.PM):
+            found[e["topics"][1]] = (e["topics"][2][-40:] == token[2:].lower(), int(e["blockNumber"], 16))
+    return found
+
+
+def one(r) -> dict:
+    curve = []
+    if r.curve:
+        for e in et.logs(int(r.start), int(r.block), [[CURVE_BUY, CURVE_SELL]], r.curve):
+            curve.append([int(e["blockNumber"], 16), int(e["topics"][0] == CURVE_BUY), "0x" + e["topics"][2][-40:],
+                          et.word(e["data"], 0) / 1e18])
+    pools = pools_after(r.coin, int(r.start), int(r.block)) if r.curve else et.find_pools(r.coin, int(r.first), int(r.block))
+    swaps = []
+    for pid, (token_is_0, born) in pools.items():
+        for e in et.logs(max(born, int(r.start)), int(r.block), [et.SWAP, pid], et.PM):
+            a0, a1 = signed(et.word(e["data"], 0)), signed(et.word(e["data"], 1))
+            tok, quote = (a0, a1) if token_is_0 else (a1, a0)
+            swaps.append([int(e["blockNumber"], 16), int(tok > 0), abs(quote)])
+    return {"coin": r.coin, "block": int(r.block), "curve": curve, "swaps": swaps}
+
+
+def download(db_path: str, winners: str, out: str, k: int = 5, workers: int = 4):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     db = sqlite3.connect(db_path)
     m = moments(db, winners, k)
     done = {json.loads(line)["coin"] for line in open(out)} if Path(out).exists() else set()
     todo = m[~m.coin.isin(done)]
     print(f"{len(m)} an, {len(done)} hazır, {len(todo)} kaldı", flush=True)
-    with open(out, "a") as f:
-        for n, r in enumerate(todo.itertuples(), 1):
-            curve = []
-            if r.curve:
-                for e in et.logs(int(r.start), int(r.block), [[CURVE_BUY, CURVE_SELL]], r.curve):
-                    curve.append([int(e["blockNumber"], 16), int(e["topics"][0] == CURVE_BUY), "0x" + e["topics"][2][-40:],
-                                  et.word(e["data"], 0) / 1e18])
-            swaps = []
-            for pid, (token_is_0, born) in et.find_pools(r.coin, int(r.first), int(r.block)).items():
-                for e in et.logs(max(born, int(r.start)), int(r.block), [et.SWAP, pid], et.PM):
-                    a0, a1 = signed(et.word(e["data"], 0)), signed(et.word(e["data"], 1))
-                    tok, quote = (a0, a1) if token_is_0 else (a1, a0)
-                    swaps.append([int(e["blockNumber"], 16), int(tok > 0), abs(quote)])
-            f.write(json.dumps({"coin": r.coin, "block": int(r.block), "curve": curve, "swaps": swaps}) + "\n")
-            f.flush()
-            if n % 100 == 0:
+    with open(out, "a") as f, ThreadPoolExecutor(workers) as pool:
+        jobs = [pool.submit(one, r) for r in todo.itertuples()]
+        for n, job in enumerate(as_completed(jobs), 1):
+            try:
+                f.write(json.dumps(job.result()) + "\n")
+                f.flush()
+            except Exception as exc:  # left for the next run (resumable)
+                print("hata:", str(exc)[:120], flush=True)
+            if n % 200 == 0:
                 print(f"{n}/{len(todo)}", flush=True)
 
 
@@ -129,6 +152,6 @@ def features(db_path: str, winners: str, market: str, out: str, k: int = 5):
 if __name__ == "__main__":
     mode, args = sys.argv[1], sys.argv[2:]
     if mode == "download":
-        download(*args[:3], *(int(a) for a in args[3:4]))
+        download(*args[:3], *(int(a) for a in args[3:5]))
     else:
         features(*args[:4], *(int(a) for a in args[4:5]))
