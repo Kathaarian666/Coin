@@ -81,6 +81,7 @@ class ScannerApp:
         self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
         self.follower = Follower(known, since, on_new=self.paper_log.remember, db=self.storage.db)
+        self.pick_risks = {}  # token -> risky (live.risk_check), asked once per pick
         # the 5x rule for sent alerts: token -> [alert price, last buy was at the target] (PROJE.md §0 B1)
         self.live_watch = {r["token"]: [r["p_alert"], False] for r in self.live_log.open(time.time())
                            if not r["sent_2x"] and not r["sent_end"]}
@@ -192,11 +193,14 @@ class ScannerApp:
             if alert:
                 self.follower.keep(key, t + paper.MAX_HOLD + 3600)
                 log.info("paper alert %s (score %.3f, bar %.3f, %.0f s after the 5th buyer)", token, score, bar, now - t)
-                if self.live_on:
-                    await self.send_live(token, t, trades[idx].block, p_now, features, row is not None, coin.buyers)
-                elif self.paper_notify:
-                    await self.broadcast(format_paper_alert(await self.symbol(token), token, features.get("fdv"), score, size,
-                                                            now - t))
+                if self.live_on:  # the risk check runs beside the sell check there: no extra delay
+                    risky = await self.send_live(token, t, trades[idx].block, p_now, features, row is not None, coin.buyers)
+                else:
+                    risky = await self.pick_risk(key)
+                    if self.paper_notify:
+                        await self.broadcast(format_paper_alert(await self.symbol(token), token, features.get("fdv"), score,
+                                                                size, now - t, risky))
+                self.paper_log.set_risky(key, risky)
             if self.paper_model_h:
                 await self.score_holder(key, coin, idx, float(supply[0]) if supply else None, row, features)
         except Exception:
@@ -227,6 +231,19 @@ class ScannerApp:
         if alert:
             self.follower.keep(key, t + paper.MAX_HOLD + 3600)
             log.info("paper (holder) alert %s (score %.3f, bar %.3f)", key, score, bar)
+            self.paper_log_h.set_risky(key, await self.pick_risk(key))
+
+    async def pick_risk(self, token: str) -> bool | None:
+        """Is the pick risky (live.risk_check: no hook on its V4 pool, or an owner other than the launchpad's)? Its 5x
+        rule then ends after 15 minutes (paper.hold5). None when it cannot be read in time: the normal limit."""
+        if token not in self.pick_risks:
+            try:
+                self.pick_risks[token] = await asyncio.wait_for(
+                    live.risk_check(self.rpc, self.settings.v4_pool_manager, token), 15)
+            except Exception as exc:
+                log.warning("risk check failed for %s: %s", token, exc)
+                return None
+        return self.pick_risks[token]
 
     async def send(self, text: str, reply_to: dict | None = None) -> dict:
         """Sends to every chat; returns chat id -> message id (for replies)."""
@@ -242,26 +259,31 @@ class ScannerApp:
         return sent
 
     async def send_live(self, token: str, t: float, block: int, price: float, features: dict, pons: bool,
-                        buyers: list[str]):
-        """A real alert: elimination (unsellable), the fast message, then the safety report as a reply."""
+                        buyers: list[str]) -> bool | None:
+        """A real alert: elimination (unsellable), the fast message, then the safety report as a reply. Returns the
+        pick's risk flag (pick_risk, asked beside the sell check)."""
         pm = self.settings.v4_pool_manager
-        try:
-            status, detail, pool = await asyncio.wait_for(live.sell_gate(self.rpc, pm, token, pons, buyers), 20)
-        except Exception as exc:
-            status, detail, pool = "bilinmiyor", f"kontrol tamamlanamadı ({type(exc).__name__})", None
+        gate, risky = await asyncio.gather(asyncio.wait_for(live.sell_gate(self.rpc, pm, token, pons, buyers), 20),
+                                           self.pick_risk(token.lower()), return_exceptions=True)
+        if isinstance(gate, BaseException):
+            status, detail, pool = "bilinmiyor", f"kontrol tamamlanamadı ({type(gate).__name__})", None
+        else:
+            status, detail, pool = gate
+        risky = None if isinstance(risky, BaseException) else risky
         if status in ("honeypot", "vergi"):
             log.info("live: %s dropped (%s)", token, detail)
-            return
+            return risky
         symbol = await self.symbol(token)
         msgs = await self.send(format_live_alert(symbol, token, features.get("fdv"), self.paper_model.top_hit_rate,
                                                  live.reasons(self.paper_model, features), (status, detail),
-                                                 time.time() - t))
-        self.live_log.add(token.lower(), t, price, block, pool, msgs, status)
+                                                 time.time() - t, risky))
+        self.live_log.add(token.lower(), t, price, block, pool, msgs, status, paper.hold5(risky))
         self.live_watch[token.lower()] = [price, False]
         try:
             await self.send(await self.safety_text(token, pons, features.get("depth_usd")), msgs)
         except Exception:
             log.exception("live safety report failed for %s", token)
+        return risky
 
     async def safety_text(self, token: str, pons: bool | None = None, depth: float | None = None) -> str:
         """The safety report (PROJE.md §1, §0 D1/D2): the trust model's score and the 14 checks, our chain checks
@@ -307,10 +329,11 @@ class ScannerApp:
         pm = self.settings.v4_pool_manager
         for r in rows:
             token, reply = r["token"], json.loads(r["msg"] or "{}")
-            if not r["sent_2x"] and not r["sent_end"] and now - r["ts"] >= paper.HOLD5:  # no 5x in time: sell the rest
+            hold = r.get("hold") or paper.HOLD5
+            if not r["sent_2x"] and not r["sent_end"] and now - r["ts"] >= hold:  # no 5x in time: sell the rest
                 self.live_watch.pop(token, None)
                 self.live_log.mark(token, sent_end=1)
-                await self.send(format_time_up(await self.symbol(token), token, paper.HOLD5 / 3600), reply)
+                await self.send(format_time_up(await self.symbol(token), token, hold), reply)
             if r["pool"] and not r["warned"] and head:
                 if now - r["ts"] > live.LIQ_WATCH:
                     self.live_log.mark(token, warned=1)  # watched long enough
@@ -359,14 +382,14 @@ class ScannerApp:
                 else:
                     value = paper.last_value(coin.trades, now, trade["p_alert"])
                     plog.update(token, trade, paper.net_return(trade, depth, 20.0, value), False, now)
-            for token, ts, depth, kind5 in plog.open5():  # the 5x rule beside it (PROJE.md §4.4c)
+            for token, ts, depth, kind5, risky in plog.open5():  # the 5x rule beside it (PROJE.md §4.4c)
                 if kind5 == "süre":
                     continue  # its time exit waits for the on-chain check (paper5_step)
                 coin = self.follower.coins.get(token)
                 if coin is None:
                     plog.update5(token, None, None, True)
                     continue
-                trade = paper.paper_trade_5x(coin.trades, ts, now)
+                trade = paper.paper_trade_5x(coin.trades, ts, now, paper.hold5(risky))
                 if trade is None:
                     continue
                 depth = depth if depth and depth == depth else 3000.0
@@ -401,10 +424,10 @@ class ScannerApp:
                 await self.broadcast(format_paper_5x(await self.symbol(token), token, secs / 60))
         checked = {}
         for plog in (self.paper_log, self.paper_log_h):
-            for token, ts, depth, kind5 in plog.open5():
+            for token, ts, depth, kind5, risky in plog.open5():
                 if kind5 != "süre":
                     continue
-                t_exit = ts + paper.HOLD5
+                t_exit = ts + paper.hold5(risky)
                 if token not in checked:
                     try:
                         checked[token] = await self.pool_pulled(token, t_exit, now)

@@ -111,3 +111,57 @@ def test_pull_step_net_liquidity():
     assert (net, peak, at) == (50, 1000, 20)
     # a pull before the alert block is not reported
     assert live.pull_step([_liq(5, 100), _liq(6, -90)], 0, 0, since=7)[2] is None
+
+
+class _RiskRpc:
+    """A V4 pool with the given hook (None: no pool) and the given owner() (None: no such function)."""
+
+    def __init__(self, hook, owner):
+        self.hook, self.owner = hook, owner
+
+    async def block_number(self):
+        return 10_000_000
+
+    async def get_logs(self, lo, hi, topics, address=None, **k):
+        if self.hook is None or topics[2] is None:  # the coin is currency0 in this pool
+            return []
+        data = "0x" + "00" * 64 + "00" * 12 + self.hook[2:]
+        return [{"blockNumber": hex(9_000_000), "topics": [topics[0], "0x" + "ab" * 32, topics[2], "0x" + "00" * 32],
+                 "data": data}]
+
+    async def try_call_fn(self, to, sig, out, *a, **k):
+        return None if self.owner is None else [self.owner]
+
+
+def test_risk_check_no_hook_or_a_foreign_owner():
+    named = next(iter(live.NAMED_HOOKS))
+    launchpad = next(iter(live.LAUNCHPAD_OWNERS))
+    token, pm = "0x" + "6" * 40, "0x" + "7" * 40
+    check = lambda hook, owner: asyncio.run(live.risk_check(_RiskRpc(hook, owner), pm, token))
+    assert check(live.ZERO, launchpad) is True  # a pool without a hook
+    assert check(named, "0x" + "9" * 40) is True  # a developer owns the coin
+    assert check(named, launchpad) is False  # the launchpad's hook and owner: a Pons coin after graduation
+    assert check(None, launchpad) is False  # still on its launch curve
+    assert check(named, live.ZERO) is False and check(named, None) is False  # renounced / no owner()
+
+
+def test_risky_alert_gets_its_time_limit_after_15_minutes(tmp_path):
+    app = ScannerApp(Settings(db_path=str(tmp_path / "r.db")))
+    sent = []
+
+    async def fake_send(text, reply_to=None):
+        sent.append(text)
+        return {}
+    app.send = fake_send
+
+    async def sym(token):
+        return "TST"
+    app.symbol = sym
+    token = "0x" + "8" * 40
+    now = time.time()
+    app.live_log.add(token, now - 60, 1e-6, 1, None, {}, "ok", paper.hold5(True))
+    asyncio.run(app.live_step(now))
+    assert sent == []
+    asyncio.run(app.live_step(now - 60 + paper.HOLD5_RISKY + 1))
+    assert len(sent) == 1 and "15 dk doldu" in sent[0]
+    asyncio.run(app.rpc.close())

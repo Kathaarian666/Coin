@@ -80,7 +80,8 @@ async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_v
     await asyncio.gather(*list(app.tasks))
     rows = app.paper_log.alerts(0)
     assert len(rows) == 1 and rows[0]["token"] == token and 0 < rows[0]["score"] < 1
-    assert asked and asked[0][2] == token and asked[0][1] == paper.WARMUP_BLOCKS + 410  # up to the 5th buyer's block
+    holder_asks = [a for a in asked if a[2] == token]  # (the risk check asks the pool manager for the coin's pool)
+    assert holder_asks and holder_asks[0][1] == paper.WARMUP_BLOCKS + 410  # up to the 5th buyer's block
     h = app.paper_log_h.alerts(0)
     feats = json.loads(app.storage.db.execute("SELECT features FROM paper_log_h").fetchone()[0])
     assert len(h) == 1 and feats["holders"] == 3 and feats["top10_pct"] == 0.3 and "usd_all" in feats

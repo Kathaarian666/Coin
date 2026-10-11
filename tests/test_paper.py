@@ -154,6 +154,15 @@ def test_5x_rule_sells_everything_at_5x_or_at_3_hours():
     assert abs(t["legs"][0][2] / (1.5 * p) - 1) < 1e-5  # median of the last prices before the limit
 
 
+def test_risky_picks_leave_after_15_minutes():
+    p = 1e-6
+    assert paper.hold5(True) == paper.HOLD5_RISKY == 900 and paper.hold5(False) == paper.hold5(None) == paper.HOLD5
+    slow = [buy(0, p), buy(100, 1.5 * p), buy(1000, 6 * p), buy(1001, 6 * p)]  # the 5x comes after 16 minutes
+    t = paper.paper_trade_5x(slow, 0, 2000, paper.hold5(True))
+    assert t["kind"] == "süre" and t["legs"][0][0] == 900
+    assert paper.paper_trade_5x(slow, 0, 2000)["kind"] == "5x"  # a normal pick waits for it
+
+
 def test_paper_log_keeps_the_5x_trade_beside_the_main_one():
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE paper_log (token TEXT PRIMARY KEY, ts REAL NOT NULL, score REAL NOT NULL, bar REAL, "
@@ -163,9 +172,11 @@ def test_paper_log_keeps_the_5x_trade_beside_the_main_one():
     log.add("0xa", 1.0, 0.9, 0.5, True, 0.04, {}, 2.0, 5000.0)
     log.add("0xb", 2.0, 0.9, 0.5, True, 0.02, {}, 3.0, 5000.0)
     assert [r[0] for r in log.open5()] == ["0xa", "0xb"]
+    log.set_risky("0xb", True)
+    assert [r[4] for r in log.open5()] == [None, 1]  # unknown, risky
     log.update5("0xa", "5x", 3.9, True)
     log.update5("0xb", "süre", -1.0, True, "çekildi")
     assert log.open5() == []
     s = paper.summary(log.alerts(0), log.scored(0))
-    assert (s["x5"], s["time5"], s["pulled5"]) == (1, 1, 1)
+    assert (s["x5"], s["time5"], s["pulled5"], s["risky"]) == (1, 1, 1, 1)
     assert abs(s["bank5"] - 1000 * (1 + 0.04 * 3.9) * (1 - 0.02)) < 1e-6

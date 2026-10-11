@@ -89,7 +89,7 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). 97 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). 101 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
@@ -101,7 +101,8 @@ hacim bulgusu, bot'un tracker'ından `fomo["churn_share_30m"]` ile) · `launches
 puan, en iyi %5'e (9 Ekim'e kadar %2) sanal işlem + yanında "5x'te hepsini sat" kuralı (`paper_trade_5x`, 3 sa sonra likidite çekilmişse 0), `/karne`; tablolar `paper_log`, `paper_book`, `paper_pending`, `scan_known`; model
 `scripts/paper_export.py` ile; ikinci model + holder kriterleri `paper_model_h.json` / tablo `paper_log_h`,
 `paper_export.py --holder`) · `live.py` gerçek bildirim (`/canli`, kapalı; satılamama elemesi V4SellProbe ile,
-güven puanı `trust_model.json`, 5x kuralı takibi — 5x'te "sat", 3 saatte "süre doldu" — ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri
+güven puanı `trust_model.json`, 5x kuralı takibi — 5x'te "sat", 3 saatte "süre doldu"; riskli seçimde (`risk_check`: havuzda hook
+yok ya da sahibi launchpad dışı) uyarı ve 15 dk, `paper.hold5` — ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 

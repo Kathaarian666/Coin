@@ -124,9 +124,10 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
              f"Puanlanan coin: {s['scored']} · seçilen: <b>{s['alerts']}</b>"
              + (f" · seçim gecikmesi (medyan) {s['latency']:.0f} sn" if s["latency"] is not None else ""),
              "",
-             "🎯 <b>Satış kuralı: 5x</b> (5x'te hepsi satılır, gelmezse 3 saatte kalanı; o anda havuzun likiditesi "
-             "çekilmişse değer 0):",
-             f"5x yapan: <b>{s['x5']}</b> · 3 saatte satılan: {s['time5']} (likiditesi çekilmiş: {s['pulled5']})",
+             "🎯 <b>Satış kuralı: 5x</b> (5x'te hepsi satılır, gelmezse 3 saatte — riskli seçimde 15 dk'da — kalanı; "
+             "o anda havuzun likiditesi çekilmişse değer 0):",
+             f"5x yapan: <b>{s['x5']}</b> · süresi dolup satılan: {s['time5']} (likiditesi çekilmiş: {s['pulled5']})"
+             + (f" · riskli seçim: {s['risky']}" if s.get("risky") else ""),
              f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${s['bank5']:,.0f}</b> ({s['bank5'] / 1000:.2f}x)",
              "",
              "Eski kural, karşılaştırma için (2x'te yarısı, kalan zirveden %50 düşünce, %50 zarar-kes; açık işlemler son "
@@ -142,8 +143,9 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
             res = f" {_pct(r['ret'])}{'' if r['closed'] else ' (açık)'}" if r["ret"] is not None else ""
             when = time.strftime("%d.%m %H:%M", time.gmtime(r["ts"]))
             k5 = r.get("kind5")
-            rule5 = {"5x": "5x ✅", "süre": "3 sa" + (" (likidite çekilmiş ❌)" if r.get("chain5") == "çekildi" else "")
-                     }.get(k5 or "", "bekliyor")
+            rule5 = {"5x": "5x ✅", "süre": ("15 dk" if r.get("risky") else "3 sa")
+                     + (" (likidite çekilmiş ❌)" if r.get("chain5") == "çekildi" else "")}.get(k5 or "", "bekliyor")
+            rule5 += " ⚠️" if r.get("risky") else ""
             res5 = f" <b>{_pct(r['ret5'])}</b>" if r.get("ret5") is not None else ""
             lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {rule5}{res5} · eski: {state}{res}")
     if other is not None:
@@ -170,12 +172,21 @@ def format_paper_5x(symbol: str, token: str, minutes: float) -> str:
             f"bir kısmında likidite çekilmiş oluyor.\n<code>{token}</code> · {_gecko(token)}")
 
 
-def format_paper_alert(symbol: str, token: str, fdv: float | None, score: float, size: float | None, delay: float) -> str:
+RISKY_LINE = "⚠️ <b>Rug riski yüksek</b> (havuzda koruma yok ya da sahibi launchpad dışı): 5x'te hemen sat, 15 dk'da gelmezse çık."
+
+
+def _hold_text(hold_s: float) -> str:
+    return f"{hold_s / 3600:g} saat" if hold_s >= 3600 else f"{hold_s / 60:g} dk"
+
+
+def format_paper_alert(symbol: str, token: str, fdv: float | None, score: float, size: float | None, delay: float,
+                       risky: bool | None = None) -> str:
     """Optional message for each paper-test pick (/kagitbildirim ac)."""
     return (f"🧪 <b>Kâğıt test seçimi: {escape(symbol, quote=False)}</b>\n"
             f"Puan {score:.3f} (en iyi %{100 * TOP:g}) · sanal tutar kasanın %{100 * (size or 0):.0f}'i\n"
             f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra\n"
-            f"<code>{token}</code>\n"
+            + (RISKY_LINE + "\n" if risky else "")
+            + f"<code>{token}</code>\n"
             f"<i>Sadece test: gerçek alım önerisi değildir.</i>")
 
 
@@ -184,7 +195,7 @@ def _gecko(token: str) -> str:
 
 
 def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float | None, reasons: list[tuple[str, str]],
-                      gate: tuple[str, str], delay: float) -> str:
+                      gate: tuple[str, str], delay: float, risky: bool | None = None) -> str:
     """The fast message of a real alert (/canli ac); the safety report follows as a reply."""
     status, detail = gate
     gate_line = ("✅ " if status == "ok" else "⚠️ Satılabilirlik doğrulanamadı: ") + escape(detail, quote=False)
@@ -193,10 +204,10 @@ def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float 
              f"2x ihtimali: en iyi %{100 * TOP:g}",
              "Neden seçildi:"]
     lines += [f"• {escape(name, quote=False)}: {escape(value, quote=False)}" for name, value in reasons] or ["• -"]
-    lines += [gate_line,
-              f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra",
+    lines += [gate_line] + ([RISKY_LINE] if risky else [])
+    lines += [f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra",
               f"<code>{token}</code> · {_gecko(token)}",
-              "Satış kuralı: 5x'te hepsi, 3 saatte gelmezse kalanı sat (bot haber verir).",
+              "Satış kuralı: 5x'te hepsi, " + ("15 dk'da" if risky else "3 saatte") + " gelmezse kalanı sat (bot haber verir).",
               "<i>Güven raporu birazdan bu mesaja yanıt olarak gelecek. Karar senin.</i>"]
     return "\n".join(lines)
 
@@ -231,9 +242,9 @@ def format_5x(symbol: str, token: str, minutes: float) -> str:
             f"kısmında likidite çekilmiş oluyor). Karar senin.\n<code>{token}</code> · {_gecko(token)}")
 
 
-def format_time_up(symbol: str, token: str, hours: float) -> str:
-    """The 5x rule's time limit without the target: sell what is left."""
-    return (f"⏱ <b>{escape(symbol, quote=False)}</b>: {hours:g} saat doldu, 5x gelmedi. 5x kuralı: <b>kalanı sat</b> "
+def format_time_up(symbol: str, token: str, hold_s: float) -> str:
+    """The 5x rule's time limit (paper.hold5, in s) without the target: sell what is left."""
+    return (f"⏱ <b>{escape(symbol, quote=False)}</b>: {_hold_text(hold_s)} doldu, 5x gelmedi. 5x kuralı: <b>kalanı sat</b> "
             f"(bekleyen seçimlerin çoğu sonradan düşüyor ya da likiditesi çekiliyor). Karar senin.\n"
             f"<code>{token}</code> · {_gecko(token)}")
 

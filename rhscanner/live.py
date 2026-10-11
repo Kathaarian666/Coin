@@ -7,12 +7,15 @@ template cannot block sells), any other coin is sold in a simulation into its Un
 The message gives the 2x chance (what the top paper.TOP did in the walk-forward test) and the 3 criteria that lift the
 score most; the safety report with the trust score (trust_model.json, PROJE.md §4.1) follows as a reply.
 Afterwards, the 5x rule (PROJE.md §4.4c, user 9 Oct): "5x oldu, sat" when two buys in a row reach 5x the alert price
-(paper.TP5), "süre doldu, sat" when paper.HOLD5 passes without it; and a warning when the liquidity of the coin's
+(paper.TP5), "süre doldu, sat" when its time limit passes without it (paper.hold5: 3 hours, 15 minutes for a risky
+pick - no hook on its V4 pool or an owner other than the launchpad's, risk_check(); the message warns about it, PROJE.md
+§0 B4, user 11 Oct); and a warning when the liquidity of the coin's
 V4 pool is pulled: its net liquidity (every ModifyLiquidity since the pool's creation) at the end of a block falls to
 PULL_SHARE of its peak or less. Single removals are no signal: launchpad hooks take liquidity out and put it back all
 the time, often in the same transaction (PROJE.md §0 D12, as scripts/exit_truth.py).
 """
 
+import asyncio
 import json
 import math
 from pathlib import Path
@@ -106,6 +109,20 @@ def trust_score(flags: dict, path: Path = TRUST_PATH) -> int | None:
     z = m["intercept"] + sum(m["coef"].get(k, 0.0) * v for k, v in flags.items())
     p = 1 / (1 + math.exp(-z))
     return int(round(max(0.0, min(100.0, 100 * (1 - p / m["half"])))))
+
+
+async def risk_check(rpc, pm: str, token: str) -> bool | None:
+    """A risky pick (PROJE.md §4.8): its latest V4 pool has no hook, or its owner() is set and not the launchpad's
+    (as scripts/trust_export.py flags hook_yok / sahip). A coin still on its launch curve has no pool: the owner
+    decides. None when neither could be read."""
+    head = await rpc.block_number()
+    pool, owner = await asyncio.gather(find_pool(rpc, pm, token, head),
+                                       rpc.try_call_fn(token, "owner()", ["address"]), return_exceptions=True)
+    hook = pool[1][4].lower() if isinstance(pool, tuple) else None
+    own = owner[0].lower() if isinstance(owner, (list, tuple)) and owner and isinstance(owner[0], str) else None
+    if isinstance(pool, Exception) and own is None:
+        return None
+    return hook == ZERO or (own is not None and own != ZERO and own not in LAUNCHPAD_OWNERS)
 
 
 # --- can it be sold? ---
@@ -214,15 +231,16 @@ class LiveLog:
                       checked_block INTEGER, liq_net TEXT, liq_peak TEXT, sent_end INTEGER DEFAULT 0)""")
         cols = {r[1] for r in db.execute("PRAGMA table_info(live_log)")}
         # liq_*: int256 sums, kept as text, NULL = the pool's history not read yet; sent_2x = the target message
-        # (5x since 9 Oct), sent_end = the time-limit message
-        for c, kind in (("liq_net", "TEXT"), ("liq_peak", "TEXT"), ("sent_end", "INTEGER DEFAULT 0")):
+        # (5x since 9 Oct), sent_end = the time-limit message, hold = that limit in s (NULL: paper.HOLD5)
+        for c, kind in (("liq_net", "TEXT"), ("liq_peak", "TEXT"), ("sent_end", "INTEGER DEFAULT 0"), ("hold", "REAL")):
             if c not in cols:
                 db.execute(f"ALTER TABLE live_log ADD COLUMN {c} {kind}")
         db.commit()
 
-    def add(self, token, ts, p_alert, block, pool, msg, gate):
-        self.db.execute("INSERT OR REPLACE INTO live_log (token, ts, p_alert, block, pool, msg, gate, checked_block) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (token, ts, p_alert, block, pool, json.dumps(msg), gate, block))
+    def add(self, token, ts, p_alert, block, pool, msg, gate, hold=None):
+        self.db.execute("INSERT OR REPLACE INTO live_log (token, ts, p_alert, block, pool, msg, gate, checked_block, hold) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (token, ts, p_alert, block, pool, json.dumps(msg), gate, block, hold))
         self.db.commit()
 
     def open(self, now: float) -> list[dict]:
