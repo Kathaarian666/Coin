@@ -90,8 +90,8 @@ def download(db_path: str, winners: str, out: str, k: int = 5, workers: int = 4)
     db = sqlite3.connect(db_path)
     m = moments(db, winners, k)
     done = {json.loads(line)["coin"] for line in open(out)} if Path(out).exists() else set()
-    todo = m[~m.coin.isin(done)]
-    print(f"{len(m)} an, {len(done)} hazır, {len(todo)} kaldı", flush=True)
+    todo = m[~m.coin.isin(done)].sort_values("curve", ascending=False, key=lambda c: c != "")  # Pons coins first: fast
+    print(f"{len(m)} an, {len(done)} hazır, {len(todo)} kaldı ({(todo.curve != '').sum()} Pons)", flush=True)
     with open(out, "a") as f, ThreadPoolExecutor(workers) as pool:
         jobs = [pool.submit(one, r) for r in todo.itertuples()]
         for n, job in enumerate(as_completed(jobs), 1):
