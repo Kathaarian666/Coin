@@ -1,0 +1,5 @@
+.env
+paper_copy/.env
+paper_copy/paper.db*
+paper_copy/venv/
+__pycache__/

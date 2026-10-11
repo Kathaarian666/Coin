@@ -1,0 +1,15 @@
+[Unit]
+Description=Solana kagit ustunde kopyalama (paper copy-trading)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/paper_copy
+ExecStart=/opt/paper_copy/venv/bin/python /opt/paper_copy/paper_copy.py
+Restart=always
+RestartSec=15
+User=root
+
+[Install]
+WantedBy=multi-user.target

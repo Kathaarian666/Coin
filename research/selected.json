@@ -1,0 +1,704 @@
+[
+ {
+  "wallet": "6yjt4Ny1o5jUeAnuVqAphDa7AfMunoy2wS7iMG3YqcMv",
+  "txs": 400,
+  "days": 18.9,
+  "hit_cap": true,
+  "tokens": 80,
+  "closed": 80,
+  "win_rate": 0.46,
+  "realized_sol": 288.98,
+  "top2_share": 0.56,
+  "med_hold_min": 3.2,
+  "tok_per_day": 4.2,
+  "cluster_size": 4,
+  "cluster_sol": 847.3,
+  "members": [
+   "6yjt4Ny1o5jUeAnuVqAphDa7AfMunoy2wS7iMG3YqcMv",
+   "Guh1fcLp3siRk6ik9erGUSvnAK5w6q1yPdPS8vFjtrYm",
+   "wYFUpdagf9cxr2YRZ27BP3gAzW1SpYGzghnyXvtunoq",
+   "CduW4f9NqGjWEzbBMPy4pqbJ3c37ufdRBiX6UGDmtHwk"
+  ],
+  "early_in": [
+   [
+    "baton",
+    24,
+    5.69
+   ]
+  ]
+ },
+ {
+  "wallet": "3suUcHxDk4pX8AqArW7JtrY9xe7WGPg3S1SUQxgjcBzs",
+  "txs": 253,
+  "days": 27.1,
+  "hit_cap": false,
+  "tokens": 39,
+  "closed": 33,
+  "win_rate": 0.48,
+  "realized_sol": 132.85,
+  "top2_share": 0.51,
+  "med_hold_min": 1.6,
+  "tok_per_day": 1.4,
+  "cluster_size": 1,
+  "cluster_sol": 132.8,
+  "members": [
+   "3suUcHxDk4pX8AqArW7JtrY9xe7WGPg3S1SUQxgjcBzs"
+  ],
+  "early_in": [
+   [
+    "ABU",
+    0,
+    5.01
+   ]
+  ]
+ },
+ {
+  "wallet": "5ZBQgjAsRYuk1eQTzJQSLCg7WBQndjQgou2ZMVMaaZBe",
+  "txs": 400,
+  "days": 7.1,
+  "hit_cap": true,
+  "tokens": 39,
+  "closed": 39,
+  "win_rate": 0.41,
+  "realized_sol": 110.96,
+  "top2_share": 0.68,
+  "med_hold_min": 5.8,
+  "tok_per_day": 5.5,
+  "cluster_size": 1,
+  "cluster_sol": 111.0,
+  "members": [
+   "5ZBQgjAsRYuk1eQTzJQSLCg7WBQndjQgou2ZMVMaaZBe"
+  ],
+  "early_in": [
+   [
+    "ALOIS",
+    383,
+    6.06
+   ]
+  ]
+ },
+ {
+  "wallet": "CsUCkqxX8NWt2pKnkfhbv3ExmAbrJBAy8NEY5NFZH1pK",
+  "txs": 400,
+  "days": 6.0,
+  "hit_cap": true,
+  "tokens": 61,
+  "closed": 59,
+  "win_rate": 0.46,
+  "realized_sol": 107.15,
+  "top2_share": 0.66,
+  "med_hold_min": 2.5,
+  "tok_per_day": 10.1,
+  "cluster_size": 1,
+  "cluster_sol": 107.2,
+  "members": [
+   "CsUCkqxX8NWt2pKnkfhbv3ExmAbrJBAy8NEY5NFZH1pK"
+  ],
+  "early_in": [
+   [
+    "baton",
+    10,
+    8.09
+   ]
+  ]
+ },
+ {
+  "wallet": "7Jm6fNzvpoXS9sNqJ4Sk92hajiiKYnhsEJ6crS65iBQW",
+  "txs": 400,
+  "days": 30.0,
+  "hit_cap": true,
+  "tokens": 86,
+  "closed": 86,
+  "win_rate": 0.56,
+  "realized_sol": 104.76,
+  "top2_share": 0.35,
+  "med_hold_min": 0.8,
+  "tok_per_day": 2.9,
+  "cluster_size": 1,
+  "cluster_sol": 104.8,
+  "members": [
+   "7Jm6fNzvpoXS9sNqJ4Sk92hajiiKYnhsEJ6crS65iBQW"
+  ],
+  "early_in": [
+   [
+    "baton",
+    2,
+    2.08
+   ]
+  ]
+ },
+ {
+  "wallet": "DuKtSZgvPFeP6CxQn6ov9QbCvpA7LfPggu6cVw1p8amM",
+  "txs": 400,
+  "days": 7.2,
+  "hit_cap": true,
+  "tokens": 80,
+  "closed": 80,
+  "win_rate": 0.71,
+  "realized_sol": 86.95,
+  "top2_share": 0.48,
+  "med_hold_min": 0.4,
+  "tok_per_day": 11.0,
+  "cluster_size": 2,
+  "cluster_sol": 149.8,
+  "members": [
+   "DuKtSZgvPFeP6CxQn6ov9QbCvpA7LfPggu6cVw1p8amM",
+   "68aipj7xeMwZiTuCREMEEaD9AWMiLWkUvd5ue4SZjti9"
+  ],
+  "early_in": [
+   [
+    "Altai",
+    1257,
+    1.58
+   ]
+  ]
+ },
+ {
+  "wallet": "EX2LY5gA5VDXVyxdJCPSvQRsRfPXXB3w8YMaMr1SaZs8",
+  "txs": 400,
+  "days": 7.2,
+  "hit_cap": true,
+  "tokens": 62,
+  "closed": 61,
+  "win_rate": 0.54,
+  "realized_sol": 84.9,
+  "top2_share": 0.57,
+  "med_hold_min": 1.1,
+  "tok_per_day": 8.6,
+  "cluster_size": 2,
+  "cluster_sol": 160.0,
+  "members": [
+   "EX2LY5gA5VDXVyxdJCPSvQRsRfPXXB3w8YMaMr1SaZs8",
+   "Gn5pmu4LkGUgma5wECbQvgCBiGWEtyUu3ri8G1LqqUyJ"
+  ],
+  "early_in": [
+   [
+    "baton",
+    2,
+    2.0
+   ],
+   [
+    "GOMO",
+    490,
+    7.11
+   ]
+  ]
+ },
+ {
+  "wallet": "4TPGrGEt26HXagi2DZLfWFn8Lp4a29saZzJSBXpCheoD",
+  "txs": 400,
+  "days": 13.0,
+  "hit_cap": true,
+  "tokens": 127,
+  "closed": 125,
+  "win_rate": 0.46,
+  "realized_sol": 84.31,
+  "top2_share": 0.63,
+  "med_hold_min": 0.6,
+  "tok_per_day": 9.8,
+  "cluster_size": 7,
+  "cluster_sol": 384.2,
+  "members": [
+   "4TPGrGEt26HXagi2DZLfWFn8Lp4a29saZzJSBXpCheoD",
+   "3DkFQ6Qghz29XuHgqoFyumhs4tDG5vrrRYNYQhTvJ8T5",
+   "BSWuL5MkWYxRprciuSj7fa3YrG6zCFonLvehJcxvpAVu",
+   "8a1P3gKa8oHscf4qH5bra4notiFHPpU9jxUZAroXYmsE",
+   "4GixbG7T8vL2vsfBgxwFJxbUpU3yEybQBDWVWJKTTZHP",
+   "Cs3b9CVKcAaUoTxuYD94emjyChhTA9BspVnR1bzQBmPY",
+   "1GP6u5grsw82swWL6ccAaczx4WFU2JJAoj3W2iGm6ZX"
+  ],
+  "early_in": [
+   [
+    "Titcoin",
+    50,
+    4.07
+   ]
+  ]
+ },
+ {
+  "wallet": "4Q9gLASmHoT2h9rGWjRJFcC6futtkMARwQYFpiEobRYV",
+  "txs": 400,
+  "days": 18.1,
+  "hit_cap": true,
+  "tokens": 61,
+  "closed": 58,
+  "win_rate": 0.53,
+  "realized_sol": 76.72,
+  "top2_share": 0.56,
+  "med_hold_min": 0.1,
+  "tok_per_day": 3.4,
+  "cluster_size": 1,
+  "cluster_sol": 76.7,
+  "members": [
+   "4Q9gLASmHoT2h9rGWjRJFcC6futtkMARwQYFpiEobRYV"
+  ],
+  "early_in": [
+   [
+    "baton",
+    6,
+    4.17
+   ]
+  ]
+ },
+ {
+  "wallet": "EDDKvXYjkpgUVX73ujL2eHiyBjTSy4kNkwATyBQrRSpv",
+  "txs": 400,
+  "days": 23.2,
+  "hit_cap": true,
+  "tokens": 95,
+  "closed": 94,
+  "win_rate": 0.52,
+  "realized_sol": 59.54,
+  "top2_share": 0.56,
+  "med_hold_min": 0.2,
+  "tok_per_day": 4.1,
+  "cluster_size": 2,
+  "cluster_sol": 94.3,
+  "members": [
+   "EDDKvXYjkpgUVX73ujL2eHiyBjTSy4kNkwATyBQrRSpv",
+   "ChW45BhW1GxLuvea5cgssYGc3pupLu6ct3ch4w7zZJ3A"
+  ],
+  "early_in": [
+   [
+    "Titcoin",
+    13,
+    1.56
+   ]
+  ]
+ },
+ {
+  "wallet": "G3bRFhiCr3nGZEhDUss6dnGjqyTzCwdXEWCsepdpZ9r4",
+  "txs": 400,
+  "days": 10.1,
+  "hit_cap": true,
+  "tokens": 54,
+  "closed": 54,
+  "win_rate": 0.46,
+  "realized_sol": 52.79,
+  "top2_share": 0.62,
+  "med_hold_min": 2.6,
+  "tok_per_day": 5.4,
+  "cluster_size": 2,
+  "cluster_sol": 98.9,
+  "members": [
+   "G3bRFhiCr3nGZEhDUss6dnGjqyTzCwdXEWCsepdpZ9r4",
+   "GfEx1sug5B1ydUif3K8XBy3BitVQDQy33ozhMCnXVwNR"
+  ],
+  "early_in": [
+   [
+    "GOMO",
+    108,
+    1.0
+   ]
+  ]
+ },
+ {
+  "wallet": "64kaTPcKc4iYoM87NRNChnMhrnhLidpy7ahBRYG8kPem",
+  "txs": 400,
+  "days": 27.0,
+  "hit_cap": true,
+  "tokens": 96,
+  "closed": 96,
+  "win_rate": 0.44,
+  "realized_sol": 46.96,
+  "top2_share": 0.35,
+  "med_hold_min": 0.8,
+  "tok_per_day": 3.6,
+  "cluster_size": 3,
+  "cluster_sol": 135.3,
+  "members": [
+   "64kaTPcKc4iYoM87NRNChnMhrnhLidpy7ahBRYG8kPem",
+   "8Nf2EQQ6y1Q4vyEtG7t5RbFoAd9soHun9iTXn2xcf4Cv",
+   "8ibCPgtsjyf565Q8Ey7KBNfK1RtjLxZ2Ezq1PUo5sjzu"
+  ],
+  "early_in": [
+   [
+    "Incognito",
+    12,
+    1.35
+   ]
+  ]
+ },
+ {
+  "wallet": "CTuMVmPJJ1SVtUiWJ9bRqdZHCBdgKh4HNQg9os2r29QU",
+  "txs": 386,
+  "days": 29.8,
+  "hit_cap": false,
+  "tokens": 98,
+  "closed": 98,
+  "win_rate": 0.88,
+  "realized_sol": 46.16,
+  "top2_share": 0.13,
+  "med_hold_min": 0.1,
+  "tok_per_day": 3.3,
+  "cluster_size": 3,
+  "cluster_sol": 116.4,
+  "members": [
+   "CTuMVmPJJ1SVtUiWJ9bRqdZHCBdgKh4HNQg9os2r29QU",
+   "5gotLN2GVyRcbehP3wor6xbM4EtakktP16W8doY7U9Uk",
+   "5myVzZRTM2hKxaUvPZuhPgRUms8dXy9gYkA8GcKE7QpC"
+  ],
+  "early_in": [
+   [
+    "swordcat",
+    0,
+    1.66
+   ]
+  ]
+ },
+ {
+  "wallet": "H4Dh86x6XbSizaKzpQ1p696UfwPddmhJEywWG4emE6e7",
+  "txs": 400,
+  "days": 23.6,
+  "hit_cap": true,
+  "tokens": 62,
+  "closed": 50,
+  "win_rate": 0.86,
+  "realized_sol": 40.95,
+  "top2_share": 0.26,
+  "med_hold_min": 0.0,
+  "tok_per_day": 2.6,
+  "cluster_size": 1,
+  "cluster_sol": 41.0,
+  "members": [
+   "H4Dh86x6XbSizaKzpQ1p696UfwPddmhJEywWG4emE6e7"
+  ],
+  "early_in": [
+   [
+    "baton",
+    9,
+    2.61
+   ]
+  ]
+ },
+ {
+  "wallet": "A3CZH8prYMnSqrxEfA7wHbCS5EC4riJ3w7meknDUHgyq",
+  "txs": 400,
+  "days": 9.4,
+  "hit_cap": true,
+  "tokens": 103,
+  "closed": 103,
+  "win_rate": 0.43,
+  "realized_sol": 38.03,
+  "top2_share": 0.28,
+  "med_hold_min": 0.3,
+  "tok_per_day": 11.0,
+  "cluster_size": 2,
+  "cluster_sol": 75.6,
+  "members": [
+   "A3CZH8prYMnSqrxEfA7wHbCS5EC4riJ3w7meknDUHgyq",
+   "HXrTNRaeSADxKNiW4YbuYVqdG2x6HY1JgrdeLXNzRrG3"
+  ],
+  "early_in": [
+   [
+    "nub",
+    3,
+    6.02
+   ]
+  ]
+ },
+ {
+  "wallet": "8KiEjU7G1G4XraNwms7KRvNPsK6j8tBf9NW3KNn25kxX",
+  "txs": 400,
+  "days": 12.1,
+  "hit_cap": true,
+  "tokens": 33,
+  "closed": 19,
+  "win_rate": 0.89,
+  "realized_sol": 37.17,
+  "top2_share": 0.31,
+  "med_hold_min": 0.1,
+  "tok_per_day": 2.7,
+  "cluster_size": 1,
+  "cluster_sol": 37.2,
+  "members": [
+   "8KiEjU7G1G4XraNwms7KRvNPsK6j8tBf9NW3KNn25kxX"
+  ],
+  "early_in": [
+   [
+    "baton",
+    2,
+    0.94
+   ]
+  ]
+ },
+ {
+  "wallet": "BdF3jVkgDbUTBeqKZBLHBwHBrsqp9NswSY6aSLDa3RpK",
+  "txs": 328,
+  "days": 10.3,
+  "hit_cap": true,
+  "tokens": 81,
+  "closed": 81,
+  "win_rate": 0.51,
+  "realized_sol": 31.49,
+  "top2_share": 0.34,
+  "med_hold_min": 0.7,
+  "tok_per_day": 7.8,
+  "cluster_size": 2,
+  "cluster_sol": 61.5,
+  "members": [
+   "BdF3jVkgDbUTBeqKZBLHBwHBrsqp9NswSY6aSLDa3RpK",
+   "DF4TAksSgJswLvu8fWtBZnRoMhtqLSGgZH9wFeaowyt"
+  ],
+  "early_in": [
+   [
+    "knightcat",
+    1213,
+    1.08
+   ]
+  ]
+ },
+ {
+  "wallet": "H9P3UiQigRGpUANnARuSSa1mo738ULMFZEbN3MzBzZ7B",
+  "txs": 400,
+  "days": 24.0,
+  "hit_cap": true,
+  "tokens": 46,
+  "closed": 45,
+  "win_rate": 0.64,
+  "realized_sol": 29.61,
+  "top2_share": 0.55,
+  "med_hold_min": 2.9,
+  "tok_per_day": 1.9,
+  "cluster_size": 1,
+  "cluster_sol": 29.6,
+  "members": [
+   "H9P3UiQigRGpUANnARuSSa1mo738ULMFZEbN3MzBzZ7B"
+  ],
+  "early_in": [
+   [
+    "nub",
+    14,
+    2.0
+   ]
+  ]
+ },
+ {
+  "wallet": "J4d9GkjMeujQJMwZZYX9wq84FARy5GXE5G2cRo2j45zn",
+  "txs": 400,
+  "days": 8.7,
+  "hit_cap": true,
+  "tokens": 84,
+  "closed": 84,
+  "win_rate": 0.48,
+  "realized_sol": 28.28,
+  "top2_share": 0.5,
+  "med_hold_min": 10.0,
+  "tok_per_day": 9.7,
+  "cluster_size": 1,
+  "cluster_sol": 28.3,
+  "members": [
+   "J4d9GkjMeujQJMwZZYX9wq84FARy5GXE5G2cRo2j45zn"
+  ],
+  "early_in": [
+   [
+    "nub",
+    51,
+    1.0
+   ]
+  ]
+ },
+ {
+  "wallet": "9eat5B1JnYjeNgSRrA1bQwW3XsXyioC1ZwZ65kkvbWGe",
+  "txs": 400,
+  "days": 24.0,
+  "hit_cap": true,
+  "tokens": 66,
+  "closed": 66,
+  "win_rate": 0.42,
+  "realized_sol": 25.26,
+  "top2_share": 0.64,
+  "med_hold_min": 1.1,
+  "tok_per_day": 2.7,
+  "cluster_size": 1,
+  "cluster_sol": 25.3,
+  "members": [
+   "9eat5B1JnYjeNgSRrA1bQwW3XsXyioC1ZwZ65kkvbWGe"
+  ],
+  "early_in": [
+   [
+    "nub",
+    4,
+    1.96
+   ]
+  ]
+ },
+ {
+  "wallet": "Da6JDuHbAfYzGrsiaUJC7RedRffzC6JsTPd4TtTjuDF8",
+  "txs": 400,
+  "days": 25.6,
+  "hit_cap": true,
+  "tokens": 99,
+  "closed": 99,
+  "win_rate": 0.4,
+  "realized_sol": 24.96,
+  "top2_share": 0.6,
+  "med_hold_min": 0.6,
+  "tok_per_day": 3.9,
+  "cluster_size": 2,
+  "cluster_sol": 49.9,
+  "members": [
+   "Da6JDuHbAfYzGrsiaUJC7RedRffzC6JsTPd4TtTjuDF8",
+   "34S9GnZZUVr7a2rHzsXw6R8MyWn6y7p7UWmRYDbjeYX2"
+  ],
+  "early_in": [
+   [
+    "nub",
+    4,
+    1.21
+   ]
+  ]
+ },
+ {
+  "wallet": "E8GmiBWUqqs55JFmpYcLZ9jgBjyqXsBbvFxCYD9d2Efe",
+  "txs": 400,
+  "days": 18.0,
+  "hit_cap": true,
+  "tokens": 41,
+  "closed": 41,
+  "win_rate": 0.61,
+  "realized_sol": 24.04,
+  "top2_share": 0.54,
+  "med_hold_min": 6.2,
+  "tok_per_day": 2.3,
+  "cluster_size": 1,
+  "cluster_sol": 24.0,
+  "members": [
+   "E8GmiBWUqqs55JFmpYcLZ9jgBjyqXsBbvFxCYD9d2Efe"
+  ],
+  "early_in": [
+   [
+    "ALOIS",
+    379,
+    1.01
+   ]
+  ]
+ },
+ {
+  "wallet": "3BLRLSsNTbWqchrX2oRshZzHd5toqKDE4VrfbyxQ3W6B",
+  "txs": 400,
+  "days": 19.3,
+  "hit_cap": true,
+  "tokens": 97,
+  "closed": 97,
+  "win_rate": 0.64,
+  "realized_sol": 21.57,
+  "top2_share": 0.28,
+  "med_hold_min": 0.3,
+  "tok_per_day": 5.0,
+  "cluster_size": 2,
+  "cluster_sol": 40.9,
+  "members": [
+   "3BLRLSsNTbWqchrX2oRshZzHd5toqKDE4VrfbyxQ3W6B",
+   "9jxsYJrL8DMKWFDQzZbJSphpJBDPUCV5dJSXsrix2WXK"
+  ],
+  "early_in": [
+   [
+    "Titcoin",
+    8,
+    2.57
+   ]
+  ]
+ },
+ {
+  "wallet": "C6DnWBvaX7wRDkadfyKFFjyPGF7xot9f531EuXWxY8kb",
+  "txs": 331,
+  "days": 24.6,
+  "hit_cap": false,
+  "tokens": 107,
+  "closed": 107,
+  "win_rate": 0.5,
+  "realized_sol": 20.71,
+  "top2_share": 0.69,
+  "med_hold_min": 1.5,
+  "tok_per_day": 4.3,
+  "cluster_size": 1,
+  "cluster_sol": 20.7,
+  "members": [
+   "C6DnWBvaX7wRDkadfyKFFjyPGF7xot9f531EuXWxY8kb"
+  ],
+  "early_in": [
+   [
+    "SI276",
+    1698,
+    1.02
+   ]
+  ]
+ },
+ {
+  "wallet": "7oPm56DH9SSS2rXjUwbS2rKbARVQNvaB1CeXmYanC8nY",
+  "txs": 322,
+  "days": 27.1,
+  "hit_cap": false,
+  "tokens": 51,
+  "closed": 48,
+  "win_rate": 0.56,
+  "realized_sol": 19.75,
+  "top2_share": 0.41,
+  "med_hold_min": 0.8,
+  "tok_per_day": 1.9,
+  "cluster_size": 2,
+  "cluster_sol": 37.0,
+  "members": [
+   "7oPm56DH9SSS2rXjUwbS2rKbARVQNvaB1CeXmYanC8nY",
+   "9SoV9heNXNn5ke5o6UAbTRcrkFmxKB4QVA4QHZB7grSZ"
+  ],
+  "early_in": [
+   [
+    "Titcoin",
+    14,
+    0.96
+   ]
+  ]
+ },
+ {
+  "wallet": "EfkGWKfiLcVTNiJPy4GD8g3zUYaGvMWVFLCrfC2LfJGw",
+  "txs": 400,
+  "days": 11.7,
+  "hit_cap": true,
+  "tokens": 44,
+  "closed": 31,
+  "win_rate": 0.71,
+  "realized_sol": 15.59,
+  "top2_share": 0.42,
+  "med_hold_min": 0.1,
+  "tok_per_day": 3.8,
+  "cluster_size": 1,
+  "cluster_sol": 15.6,
+  "members": [
+   "EfkGWKfiLcVTNiJPy4GD8g3zUYaGvMWVFLCrfC2LfJGw"
+  ],
+  "early_in": [
+   [
+    "baton",
+    14,
+    15.2
+   ]
+  ]
+ },
+ {
+  "wallet": "EaZNBezvDDhhm6hcafAUTZzm12PiYNMm6zzizGq9yzaP",
+  "txs": 323,
+  "days": 26.3,
+  "hit_cap": false,
+  "tokens": 133,
+  "closed": 127,
+  "win_rate": 0.42,
+  "realized_sol": 15.12,
+  "top2_share": 0.37,
+  "med_hold_min": 13.2,
+  "tok_per_day": 5.1,
+  "cluster_size": 1,
+  "cluster_sol": 15.1,
+  "members": [
+   "EaZNBezvDDhhm6hcafAUTZzm12PiYNMm6zzizGq9yzaP"
+  ],
+  "early_in": [
+   [
+    "DRMR",
+    97,
+    1.1
+   ]
+  ]
+ }
+]

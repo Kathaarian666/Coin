@@ -1,0 +1,1055 @@
+[
+ {
+  "wallet": "HWmYPyQY7aqpFdWrK9PvtDf8YN1DroKnyAzm2khNMeAT",
+  "txs": 365,
+  "days": 29.9,
+  "hit_cap": false,
+  "tokens": 40,
+  "closed": 36,
+  "win_rate": 0.33,
+  "realized_sol": 37.81,
+  "top2_share": 1.18,
+  "med_hold_min": 7.8,
+  "tok_per_day": 1.3,
+  "funder": "AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk",
+  "wallet_age_d": 48.0,
+  "early_in": [
+   [
+    "Altai",
+    3676,
+    796,
+    2.92
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 2,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "Ee11Tkovhjd4WRMeofdMPQphHPFc5wAEjpmm1SPUsdrH",
+  "txs": 400,
+  "days": 22.9,
+  "hit_cap": true,
+  "tokens": 13,
+  "closed": 11,
+  "win_rate": 0.64,
+  "realized_sol": 162.9,
+  "top2_share": 0.71,
+  "med_hold_min": 262.8,
+  "tok_per_day": 0.6,
+  "funder": "frLYWekMfxPf2rxux2eV7GaoV9XvuA66QYtBD3n7m8T",
+  "wallet_age_d": 259.1,
+  "early_in": [
+   [
+    "Altai",
+    4779,
+    1037,
+    3.03
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "DuKtSZgvPFeP6CxQn6ov9QbCvpA7LfPggu6cVw1p8amM",
+  "txs": 400,
+  "days": 7.0,
+  "hit_cap": true,
+  "tokens": 80,
+  "closed": 80,
+  "win_rate": 0.71,
+  "realized_sol": 86.95,
+  "top2_share": 0.48,
+  "med_hold_min": 0.4,
+  "tok_per_day": 11.4,
+  "funder": "F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe",
+  "wallet_age_d": 15.6,
+  "early_in": [
+   [
+    "Altai",
+    5796,
+    1257,
+    1.58
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "68aipj7xeMwZiTuCREMEEaD9AWMiLWkUvd5ue4SZjti9",
+  "txs": 400,
+  "days": 6.2,
+  "hit_cap": true,
+  "tokens": 94,
+  "closed": 94,
+  "win_rate": 0.48,
+  "realized_sol": 62.82,
+  "top2_share": 0.6,
+  "med_hold_min": 0.3,
+  "tok_per_day": 15.2,
+  "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+  "wallet_age_d": 15.8,
+  "early_in": [
+   [
+    "Altai",
+    5796,
+    1257,
+    1.7
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 5
+ },
+ {
+  "wallet": "HZsXzkixJvWBsWWJqBm3B7HNsYTkzCoJHNvZg8FC4kyQ",
+  "txs": 400,
+  "days": 6.1,
+  "hit_cap": true,
+  "tokens": 92,
+  "closed": 92,
+  "win_rate": 0.3,
+  "realized_sol": 35.66,
+  "top2_share": 0.86,
+  "med_hold_min": 0.3,
+  "tok_per_day": 15.1,
+  "funder": "BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6",
+  "wallet_age_d": 15.6,
+  "early_in": [
+   [
+    "Altai",
+    5796,
+    1257,
+    1.74
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "7GgLHG2hWqFKqMvfzgG5VeLgE2M4KD2GpveKZ4ZXD5hp",
+  "txs": 218,
+  "days": 28.2,
+  "hit_cap": false,
+  "tokens": 15,
+  "closed": 13,
+  "win_rate": 0.54,
+  "realized_sol": 37.09,
+  "top2_share": 0.96,
+  "med_hold_min": 8.3,
+  "tok_per_day": 0.5,
+  "funder": "MsFDcKR1nDk1h6q7sCY4g16NbDZhLMnmy31CvLYcwqH",
+  "wallet_age_d": 28.2,
+  "early_in": [
+   [
+    "SI276",
+    3923,
+    1063,
+    8.08
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "8q1q7c8vgLyRhu4TJ8eV65k2vCxHyhQPue4TmvtmkgpX",
+  "txs": 166,
+  "days": 28.6,
+  "hit_cap": false,
+  "tokens": 10,
+  "closed": 8,
+  "win_rate": 0.62,
+  "realized_sol": 114.63,
+  "top2_share": 1.0,
+  "med_hold_min": 5030.6,
+  "tok_per_day": 0.3,
+  "funder": "9qeaDhrAZEAMhHkBnrLUgYWhFavu9TtA4izK4hHTU5tM",
+  "wallet_age_d": 144.6,
+  "early_in": [
+   [
+    "PAID",
+    236,
+    74,
+    1.0
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "3dYTe62N7zThxoqqNHYQhLPfEe2exoziMAVHadzfCgUt",
+  "txs": 400,
+  "days": 10.6,
+  "hit_cap": true,
+  "tokens": 40,
+  "closed": 39,
+  "win_rate": 0.46,
+  "realized_sol": 38.48,
+  "top2_share": 0.98,
+  "med_hold_min": 3.4,
+  "tok_per_day": 3.8,
+  "funder": "ASTyfSima4LLAdDgoFGkgqoKowG1LZFDr9fAQrg7iaJZ",
+  "wallet_age_d": 50.5,
+  "early_in": [
+   [
+    "PAID",
+    244,
+    77,
+    1.54
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 2,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "BSkhXxeFb1CpNqcDomyin2uEMv9kbueUp4zJ48zJPT98",
+  "txs": 400,
+  "days": 29.8,
+  "hit_cap": true,
+  "tokens": 19,
+  "closed": 19,
+  "win_rate": 0.47,
+  "realized_sol": 135.77,
+  "top2_share": 1.08,
+  "med_hold_min": 5.0,
+  "tok_per_day": 0.6,
+  "funder": "FJhAMH9b73WtfkE553sGDBNCgYGc8Zzja2huWz4MwPMP",
+  "wallet_age_d": 167.6,
+  "early_in": [
+   [
+    "PAID",
+    268,
+    84,
+    1.5
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "C9ZWb3Akq9ixTK2jGWNpNcENsEEWeKd29ja8E7dyT7hQ",
+  "txs": 400,
+  "days": 26.4,
+  "hit_cap": true,
+  "tokens": 21,
+  "closed": 9,
+  "win_rate": 0.56,
+  "realized_sol": 73.72,
+  "top2_share": 1.07,
+  "med_hold_min": 23.3,
+  "tok_per_day": 0.8,
+  "funder": "Dv34prGm2BT7Ph2n6qKLgzeLgjnii87RJJ7Db6ZQQvKM",
+  "wallet_age_d": 90.6,
+  "early_in": [
+   [
+    "PAID",
+    384,
+    121,
+    2.04
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "7Jm6fNzvpoXS9sNqJ4Sk92hajiiKYnhsEJ6crS65iBQW",
+  "txs": 400,
+  "days": 29.7,
+  "hit_cap": true,
+  "tokens": 86,
+  "closed": 86,
+  "win_rate": 0.56,
+  "realized_sol": 104.76,
+  "top2_share": 0.35,
+  "med_hold_min": 0.8,
+  "tok_per_day": 2.9,
+  "funder": "BY4StcU9Y2BpgH8quZzorg31EGE4L1rjomN8FNsCBEcx",
+  "wallet_age_d": 225.7,
+  "early_in": [
+   [
+    "baton",
+    6,
+    2,
+    2.08
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "Gn5pmu4LkGUgma5wECbQvgCBiGWEtyUu3ri8G1LqqUyJ",
+  "txs": 400,
+  "days": 8.7,
+  "hit_cap": true,
+  "tokens": 79,
+  "closed": 79,
+  "win_rate": 0.57,
+  "realized_sol": 75.14,
+  "top2_share": 0.27,
+  "med_hold_min": 1.2,
+  "tok_per_day": 9.1,
+  "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+  "wallet_age_d": 225.7,
+  "early_in": [
+   [
+    "baton",
+    6,
+    2,
+    2.04
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 5
+ },
+ {
+  "wallet": "EX2LY5gA5VDXVyxdJCPSvQRsRfPXXB3w8YMaMr1SaZs8",
+  "txs": 400,
+  "days": 6.9,
+  "hit_cap": true,
+  "tokens": 62,
+  "closed": 61,
+  "win_rate": 0.54,
+  "realized_sol": 84.9,
+  "top2_share": 0.57,
+  "med_hold_min": 1.1,
+  "tok_per_day": 8.9,
+  "funder": "5aL1Kzqt8NN8GfNyi799YpAu3sb56mwRwi961CnscNEY",
+  "wallet_age_d": 634.0,
+  "early_in": [
+   [
+    "baton",
+    6,
+    2,
+    2.0
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "3QELEdPBiyzRVNh2bnKbsnXgKfQdmSjg5pscoRJHDb9k",
+  "txs": 400,
+  "days": 9.8,
+  "hit_cap": true,
+  "tokens": 121,
+  "closed": 121,
+  "win_rate": 0.32,
+  "realized_sol": 41.21,
+  "top2_share": 1.31,
+  "med_hold_min": 0.7,
+  "tok_per_day": 12.4,
+  "funder": "AC5RDfQFmDS1deWZos921JfqscXdByf8BKHs5ACWjtW2",
+  "wallet_age_d": 492.9,
+  "early_in": [
+   [
+    "baton",
+    21,
+    6,
+    7.09
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "4Q9gLASmHoT2h9rGWjRJFcC6futtkMARwQYFpiEobRYV",
+  "txs": 400,
+  "days": 17.8,
+  "hit_cap": true,
+  "tokens": 61,
+  "closed": 58,
+  "win_rate": 0.53,
+  "realized_sol": 76.72,
+  "top2_share": 0.56,
+  "med_hold_min": 0.1,
+  "tok_per_day": 3.4,
+  "funder": "83BWkXwCjVmE8UjwCpc41DF7hufF9dj5QEq8q73C3fBN",
+  "wallet_age_d": 619.6,
+  "early_in": [
+   [
+    "baton",
+    21,
+    6,
+    4.17
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 2,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "agMWoZ4ptCK4G81K7P6Kobg4itNF7uXvo4tZtUD6E22",
+  "txs": 400,
+  "days": 15.3,
+  "hit_cap": true,
+  "tokens": 58,
+  "closed": 51,
+  "win_rate": 0.29,
+  "realized_sol": 62.66,
+  "top2_share": 0.99,
+  "med_hold_min": 0.8,
+  "tok_per_day": 3.8,
+  "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+  "wallet_age_d": 64.3,
+  "early_in": [
+   [
+    "baton",
+    27,
+    8,
+    6.58
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 5
+ },
+ {
+  "wallet": "H4Dh86x6XbSizaKzpQ1p696UfwPddmhJEywWG4emE6e7",
+  "txs": 400,
+  "days": 23.4,
+  "hit_cap": true,
+  "tokens": 62,
+  "closed": 50,
+  "win_rate": 0.86,
+  "realized_sol": 40.95,
+  "top2_share": 0.26,
+  "med_hold_min": 0.0,
+  "tok_per_day": 2.7,
+  "funder": "A2psy1v6B9Dm6nvntvHeUoYA9SsUiLJ7R4k8nLgmQDmR",
+  "wallet_age_d": 544.5,
+  "early_in": [
+   [
+    "baton",
+    31,
+    9,
+    2.61
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "CsUCkqxX8NWt2pKnkfhbv3ExmAbrJBAy8NEY5NFZH1pK",
+  "txs": 400,
+  "days": 5.8,
+  "hit_cap": true,
+  "tokens": 61,
+  "closed": 59,
+  "win_rate": 0.46,
+  "realized_sol": 107.15,
+  "top2_share": 0.66,
+  "med_hold_min": 2.5,
+  "tok_per_day": 10.5,
+  "funder": "7uGGcWuUzfiumGQbuuJYj79Sx22xAgL9GiPAb3fVc9QR",
+  "wallet_age_d": 718.8,
+  "early_in": [
+   [
+    "baton",
+    34,
+    10,
+    8.09
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "HMSt7sCQqyFfgkAB1MxoMJMruZNZAt7ABqbiwSRmsTsu",
+  "txs": 400,
+  "days": 20.7,
+  "hit_cap": true,
+  "tokens": 68,
+  "closed": 68,
+  "win_rate": 0.32,
+  "realized_sol": 38.11,
+  "top2_share": 2.28,
+  "med_hold_min": 1.1,
+  "tok_per_day": 3.3,
+  "funder": "AQTgJEo3rPLae7Awss6ZAXer9ENZ3hUurDiY4ESfxbde",
+  "wallet_age_d": 263.0,
+  "early_in": [
+   [
+    "baton",
+    46,
+    14,
+    7.01
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "4MNiUt5kptveg8HN2nmcmRzoVRThBFXoAtfFrbSdWvJR",
+  "txs": 400,
+  "days": 4.7,
+  "hit_cap": true,
+  "tokens": 17,
+  "closed": 17,
+  "win_rate": 0.24,
+  "realized_sol": 166.65,
+  "top2_share": 1.2,
+  "med_hold_min": 15.7,
+  "tok_per_day": 3.6,
+  "funder": "9rYDSfpA5pLWZakvBSKW5xJAktwDvAQ6m5VDeY4reF4M",
+  "wallet_age_d": 311.7,
+  "early_in": [
+   [
+    "baton",
+    57,
+    18,
+    3.41
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "3ZmfqVqGggTcgVEFkDkSECbrEJF1XzhRNZdbBVR4X9D3",
+  "txs": 400,
+  "days": 17.9,
+  "hit_cap": true,
+  "tokens": 76,
+  "closed": 76,
+  "win_rate": 0.42,
+  "realized_sol": 255.13,
+  "top2_share": 0.76,
+  "med_hold_min": 3.2,
+  "tok_per_day": 4.2,
+  "funder": "6MoPSudYwVBZo5vKYBpKqnkgcS7vwRJjtwsoMER2Tvs7",
+  "wallet_age_d": 118.0,
+  "early_in": [
+   [
+    "baton",
+    75,
+    24,
+    5.53
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "GiBSJd2Sk9ZdAyPQpCRpgjVtU39jrRMY5txoxVaWTh6F",
+  "txs": 400,
+  "days": 18.8,
+  "hit_cap": true,
+  "tokens": 87,
+  "closed": 87,
+  "win_rate": 0.47,
+  "realized_sol": 258.58,
+  "top2_share": 0.78,
+  "med_hold_min": 2.8,
+  "tok_per_day": 4.6,
+  "funder": "Bi8EUGzX2f8PgzAAy7qKicn7C7ybXTYvxCwA1MghhhkF",
+  "wallet_age_d": 118.0,
+  "early_in": [
+   [
+    "baton",
+    75,
+    24,
+    5.87
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "Guh1fcLp3siRk6ik9erGUSvnAK5w6q1yPdPS8vFjtrYm",
+  "txs": 400,
+  "days": 18.8,
+  "hit_cap": true,
+  "tokens": 90,
+  "closed": 90,
+  "win_rate": 0.52,
+  "realized_sol": 194.41,
+  "top2_share": 0.61,
+  "med_hold_min": 2.8,
+  "tok_per_day": 4.8,
+  "funder": "GMvEf3M9TBGefS4nSj7XGjayMXpyXwQ3xjjVUqTxKvBL",
+  "wallet_age_d": 113.0,
+  "early_in": [
+   [
+    "baton",
+    75,
+    24,
+    6.17
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "CduW4f9NqGjWEzbBMPy4pqbJ3c37ufdRBiX6UGDmtHwk",
+  "txs": 400,
+  "days": 18.7,
+  "hit_cap": true,
+  "tokens": 82,
+  "closed": 82,
+  "win_rate": 0.54,
+  "realized_sol": 170.07,
+  "top2_share": 0.66,
+  "med_hold_min": 3.0,
+  "tok_per_day": 4.4,
+  "funder": "6CYELSz6CPSS5aDM58nznnNRZ1dx4WDwsa6pyUtjtyze",
+  "wallet_age_d": 113.0,
+  "early_in": [
+   [
+    "baton",
+    75,
+    24,
+    5.59
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "wYFUpdagf9cxr2YRZ27BP3gAzW1SpYGzghnyXvtunoq",
+  "txs": 400,
+  "days": 17.8,
+  "hit_cap": true,
+  "tokens": 76,
+  "closed": 76,
+  "win_rate": 0.46,
+  "realized_sol": 193.86,
+  "top2_share": 0.51,
+  "med_hold_min": 3.2,
+  "tok_per_day": 4.3,
+  "funder": "9i6LJk3123Jw9e9XR5dq6LxtRHg8gH15xZK2gxM52Kmr",
+  "wallet_age_d": 119.2,
+  "early_in": [
+   [
+    "baton",
+    75,
+    24,
+    6.41
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "6yjt4Ny1o5jUeAnuVqAphDa7AfMunoy2wS7iMG3YqcMv",
+  "txs": 400,
+  "days": 18.6,
+  "hit_cap": true,
+  "tokens": 80,
+  "closed": 80,
+  "win_rate": 0.46,
+  "realized_sol": 288.98,
+  "top2_share": 0.56,
+  "med_hold_min": 3.2,
+  "tok_per_day": 4.3,
+  "funder": "75fDLVh3X5isaNaheE749iHu3napZaQW5TFuX3SUZDxv",
+  "wallet_age_d": 119.0,
+  "early_in": [
+   [
+    "baton",
+    75,
+    24,
+    5.69
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "FF5f61crvKReSypFLq9ysbDWS4FHQv5tWBWPTw4QFsRe",
+  "txs": 400,
+  "days": 22.1,
+  "hit_cap": true,
+  "tokens": 10,
+  "closed": 9,
+  "win_rate": 0.56,
+  "realized_sol": 30.01,
+  "top2_share": 0.88,
+  "med_hold_min": 0.2,
+  "tok_per_day": 0.5,
+  "funder": "Grr9WnZdcetQywtFXog81UhqmnJyvFhb4AT3ipw44mZP",
+  "wallet_age_d": 40.0,
+  "early_in": [
+   [
+    "baton",
+    95,
+    31,
+    17.01
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 2
+ },
+ {
+  "wallet": "89zUMyp1kSwdSVDDMH1qYdtf4XCWhfged16FzQMsXbvb",
+  "txs": 400,
+  "days": 7.4,
+  "hit_cap": true,
+  "tokens": 51,
+  "closed": 51,
+  "win_rate": 0.41,
+  "realized_sol": 80.31,
+  "top2_share": 1.07,
+  "med_hold_min": 2.9,
+  "tok_per_day": 6.9,
+  "funder": "D8cJRpXaCWVK8c3doDq7Ymoz2XE4WyhFhbgNytWwqptA",
+  "wallet_age_d": 69.5,
+  "early_in": [
+   [
+    "Incognito",
+    664,
+    144,
+    2.53
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "FdDEkDNZ1jsosXKDL2TUcPzgLBgunUMhBpX27rQEfncr",
+  "txs": 400,
+  "days": 3.7,
+  "hit_cap": true,
+  "tokens": 68,
+  "closed": 67,
+  "win_rate": 0.27,
+  "realized_sol": 63.94,
+  "top2_share": 1.06,
+  "med_hold_min": 3.5,
+  "tok_per_day": 18.5,
+  "funder": "5bhCcuvSQYY5vnjNj7E9pbk6UnfxaFmkEweHzrHmsuV9",
+  "wallet_age_d": 7.2,
+  "early_in": [
+   [
+    "Incognito",
+    740,
+    161,
+    4.0
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "HDKCL1qiZnyNHfnwMaJJM83z6SdVto5NpXSHiwKVFc1G",
+  "txs": 400,
+  "days": 19.2,
+  "hit_cap": true,
+  "tokens": 48,
+  "closed": 48,
+  "win_rate": 0.38,
+  "realized_sol": 36.86,
+  "top2_share": 1.25,
+  "med_hold_min": 8.8,
+  "tok_per_day": 2.5,
+  "funder": "4SoyyC2X9bwqKhwQKEctDCDpR6JmFE3ZShUHmoN6pgDD",
+  "wallet_age_d": 507.8,
+  "early_in": [
+   [
+    "Incognito",
+    743,
+    161,
+    1.51
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "AbFkKcTNZ3J5qjFW59whfHgWeBcSWVexTLaRbFgMJ68C",
+  "txs": 400,
+  "days": 11.4,
+  "hit_cap": true,
+  "tokens": 52,
+  "closed": 51,
+  "win_rate": 0.37,
+  "realized_sol": 43.87,
+  "top2_share": 1.81,
+  "med_hold_min": 0.4,
+  "tok_per_day": 4.6,
+  "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+  "wallet_age_d": 16.7,
+  "early_in": [
+   [
+    "Incognito",
+    851,
+    185,
+    5.01
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 5
+ },
+ {
+  "wallet": "HbcAZQGFs5MyFBxEocB9SZ9kC34PWroESGRrgzxnSVDX",
+  "txs": 400,
+  "days": 5.1,
+  "hit_cap": true,
+  "tokens": 33,
+  "closed": 33,
+  "win_rate": 0.48,
+  "realized_sol": 273.56,
+  "top2_share": 1.03,
+  "med_hold_min": 2.5,
+  "tok_per_day": 6.5,
+  "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+  "wallet_age_d": 9.1,
+  "early_in": [
+   [
+    "Incognito",
+    866,
+    188,
+    10.0
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 3,
+  "is_creator": null,
+  "shared_funder": 5
+ },
+ {
+  "wallet": "AZBNKUdiVCNgYGeKu9UPYdyrXN6mwW3vZQprEdGLoKpf",
+  "txs": 400,
+  "days": 15.8,
+  "hit_cap": true,
+  "tokens": 26,
+  "closed": 22,
+  "win_rate": 0.27,
+  "realized_sol": 57.49,
+  "top2_share": 1.22,
+  "med_hold_min": 26.5,
+  "tok_per_day": 1.6,
+  "funder": "HvT6hKMsGyyCipi1xS2w3HL9T6C7vAiMjgn4diBDgLhJ",
+  "wallet_age_d": 273.0,
+  "early_in": [
+   [
+    "Incognito",
+    1027,
+    223,
+    1.0
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "Dr8Ej9Vd4od5euVvmAnMwscFmtFZVt7PgjrReFUSJGhf",
+  "txs": 400,
+  "days": 6.4,
+  "hit_cap": true,
+  "tokens": 73,
+  "closed": 73,
+  "win_rate": 0.34,
+  "realized_sol": 44.99,
+  "top2_share": 0.93,
+  "med_hold_min": 4.7,
+  "tok_per_day": 11.4,
+  "funder": "GJNzsrPFs9r9CvC6jsSGEFiVsUcKyxKXHbzUUqBHyGUV",
+  "wallet_age_d": 522.5,
+  "early_in": [
+   [
+    "Incognito",
+    1062,
+    231,
+    4.04
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 1,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "Dn7NtVTKojUZ8fehX3RmBN2TRgEH6QAmCVR9Ms5P2334",
+  "txs": 400,
+  "days": 8.6,
+  "hit_cap": true,
+  "tokens": 36,
+  "closed": 34,
+  "win_rate": 0.26,
+  "realized_sol": 152.88,
+  "top2_share": 1.45,
+  "med_hold_min": 44.1,
+  "tok_per_day": 4.2,
+  "funder": "69sspEoxa8xmoVJgFLnNoJmTxSfdAvUS9txEY4fWvXdA",
+  "wallet_age_d": 576.5,
+  "early_in": [
+   [
+    "Incognito",
+    1143,
+    248,
+    12.12
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 2,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "5gotLN2GVyRcbehP3wor6xbM4EtakktP16W8doY7U9Uk",
+  "txs": 329,
+  "days": 29.6,
+  "hit_cap": false,
+  "tokens": 99,
+  "closed": 99,
+  "win_rate": 0.8,
+  "realized_sol": 39.57,
+  "top2_share": 0.15,
+  "med_hold_min": 0.1,
+  "tok_per_day": 3.3,
+  "funder": "Bp1w763DMgbwAEmV6W8EPHbLgiX97NTmT4np8JX94Y4E",
+  "wallet_age_d": 131.4,
+  "early_in": [
+   [
+    "swordcat",
+    0,
+    0,
+    2.02
+   ]
+  ],
+  "first_slot_buys": 1,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "E6Ez5Cg5dcfuBLnYTNWM29LZ2KdvC8BzsYrHGXypU1bX",
+  "txs": 228,
+  "days": 21.6,
+  "hit_cap": false,
+  "tokens": 17,
+  "closed": 10,
+  "win_rate": 0.9,
+  "realized_sol": 35.65,
+  "top2_share": 0.62,
+  "med_hold_min": 13747.2,
+  "tok_per_day": 0.8,
+  "funder": "AF8VuwCncKd5ZBnLYYnMjqh4vLch8mjqE75sFe5ZjRFW",
+  "wallet_age_d": 21.6,
+  "early_in": [
+   [
+    "knightcat",
+    4506,
+    1215,
+    2.09
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "7S91oD4ZquUpqaHW1rRYosRpp9vepi3N8pHqCMVzNZZd",
+  "txs": 122,
+  "days": 29.9,
+  "hit_cap": false,
+  "tokens": 10,
+  "closed": 10,
+  "win_rate": 0.3,
+  "realized_sol": 59.77,
+  "top2_share": 1.25,
+  "med_hold_min": 4609.4,
+  "tok_per_day": 0.3,
+  "funder": "7yLaDo12vD1w1b3jh4rJZ4T1xvkhqoYi8xCm4cMCnhTp",
+  "wallet_age_d": 51.3,
+  "early_in": [
+   [
+    "MISTAKE",
+    2777,
+    879,
+    4.44
+   ]
+  ],
+  "first_slot_buys": 0,
+  "sold_more_than_bought": 2,
+  "is_creator": null,
+  "shared_funder": 1
+ },
+ {
+  "wallet": "3suUcHxDk4pX8AqArW7JtrY9xe7WGPg3S1SUQxgjcBzs",
+  "txs": 253,
+  "days": 26.9,
+  "hit_cap": false,
+  "tokens": 39,
+  "closed": 33,
+  "win_rate": 0.48,
+  "realized_sol": 132.85,
+  "top2_share": 0.51,
+  "med_hold_min": 1.6,
+  "tok_per_day": 1.4,
+  "funder": "Grr9WnZdcetQywtFXog81UhqmnJyvFhb4AT3ipw44mZP",
+  "wallet_age_d": 46.8,
+  "early_in": [
+   [
+    "ABU",
+    0,
+    0,
+    5.01
+   ]
+  ],
+  "first_slot_buys": 1,
+  "sold_more_than_bought": 0,
+  "is_creator": null,
+  "shared_funder": 2
+ }
+]
