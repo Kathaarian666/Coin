@@ -1,0 +1,262 @@
+[
+{
+"mint": "ApZuxdpzMrbEYTGEzeY9afh5pj9d6qPRJCTgQYiipbKg",
+"symbol": "CYBERLEEK",
+"created": 1786828046.0,
+"fdv": 3434678,
+"liq": 678105.18,
+"vol": 4817695.42,
+"txns": 30481,
+"age_d": 57.7
+},
+{
+"mint": "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82",
+"symbol": "BOME",
+"created": 1710401208.0,
+"fdv": 60859931,
+"liq": 16203750.59,
+"vol": 2722790.58,
+"txns": 13691,
+"age_d": 942.3
+},
+{
+"mint": "2j5SaS7xy776qCBpyPQbZjyQSAtKiFgrwjfErthnW2ZM",
+"symbol": "CLAUDIA",
+"created": 1791337470.0,
+"fdv": 6269194,
+"liq": 324415.56,
+"vol": 2116752.32,
+"txns": 17072,
+"age_d": 5.5
+},
+{
+"mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+"symbol": "USDG",
+"created": 1763003227.0,
+"fdv": 26949120,
+"liq": 4402662.19,
+"vol": 1541911.1,
+"txns": 13411,
+"age_d": 333.4
+},
+{
+"mint": "CWZ6BsdnjkDVTGkmL6bGbJXXig6ceef12KvyGQW14cMt",
+"symbol": "ANTFUN",
+"created": 1783666044.0,
+"fdv": 103471471,
+"liq": 12676756.02,
+"vol": 1509152.22,
+"txns": 20215,
+"age_d": 94.3
+},
+{
+"mint": "7KEPApdbBMByrmqihz3bht2uMhFQcatjfSFQCKq66kH3",
+"symbol": "DARK",
+"created": 1790876181.0,
+"fdv": 4005572,
+"liq": 261464.71,
+"vol": 1309045.58,
+"txns": 5028,
+"age_d": 10.8
+},
+{
+"mint": "DBRiDgJAMsM95moTzJs7M9LnkGErpbv9v6CUR1DXnUu5",
+"symbol": "DBR",
+"created": 1729092468.0,
+"fdv": 197634634,
+"liq": 6007164.8,
+"vol": 1242316.81,
+"txns": 2818,
+"age_d": 725.9
+},
+{
+"mint": "GTBxUiw6wJdmmkCGZgRHLyYxqu1vG4KtRpeox6yDpump",
+"symbol": "JEANPHIL",
+"created": 1789844819.0,
+"fdv": 7612268,
+"liq": 441344.58,
+"vol": 900514.09,
+"txns": 7070,
+"age_d": 22.8
+},
+{
+"mint": "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump",
+"symbol": "Fartcoin ",
+"created": 1729231787.0,
+"fdv": 164854597,
+"liq": 8203676.2,
+"vol": 877629.19,
+"txns": 6509,
+"age_d": 724.3
+},
+{
+"mint": "Hg5Ja55T5wESq4vyFoiVCMeHXtGyVA69X2UHq8hgpump",
+"symbol": "baton",
+"created": 1788985934.0,
+"fdv": 15605563,
+"liq": 828406.4,
+"vol": 669566.15,
+"txns": 8085,
+"age_d": 32.7
+},
+{
+"mint": "98kfF7rmsg1QDUEoCqNE7g7M1FdrTt92TEp2CLzypump",
+"symbol": "PAID",
+"created": 1789500144.0,
+"fdv": 4471654,
+"liq": 488429.16,
+"vol": 648801.4,
+"txns": 5320,
+"age_d": 26.8
+},
+{
+"mint": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+"symbol": "CATE",
+"created": 1785083563.0,
+"fdv": 53686324,
+"liq": 2738844.03,
+"vol": 633267.58,
+"txns": 3355,
+"age_d": 77.9
+},
+{
+"mint": "BCdwQBAn8dYB5YjTsoB6TdHAWokxv28k2oZUodERpump",
+"symbol": "MANIFEST",
+"created": 1778990847.0,
+"fdv": 9489818,
+"liq": 514962,
+"vol": 630508.37,
+"txns": 6509,
+"age_d": 148.4
+},
+{
+"mint": "5tCju6YNxHq5zrA6tGndr6F7TK42mpUFmeE31cSFpump",
+"symbol": "swordcat",
+"created": 1790586789.0,
+"fdv": 2873762,
+"liq": 230728.7,
+"vol": 520611.93,
+"txns": 5615,
+"age_d": 14.2
+},
+{
+"mint": "GbbesPbaYh5uiAZSYNXTc7w9jty1rpg3P9L4JeN4LkKc",
+"symbol": "TRX",
+"created": 1755611699.0,
+"fdv": 6625894,
+"liq": 12352005.38,
+"vol": 506988.78,
+"txns": 3021,
+"age_d": 419.0
+},
+{
+"mint": "BXoHJddsWJLHtAopeiSbKUSELsu8hSFMs8baGMDkpump",
+"symbol": "CRAWL",
+"created": 1791065290.0,
+"fdv": 2332399,
+"liq": 202732.01,
+"vol": 495826.72,
+"txns": 4380,
+"age_d": 8.6
+},
+{
+"mint": "Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw",
+"symbol": "ANTHROPIC",
+"created": 1776380821.0,
+"fdv": 7919140,
+"liq": 433453.18,
+"vol": 469513.86,
+"txns": 6957,
+"age_d": 178.6
+},
+{
+"mint": "8nnaeWCw8mUypcGAgbmSuzAT85uWx4UN12adDrMhXrGF",
+"symbol": "HOTBOT",
+"created": 1790920030.0,
+"fdv": 4202479,
+"liq": 249735.38,
+"vol": 464306.82,
+"txns": 4656,
+"age_d": 10.3
+},
+{
+"mint": "MukLDtJ8Cx9DxLbeyLRSWPSposTMWuwHANbuaudpump",
+"symbol": "OTC",
+"created": 1787923990.0,
+"fdv": 4313395,
+"liq": 497139.89,
+"vol": 463809.76,
+"txns": 13893,
+"age_d": 45.0
+},
+{
+"mint": "KENJSUYLASHUMfHyy5o4Hp2FdNqZg1AsUPhfH2kYvEP",
+"symbol": "GRIFFAIN",
+"created": 1730593613.0,
+"fdv": 16244097,
+"liq": 2079043.95,
+"vol": 436345.1,
+"txns": 4652,
+"age_d": 708.6
+},
+{
+"mint": "61V8vBaqAGMpgDQi4JcAwo1dmBGHsyhzodcPqnEVpump",
+"symbol": "arc",
+"created": 1733865287.0,
+"fdv": 60943529,
+"liq": 4438620,
+"vol": 427744.71,
+"txns": 3112,
+"age_d": 670.7
+},
+{
+"mint": "7VertkgF9KLhxxJXHX6uaWuoYZTP9LdGj2bWmVXVpump",
+"symbol": "Agency",
+"created": 1790894555.0,
+"fdv": 2178937,
+"liq": 228223.76,
+"vol": 382262.77,
+"txns": 3112,
+"age_d": 10.6
+},
+{
+"mint": "CTPoyCwkjMvoJwU4xvZZqoD8tiYk6yDchySiN5gGpump",
+"symbol": "fone",
+"created": 1787789024.0,
+"fdv": 5502639,
+"liq": 571881.06,
+"vol": 339743.18,
+"txns": 2454,
+"age_d": 46.6
+},
+{
+"mint": "6UtY9iTZMQQ5QZVrbzFnNaJntV7oySm9k97mvwnuZcxr",
+"symbol": "NEARKAT",
+"created": 1788752871.0,
+"fdv": 5081740,
+"liq": 386396.59,
+"vol": 317014.47,
+"txns": 1375,
+"age_d": 35.4
+},
+{
+"mint": "8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn",
+"symbol": "ZEREBRO",
+"created": 1730142507.0,
+"fdv": 29661066,
+"liq": 3025271.41,
+"vol": 311783.5,
+"txns": 3415,
+"age_d": 713.8
+},
+{
+"mint": "8XtRWb4uAAJFMP4QQhoYYCWR6XXb7ybcCdiqPwz9s5WS",
+"symbol": "ALON",
+"created": 1711419741.0,
+"fdv": 4905791,
+"liq": 816664.41,
+"vol": 304070.16,
+"txns": 3443,
+"age_d": 930.5
+}
+]

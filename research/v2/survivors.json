@@ -1,0 +1,119 @@
+[
+{
+"mint": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+"symbol": "CATE",
+"fdv": 53698254,
+"liq": 2739148.01,
+"vol": 633160.51,
+"txns": 3360,
+"grad": 1791386047
+},
+{
+"mint": "739dnZEG4yaBWFsY8L8ZwrfhGG6dhtCSercW8Umspump",
+"symbol": "CLAW",
+"fdv": 15164507,
+"liq": 483065.59,
+"vol": 264486.62,
+"txns": 1996,
+"grad": 1790520500
+},
+{
+"mint": "wGa8qyJcGnMSWAaHM3mNwVVTfX3FszgWDsPfyWPpump",
+"symbol": "USWR",
+"fdv": 10922983,
+"liq": 289989.91,
+"vol": 232326.7,
+"txns": 8148,
+"grad": 1791624968
+},
+{
+"mint": "9Twd5vXAPYSWwuPTVPgDmdxvVHsUQwijC4a1QvYZpump",
+"symbol": "GOIF",
+"fdv": 10499100,
+"liq": 285163.21,
+"vol": 219131.07,
+"txns": 80643,
+"grad": 1791572937
+},
+{
+"mint": "WqxrZALCKQagTUzgWSbfLk4iy77ULXzcapn5eYspump",
+"symbol": "WOSE",
+"fdv": 9772849,
+"liq": 276843.95,
+"vol": 231693.27,
+"txns": 8129,
+"grad": 1791289759
+},
+{
+"mint": "YnJFmb5VvwyAchZxKZPB48JfVaRd9uozo1aqEbNpump",
+"symbol": "SARP",
+"fdv": 9250407,
+"liq": 267867.65,
+"vol": 201365.02,
+"txns": 17473,
+"grad": 1791462484
+},
+{
+"mint": "PUVSAabRLnab62oLeAPhLKEK7WoEDMbgpDNnV2Qpump",
+"symbol": "DOTF",
+"fdv": 8358850,
+"liq": 253436.26,
+"vol": 201979.56,
+"txns": 6732,
+"grad": 1791637392
+},
+{
+"mint": "dQKeBzLmXUZWYm9dqwCZf6gZsVwvMvwpTLd4Xx6pump",
+"symbol": "TDF",
+"fdv": 5701256,
+"liq": 209876.69,
+"vol": 230978.71,
+"txns": 8091,
+"grad": 1791545352
+},
+{
+"mint": "MukLDtJ8Cx9DxLbeyLRSWPSposTMWuwHANbuaudpump",
+"symbol": "OTC",
+"fdv": 4311249,
+"liq": 497014.34,
+"vol": 474318.81,
+"txns": 14045,
+"grad": 1791514493
+},
+{
+"mint": "7MuvW6G2pDTGSjzpjqeDYigUsXqqd6TmEzLgvRRopump",
+"symbol": "USDF",
+"fdv": 2906182,
+"liq": 163014.73,
+"vol": 237962.3,
+"txns": 2221,
+"grad": 1790731802
+},
+{
+"mint": "5tCju6YNxHq5zrA6tGndr6F7TK42mpUFmeE31cSFpump",
+"symbol": "swordcat",
+"fdv": 2803197,
+"liq": 227845.03,
+"vol": 519382.57,
+"txns": 5615,
+"grad": 1791565736
+},
+{
+"mint": "BXoHJddsWJLHtAopeiSbKUSELsu8hSFMs8baGMDkpump",
+"symbol": "CRAWL",
+"fdv": 2361060,
+"liq": 203983.81,
+"vol": 494875.91,
+"txns": 4375,
+"grad": 1791065290
+},
+{
+"mint": "7VertkgF9KLhxxJXHX6uaWuoYZTP9LdGj2bWmVXVpump",
+"symbol": "Agency",
+"fdv": 2149989,
+"liq": 226687.81,
+"vol": 381578.24,
+"txns": 3105,
+"grad": 1791249057
+}
+]
