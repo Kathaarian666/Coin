@@ -1,0 +1,278 @@
+[
+{
+"mint": "92B5Ubkm5JBVGQeEeMnrkmmL6NpAGAirUua62BWAhZyJ",
+"symbol": "SLUSD",
+"created": 1791548038.0,
+"fdv": 59963684272238,
+"liq": 247537248.56,
+"vol24": 256.71,
+"dexes": [
+"meteora"
+],
+"age_d": 2.9
+},
+{
+"mint": "DEW9dSN6QpWyNthphCpMmAbZP1Q4cEKR9xQXAri98WDP",
+"symbol": "SI",
+"created": 1790005501.0,
+"fdv": 24872320,
+"liq": 719910.67,
+"vol24": 336788.23,
+"dexes": [
+"raydium"
+],
+"age_d": 20.7
+},
+{
+"mint": "HuAXPyDWDaMYFKuwQHpqL1oPnj93zdzWmtvFGzCeCUa7",
+"symbol": "MASK",
+"created": 1790161463.0,
+"fdv": 22861513,
+"liq": 577838.94,
+"vol24": 262875.72,
+"dexes": [
+"raydium"
+],
+"age_d": 18.9
+},
+{
+"mint": "sUSDai6Y3GxysDEtA9BVcEFTaog6UZpYUVxJiMhAKYE",
+"symbol": "sUSDai",
+"created": 1790769046.0,
+"fdv": 20022380,
+"liq": 10038.83,
+"vol24": 28.02,
+"dexes": [
+"orca"
+],
+"age_d": 11.9
+},
+{
+"mint": "CuKMu1kgAiFU5oHRWXRv9pWHApr5QKsaoodb1WDuRP5v",
+"symbol": "U\u0405\u216eT",
+"created": 1791062064.0,
+"fdv": 10769042,
+"liq": 6.01,
+"vol24": 26.94,
+"dexes": [
+"meteora"
+],
+"age_d": 8.5
+},
+{
+"mint": "9Twd5vXAPYSWwuPTVPgDmdxvVHsUQwijC4a1QvYZpump",
+"symbol": "GOIF",
+"created": 1791572937.0,
+"fdv": 10106197,
+"liq": 282335.61,
+"vol24": 188139.19,
+"dexes": [
+"pumpswap"
+],
+"age_d": 2.6
+},
+{
+"mint": "2j5SaS7xy776qCBpyPQbZjyQSAtKiFgrwjfErthnW2ZM",
+"symbol": "CLAUDIA",
+"created": 1791337470.0,
+"fdv": 6975483,
+"liq": 343911.32,
+"vol24": 2888080.55,
+"dexes": [
+"pumpswap"
+],
+"age_d": 5.3
+},
+{
+"mint": "B32ocrADBEo1XHsGVnxqP81SaK2NiZkQmmAoTnmT8Ybu",
+"symbol": "BANKROLL",
+"created": 1791072171.0,
+"fdv": 6221608,
+"liq": 233608.02,
+"vol24": 72313.1,
+"dexes": [
+"raydium"
+],
+"age_d": 8.4
+},
+{
+"mint": "C1mBfBoDkwWfd6uTFZp62ARHLjeVp3bDpCDMfMZtPngE",
+"symbol": "HOOKED",
+"created": 1790625916.0,
+"fdv": 5748105,
+"liq": 229147.86,
+"vol24": 104659.39,
+"dexes": [
+"meteora"
+],
+"age_d": 13.5
+},
+{
+"mint": "7KEPApdbBMByrmqihz3bht2uMhFQcatjfSFQCKq66kH3",
+"symbol": "DARK",
+"created": 1790876181.0,
+"fdv": 3903923,
+"liq": 261202.04,
+"vol24": 1288849.71,
+"dexes": [
+"raydium"
+],
+"age_d": 10.6
+},
+{
+"mint": "8nnaeWCw8mUypcGAgbmSuzAT85uWx4UN12adDrMhXrGF",
+"symbol": "HOTBOT",
+"created": 1790920030.0,
+"fdv": 3664781,
+"liq": 234794.21,
+"vol24": 552775.46,
+"dexes": [
+"pumpswap"
+],
+"age_d": 10.1
+},
+{
+"mint": "6Mix12LiHrQFojaQEnfPUC65Qkwd6X4Y5Qg93oFbordr",
+"symbol": "BORDR",
+"created": 1791422366.0,
+"fdv": 3411951,
+"liq": 173185.43,
+"vol24": 925300,
+"dexes": [
+"meteora"
+],
+"age_d": 4.3
+},
+{
+"mint": "5tCju6YNxHq5zrA6tGndr6F7TK42mpUFmeE31cSFpump",
+"symbol": "swordcat",
+"created": 1790586789.0,
+"fdv": 3208848,
+"liq": 245862.27,
+"vol24": 472068.81,
+"dexes": [
+"pumpswap"
+],
+"age_d": 14.0
+},
+{
+"mint": "BXoHJddsWJLHtAopeiSbKUSELsu8hSFMs8baGMDkpump",
+"symbol": "CRAWL",
+"created": 1791065290.0,
+"fdv": 2647478,
+"liq": 217836.6,
+"vol24": 460029.48,
+"dexes": [
+"pumpswap"
+],
+"age_d": 8.4
+},
+{
+"mint": "7VertkgF9KLhxxJXHX6uaWuoYZTP9LdGj2bWmVXVpump",
+"symbol": "Agency",
+"created": 1790894555.0,
+"fdv": 2004520,
+"liq": 220810.9,
+"vol24": 474436.63,
+"dexes": [
+"pumpswap"
+],
+"age_d": 10.4
+},
+{
+"mint": "CbcyNo7m1amFWqEQm2m4PLv1UNvpcL3C1Ujm6AkzpKoU",
+"symbol": "e/acc",
+"created": 1790370915.0,
+"fdv": 1859274,
+"liq": 255939.76,
+"vol24": 330985.59,
+"dexes": [
+"pumpswap"
+],
+"age_d": 16.5
+},
+{
+"mint": "6XhzSy3VTTkwqMUSQsStM3ncGy6ozcPnzLVmv4HZ64cC",
+"symbol": "STONKINU",
+"created": 1790235988.0,
+"fdv": 1735148,
+"liq": 88779.89,
+"vol24": 148057.71,
+"dexes": [
+"raydium"
+],
+"age_d": 18.0
+},
+{
+"mint": "9aqmJjCnnMQv42TXLk921ceUkN35nea2QP969n1caqjj",
+"symbol": "SI",
+"created": 1790721877.0,
+"fdv": 1498613,
+"liq": 174305.79,
+"vol24": 220671.87,
+"dexes": [
+"pumpswap"
+],
+"age_d": 12.4
+},
+{
+"mint": "8TiMkgvsrat9tM2esko8zVTt99LZLpefUM4SnZaziXaQ",
+"symbol": "QI",
+"created": 1791521287.0,
+"fdv": 1449876,
+"liq": 138920.14,
+"vol24": 842606.89,
+"dexes": [
+"pumpswap"
+],
+"age_d": 3.2
+},
+{
+"mint": "HwJyyniKKDRLXxjRSzyLtpvxzqecqrhrbcSbKRm7STNK",
+"symbol": "SWOLF",
+"created": 1791536638.0,
+"fdv": 1286696,
+"liq": 133797.37,
+"vol24": 1127752.36,
+"dexes": [
+"raydium"
+],
+"age_d": 3.0
+},
+{
+"mint": "9XKzy4KahcZaGJPJtz1PtqGPB3CiseoBrx7TcQhEpump",
+"symbol": "GOMO",
+"created": 1791150590.0,
+"fdv": 1145459,
+"liq": 118434.99,
+"vol24": 378190.69,
+"dexes": [
+"pumpswap"
+],
+"age_d": 7.5
+},
+{
+"mint": "HMYd9tosnUXuNHmq7pXmoePRVBLBBjA3JBfydq6upump",
+"symbol": "SI276",
+"created": 1791314731.0,
+"fdv": 1065329,
+"liq": 103195.99,
+"vol24": 323146.53,
+"dexes": [
+"pumpswap"
+],
+"age_d": 5.6
+},
+{
+"mint": "7Xgc5RacHtGzfhw2HukUBk5V986yBbvshr7rrCoopump",
+"symbol": "DRMR",
+"created": 1790247790.0,
+"fdv": 1041509,
+"liq": 112708.04,
+"vol24": 520215.36,
+"dexes": [
+"pumpswap"
+],
+"age_d": 17.9
+}
+]
