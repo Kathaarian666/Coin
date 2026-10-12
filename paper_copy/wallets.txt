@@ -1,17 +1,14 @@
 # adres  etiket   (# sonrası yorum)
-6yjt4Ny1o5jUeAnuVqAphDa7AfMunoy2wS7iMG3YqcMv  KumeA        # 6 cüzdanlık kümenin temsilcisi (hepsi aynı anda alıyor)
-Ee11Tkovhjd4WRMeofdMPQphHPFc5wAEjpmm1SPUsdrH  Secici-Ee11
-# ÇIKARILDI (12 Ekim, pasif: 25 Eylül'den beri işlem yok): BSkhXxeFb1CpNqcDomyin2uEMv9kbueUp4zJ48zJPT98  Secici-BSkh
-# ÇIKARILDI (12 Ekim, pasif: 30 Eylül'den beri işlem yok): 8q1q7c8vgLyRhu4TJ8eV65k2vCxHyhQPue4TmvtmkgpX  Secici-8q1q
-# ÇIKARILDI (12 Ekim, kendi alım-satımı yok, sadece spam token alıyor): C9ZWb3Akq9ixTK2jGWNpNcENsEEWeKd29ja8E7dyT7hQ  Secici-C9ZW
-7GgLHG2hWqFKqMvfzgG5VeLgE2M4KD2GpveKZ4ZXD5hp  Secici-7GgL
-E6Ez5Cg5dcfuBLnYTNWM29LZ2KdvC8BzsYrHGXypU1bX  Secici-E6Ez
-3suUcHxDk4pX8AqArW7JtrY9xe7WGPg3S1SUQxgjcBzs  IlkBlok-3suU
-5gotLN2GVyRcbehP3wor6xbM4EtakktP16W8doY7U9Uk  IlkBlok-5got
-# --- 2. tarama (11 Ekim): tutarlı kâr süzgecinden geçen, kopyalama testinde en iyi çıkanlar ---
-J4d9GkjMeujQJMwZZYX9wq84FARy5GXE5G2cRo2j45zn  Tutarli-J4d9   # kopya testinde tek pozitif sonuç (30sn +%9, 2dk +%6 medyan)
-E8GmiBWUqqs55JFmpYcLZ9jgBjyqXsBbvFxCYD9d2Efe  Tutarli-E8Gm
-5ZBQgjAsRYuk1eQTzJQSLCg7WBQndjQgou2ZMVMaaZBe  Tutarli-5ZBQ
-# ÇIKARILDI (12 Ekim, Flash Trade kaldıraçlı işleme geçmiş, memecoin sinyali yok): CsUCkqxX8NWt2pKnkfhbv3ExmAbrJBAy8NEY5NFZH1pK  Tutarli-CsUC
-G3bRFhiCr3nGZEhDUss6dnGjqyTzCwdXEWCsepdpZ9r4  Tutarli-G3bR
-EaZNBezvDDhhm6hcafAUTZzm12PiYNMm6zzizGq9yzaP  Tutarli-EaZN
+# 12 Ekim: research/v2/copysim.py anlık kopya simülasyonunda (+1 sn, havuz fiyatı) en iyi işlem
+# hariç ortalaması pozitif ve alım sonrası 1 sn fiyat sıçraması < %10 (az kopyalanan) cüzdanlar.
+2SqC28rqVJZ2kZcpAsnoLxznaFgcaXA1wQHqbW81n5Gn  Kopya-2SqC   # +1sn medyan +%44, n=10 (Eylül: -%7, n=9)
+E8GmiBWUqqs55JFmpYcLZ9jgBjyqXsBbvFxCYD9d2Efe  Kopya-E8Gm   # +1sn medyan +%12, n=23 (Eylül: +%18, n=4)
+EaZNBezvDDhhm6hcafAUTZzm12PiYNMm6zzizGq9yzaP  Kopya-EaZN   # +1sn medyan +%18, n=10 (Eylül: -%9, n=15)
+3dYTe62N7zThxoqqNHYQhLPfEe2exoziMAVHadzfCgUt  Kopya-3dYT
+GfEx1sug5B1ydUif3K8XBy3BitVQDQy33ozhMCnXVwNR  Kopya-GfEx
+FPBWGL9HKm3h81BH6mLFHpLrU4iSATdRGNHaQoUZYzbW  Kopya-FPBW
+G3bRFhiCr3nGZEhDUss6dnGjqyTzCwdXEWCsepdpZ9r4  Kopya-G3bR
+2TryBZ9wFbi16CkeXYDczrNeAv8SgFXJmvUzjoVbZCW7  Kopya-2Try
+FmKQYf9Zw7pB5w5sVXaBdWNwXk1X4LJjqWGKNpojALbE  Kopya-FmKQ
+# karşılaştırma: önceki araştırmanın tek pozitif adayı (30sn +%9, 2dk +%6 medyan)
+J4d9GkjMeujQJMwZZYX9wq84FARy5GXE5G2cRo2j45zn  Eski-J4d9

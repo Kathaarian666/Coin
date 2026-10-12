@@ -57,8 +57,36 @@ Telegram onaylı bir kripto trading botu var (merkezi borsa spot); bu proje onda
 - Bir tokende fiyat verisi hatası saçma getiri üretti; >20x getiriler şüpheli sayılıyor.
 - Adres yazarken asla kısaltmadan tahmin etme; her zaman veriden programatik al (bir kez bu hata yapıldı, düzeltildi).
 
+## 12 Ekim oturumu: research/v2 (bias'sız yeniden tarama) — ÖNCE BUNU OKU
+Kod `research/v2/`, önbellek repoda (`trades/` 3.700+ cüzdanın 21 günlük ham swap'ları, `prices.json`,
+`launch.json`, `pricepath2/`, `copysim*/`). Yeni oturum kredi harcamadan devam edebilir.
+- `trades.py` ham swap listesi (bot/yoğun erken eleme) · `metrics.py` token kârı: satılmayan güncel fiyattan
+  (likidite < 5k$ → 0, değer likiditenin %10'u ile sınırlı), maliyeti < 0.01 SOL olan token hariç
+- `analyze2.py`/`robust.py` kalıcılık testi: havuz = 30 Eyl öncesi kazananların erken alıcıları (kâra bakılmadan),
+  seçim 21 Eyl–2 Eki, test 2–12 Eki, havuz tokenleri testten hariç
+- `launch.py`/`entry.py` token oluşturma anı ve yaratıcısı · `copysim.py` havuz rezervinden fiyatla (ücret/bahşişten
+  bağımsız) +1/3/10 sn anlık kopya simülasyonu · `consensus.py` ortak alım sinyali · `swing_*`, `midbuyers.py` uzun tutanlar
+
+### Bulgular
+1. **Kârlılık kalıcı**: eğitimde getirisi en iyi %5 → testte %81 kârlı, +%31 (sadece gerçekleşen +%24, en iyi token
+   hariç +%15); alt %50 → %13 kârlı, −%6. Önceki "kârlı" listeler aynı dönemle seçilip ölçüldüğü için şişkindi.
+2. **Ama kopyalanamıyor**: en kârlıların bir kısmı token yaratıcısı (ör. 7naFFwuE 220 tokenin 146'sını kendisi
+   çıkarmış), bir kısmı açılış bloğu snipe'çısı; geri kalan hızlı işlemciler zaten başka botlarca kopyalanıyor
+   (alımdan sonraki aynı saniyede fiyat %20–80 sıçrıyor, satışta çöküyor).
+3. **Anlık kopya simülasyonu** (101 cüzdan, 1.100 işlem): +1 sn medyan −%19, kazanma %26; ortalama +%11 ama en iyi
+   5 işlem çıkınca negatif. Alım sonrası 1 sn sıçraması >%10 olan cüzdanlarda kopya −%15/−%29.
+4. **Uzun tutanlar** (24 yerleşik memecoinin 822 orta dönem alıcısı): eğitim kârı testte devam etmiyor (−%0,3).
+5. **Ortak alım sinyali** (k yetenekli operatör 10 dk içinde aynı token): kontrol grubundan farksız; 5 dk medyan −%35.
+6. Fiyatı işlem yapanın SOL değişiminden hesaplamak yanıltıcı (ücret+Jito bahşişi: alımda ~+%3, satışta −%4/−%7);
+   havuz rezerv değişimini kullan (`copysim.pool_price`). Yoğun tokenlerde ilk 100+ işlem başarısız arbitraj olabilir.
+7. Bitquery bu oturumda da kota hatası verdi. ~45 bin Helius çağrısı yapıldı (kredi karşılığı ölçülmedi).
+
+### paper_copy (12 Ekim güncellemesi)
+Havuz fiyatı, gecikmeler 1/3/30 sn, yeni 10 cüzdanlık liste (copysim'de en iyi işlem hariç ortalaması pozitif ve
+az kopyalanan). Eski sonuçlar `paper_eski_12ekim.db` / `rapor_eski_12ekim.txt`. Bulut konteyneri yeniden başlayınca
+servis durur → 2–3 haftalık test için sunucu gerekli.
+
 ## Sıradaki adımlar
-1. `paper_copy` servisini kullanıcının VPS'ine kur (KURULUM.md), `test-tg` ile Telegram'ı doğrula, systemd ile sürekli çalıştır.
-2. 2–3 hafta sonra günlük rapordaki +120 sn satırına bak; pozitif değilse gerçek parayla kopyalama yok.
-3. İsteğe bağlı: tarama otomatik ve haftalık yapılsın (yeni kazanan tokenler → erken alıcılar → süzgeç → backtest),
-   iyi çıkan yeni adaylar `paper_copy/wallets.txt`'e eklensin.
+1. `paper_copy`'yi sunucuya kur; günlük raporda **+1sn** satırı 2–3 hafta pozitif değilse kopya fikri biter.
+2. Kopya dışı fikirler (araştırılmadı): yoğun kopyalanan cüzdanların arkasındaki kopya dalgasını sinyal olarak
+   kullanmak (lider alınca değil, dalga bitince ters yönde), yaratıcı/dev-dump cüzdanlarından kaçınma filtresi.

@@ -1,0 +1,4 @@
++1sn: henüz kapanan işlem yok
++3sn: henüz kapanan işlem yok
++30sn: 7 işlem, kazanan %14, medyan -39%, toplam -1.01 SOL
+Durum: acik=6, cikis_bekliyor=2, kapali=14

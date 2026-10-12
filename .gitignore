@@ -5,3 +5,4 @@ paper_copy/venv/
 __pycache__/
 paper_copy/live.log
 research/v2/*.log
+paper_copy/paper_eski_*.db

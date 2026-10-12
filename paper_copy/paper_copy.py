@@ -34,7 +34,7 @@ load_env(os.path.join(HERE, ".env"))
 HELIUS_KEY = os.environ.get("HELIUS_API_KEY", "")
 TG_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID", "")
-DELAYS = [int(x) for x in os.environ.get("DELAYS_SEC", "30,120").split(",")]
+DELAYS = [int(x) for x in os.environ.get("DELAYS_SEC", "1,3,30").split(",")]
 SIZE_SOL = float(os.environ.get("PAPER_SIZE_SOL", "0.5"))
 FEE_SIDE = float(os.environ.get("FEE_PER_SIDE", "0.015"))      # ücret + kayma, tek yön
 MIN_SOL = float(os.environ.get("MIN_SIGNAL_SOL", "0.2"))         # bundan küçük alımları yok say
@@ -113,25 +113,49 @@ def classify(tx, w):
     if q < 0 and sol > 0: return ("SELL", mint, -q, sol)
     return None
 
-def _swap_prices(txs, mint, t_lo, t_hi):
+def pool_price(tx, mint):
+    """Havuz rezervinden fiyat (SOL/token): işlemi yapanın tersine token değişimi olan sahip (havuz)
+    SOL + wSOL değişimi / token değişimi. Ücret ve Jito bahşişi havuza gitmediği için fiyatı bozmaz."""
+    m = tx["meta"]; tok = collections.defaultdict(float); wsol = collections.defaultdict(float)
+    for sign, key in ((-1, "preTokenBalances"), (1, "postTokenBalances")):
+        for b in m.get(key) or []:
+            amt = sign * (b["uiTokenAmount"]["uiAmount"] or 0)
+            if b["mint"] == mint: tok[b.get("owner")] += amt
+            elif b["mint"] == WSOL: wsol[b.get("owner")] += amt
+    keys = [k["pubkey"] if isinstance(k, dict) else k for k in tx["transaction"]["message"]["accountKeys"]]
+    pools = [(o, v) for o, v in tok.items() if o != keys[0] and abs(v) > 1e-9]
+    if not pools: return None
+    pool, pv = max(pools, key=lambda x: abs(x[1]))
+    ps = wsol.get(pool, 0.0)
+    if pool in keys:
+        i = keys.index(pool); ps += (m["postBalances"][i] - m["preBalances"][i]) / 1e9
+    if abs(ps) < 0.005 or (pv > 0) == (ps > 0): return None
+    return abs(ps) / abs(pv)
+
+def _swap_prices(txs, mint, t_lo, t_hi, n=3):
     px = []
     for tx in txs:
         if tx["meta"].get("err") or not (t_lo <= tx["blockTime"] <= t_hi): continue
-        payer = tx["transaction"]["message"]["accountKeys"][0]["pubkey"]
-        sol, toks = deltas(tx, payer); q = toks.get(mint)
-        if q and abs(sol) >= 0.01 and (q > 0) == (sol < 0): px.append(abs(sol) / abs(q))
-        if len(px) >= 5: break
+        p = pool_price(tx, mint)
+        if p: px.append(p)
+        if len(px) >= n: break
     return statistics.median(px) if px else None
 
 def price_at(mint, t):
-    """t anındaki piyasa fiyatı (SOL/token): t sonrasındaki ilk 60 sn içindeki swap'ların medyanı;
-    yoksa t öncesindeki son işlemler."""
-    base = {"limit": 25, "transactionDetails": "full", "encoding": "jsonParsed", "maxSupportedTransactionVersion": 1}
-    r = rpc("getTransactionsForAddress", [mint, dict(base, sortOrder="asc", filters={"blockTime": {"gte": int(t)}})])
-    p = _swap_prices((r or {}).get("data", []), mint, t, t + 60)
+    """t anındaki piyasa fiyatı (SOL/token): t'den sonraki 15 sn içindeki ilk 3 swap'ın havuz fiyatı medyanı;
+    yoksa 60 sn içindeki ilk swap; o da yoksa t öncesindeki son swap."""
+    base = {"limit": 100, "transactionDetails": "full", "encoding": "jsonParsed", "maxSupportedTransactionVersion": 1}
+    txs = []; pg = None
+    for _ in range(3):  # yoğun tokenlerde ilk sayfalar başarısız arbitraj denemeleriyle dolu olabiliyor
+        o = dict(base, sortOrder="asc", filters={"blockTime": {"gte": int(t)}})
+        if pg: o["paginationToken"] = pg
+        r = rpc("getTransactionsForAddress", [mint, o]) or {}
+        txs += r.get("data", []); pg = r.get("paginationToken")
+        if not pg or not txs or txs[-1]["blockTime"] > t + 60 or _swap_prices(txs, mint, t, t + 15): break
+    p = _swap_prices(txs, mint, t, t + 15) or _swap_prices(txs, mint, t, t + 60, n=1)
     if p: return p, "ileri"
     r = rpc("getTransactionsForAddress", [mint, dict(base, sortOrder="desc", filters={"blockTime": {"lte": int(t)}})])
-    p = _swap_prices((r or {}).get("data", []), mint, t - 3600, t)
+    p = _swap_prices((r or {}).get("data", []), mint, t - 3600, t, n=1)
     return (p, "geri") if p else (None, None)
 
 _sym = {}
@@ -274,9 +298,9 @@ def summary(since=None):
                      f"medyan {statistics.median(p):+.0%}, toplam {sum(x[2] for x in r):+.2f} SOL")
     by = collections.defaultdict(list)
     for d_, p, s, lbl in rows:
-        if d_ == DELAYS[-1]: by[lbl].append(s)
+        if d_ == DELAYS[0]: by[lbl].append(s)
     if by:
-        lines.append(f"Cüzdan bazında (+{DELAYS[-1]}sn):")
+        lines.append(f"Cüzdan bazında (+{DELAYS[0]}sn):")
         for lbl, s in sorted(by.items(), key=lambda kv: -sum(kv[1])):
             lines.append(f"  {lbl}: {len(s)} işlem, {sum(s):+.2f} SOL")
     st = q("SELECT status, COUNT(*) FROM positions GROUP BY status", (), True)

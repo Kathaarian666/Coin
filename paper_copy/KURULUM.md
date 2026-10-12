@@ -1,7 +1,7 @@
 # Kâğıt Üstünde Kopyalama — Kurulum
 
 Bu servis takip listesindeki Solana cüzdanlarını dinler ve onlar alım yaptığında
-**sanal** pozisyon açar (30 sn ve 2 dk gecikmeyle), onlar satınca sanal olarak çıkar.
+**sanal** pozisyon açar (1 sn, 3 sn ve 30 sn gecikmeyle), onlar satınca sanal olarak çıkar.
 **Gerçek işlem yapmaz; cüzdan, özel anahtar veya para kullanmaz.**
 Sonuçlar Telegram'a gelir, her akşam 21:00'de günlük rapor gönderilir.
 
@@ -47,7 +47,7 @@ journalctl -u paper-copy -f      # canlı log
 - Sonuçlar `paper.db` (SQLite) dosyasında birikir.
 
 ## Ne zaman karar verilir?
-2–3 hafta çalıştır. Günlük raporda **+120sn** satırında kazanan oranı ve toplam SOL
+2–3 hafta çalıştır. Günlük raporda **+1sn** satırında (anlık bir botun ulaşabileceği gecikme) kazanan oranı ve toplam SOL
 sürekli pozitif değilse, bu cüzdanları gerçek parayla kopyalamak mantıklı değildir.
 Pozitif olsa bile önce çok küçük tutarlarla dene; gerçek kayma burada varsayılan %1,5'ten büyük olabilir.
 
