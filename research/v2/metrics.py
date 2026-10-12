@@ -9,6 +9,9 @@ import json, os, glob, statistics, collections
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEST_DAYS = 7
 MIN_LIQ_USD = 5000
+MIN_COST_SOL = 0.01
+MAX_LIQ_SHARE = 0.10
+SOL_USD = json.load(open(os.path.join(HERE, "prices.json")))["_meta"]["sol_usd"] if os.path.exists(os.path.join(HERE, "prices.json")) else 150.0
 
 def token_pnl(trades, px):
     """trades: o tokenin [t, side, qty, sol] listesi (zaman sıralı)."""
@@ -18,11 +21,13 @@ def token_pnl(trades, px):
         else:
             sq += q; ss += s
             if exit_t is None and bq > 0 and sq >= 0.5 * bq: exit_t = t
-    if bq <= 0: return None
+    if bq <= 0 or bs < MIN_COST_SOL: return None  # bedava gelen (transfer/airdrop) tokenler kâr sayılmaz
     sold = ss * min(1.0, bq / sq) if sq > 0 else 0.0
     rem = max(0.0, bq - sq)
     p = px[0] if px and px[0] and (px[2] or 0) >= MIN_LIQ_USD else 0.0
     held_val = rem * p
+    if px and px[0]:  # elde kalanı havuzu boşaltmadan satamazsın: likiditenin %10'u ile sınırla
+        held_val = min(held_val, MAX_LIQ_SHARE * (px[2] or 0) / SOL_USD)
     pnl = sold + held_val - bs
     return dict(first=first, cost=bs, pnl=pnl, roi=pnl / bs if bs else 0, held_frac=rem / bq,
                 hold=(exit_t - first) if exit_t else None, nb=sum(1 for x in trades if x[1] == "B"))
