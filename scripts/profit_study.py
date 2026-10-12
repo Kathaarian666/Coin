@@ -30,7 +30,7 @@ from security_extra import depth_at  # noqa: E402
 DELAY = 30
 STAKE = 20.0
 DAY = 86400
-BARS = (0.05, 0.02, 0.01)
+BARS = (0.10, 0.05, 0.02, 0.01)  # 10 %: the pick share question again (PROJE.md §0 B6)
 MODELS = ("2x", "kâr>0", "getiri")
 
 
