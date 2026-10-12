@@ -4,3 +4,4 @@ paper_copy/paper.db*
 paper_copy/venv/
 __pycache__/
 paper_copy/live.log
+research/v2/*.log

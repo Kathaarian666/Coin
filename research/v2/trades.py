@@ -15,6 +15,7 @@ STABLE = {"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2F
 WINDOW_DAYS = 21
 MAX_PAGES = 30           # 3.000 işlem: günde ~140 işleme kadar 21 günün tamamı
 BOT_TX_PER_DAY = 500
+HEAVY_TX_PER_DAY = 150     # 3. sayfada bu hızın üstündeyse 21 güne inemez: "yogun" deyip dur
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "trades")
 OPTS = {"sortOrder": "desc", "limit": 100, "transactionDetails": "full",
@@ -60,11 +61,14 @@ def fetch(w, now=None):
             rows.append([t, mint, side, abs(q), abs(sol), tx["transaction"]["signatures"][0], int(signer)])
         if page == 0 and len(data) == 100 and data[0]["blockTime"] - data[-1]["blockTime"] < 86400 * 100 / BOT_TX_PER_DAY:
             status = "bot"; break
+        if page == 2 and data and newest - data[-1]["blockTime"] < 86400 * 300 / HEAVY_TX_PER_DAY:
+            status = "yogun"; break
         pg = r.get("paginationToken")
         if done or not pg or not data: break
         if page == MAX_PAGES - 1: status = "sinir"
     res = dict(wallet=w, fetched=int(now), since=int(since), status=status, txs=n, failed=failed, other=other,
                oldest=oldest, newest=newest, pages=page + 1, rows=rows[::-1])
+    if status == "rpc_hata": return res
     os.makedirs(OUT, exist_ok=True)
     json.dump(res, open(path, "w"), separators=(",", ":"))
     return res
