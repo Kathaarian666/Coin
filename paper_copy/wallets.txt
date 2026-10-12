@@ -1,9 +1,9 @@
 # adres  etiket   (# sonrası yorum)
 6yjt4Ny1o5jUeAnuVqAphDa7AfMunoy2wS7iMG3YqcMv  KumeA        # 6 cüzdanlık kümenin temsilcisi (hepsi aynı anda alıyor)
 Ee11Tkovhjd4WRMeofdMPQphHPFc5wAEjpmm1SPUsdrH  Secici-Ee11
-BSkhXxeFb1CpNqcDomyin2uEMv9kbueUp4zJ48zJPT98  Secici-BSkh
-8q1q7c8vgLyRhu4TJ8eV65k2vCxHyhQPue4TmvtmkgpX  Secici-8q1q
-C9ZWb3Akq9ixTK2jGWNpNcENsEEWeKd29ja8E7dyT7hQ  Secici-C9ZW
+# ÇIKARILDI (12 Ekim, pasif: 25 Eylül'den beri işlem yok): BSkhXxeFb1CpNqcDomyin2uEMv9kbueUp4zJ48zJPT98  Secici-BSkh
+# ÇIKARILDI (12 Ekim, pasif: 30 Eylül'den beri işlem yok): 8q1q7c8vgLyRhu4TJ8eV65k2vCxHyhQPue4TmvtmkgpX  Secici-8q1q
+# ÇIKARILDI (12 Ekim, kendi alım-satımı yok, sadece spam token alıyor): C9ZWb3Akq9ixTK2jGWNpNcENsEEWeKd29ja8E7dyT7hQ  Secici-C9ZW
 7GgLHG2hWqFKqMvfzgG5VeLgE2M4KD2GpveKZ4ZXD5hp  Secici-7GgL
 E6Ez5Cg5dcfuBLnYTNWM29LZ2KdvC8BzsYrHGXypU1bX  Secici-E6Ez
 3suUcHxDk4pX8AqArW7JtrY9xe7WGPg3S1SUQxgjcBzs  IlkBlok-3suU
@@ -12,6 +12,6 @@ E6Ez5Cg5dcfuBLnYTNWM29LZ2KdvC8BzsYrHGXypU1bX  Secici-E6Ez
 J4d9GkjMeujQJMwZZYX9wq84FARy5GXE5G2cRo2j45zn  Tutarli-J4d9   # kopya testinde tek pozitif sonuç (30sn +%9, 2dk +%6 medyan)
 E8GmiBWUqqs55JFmpYcLZ9jgBjyqXsBbvFxCYD9d2Efe  Tutarli-E8Gm
 5ZBQgjAsRYuk1eQTzJQSLCg7WBQndjQgou2ZMVMaaZBe  Tutarli-5ZBQ
-CsUCkqxX8NWt2pKnkfhbv3ExmAbrJBAy8NEY5NFZH1pK  Tutarli-CsUC
+# ÇIKARILDI (12 Ekim, Flash Trade kaldıraçlı işleme geçmiş, memecoin sinyali yok): CsUCkqxX8NWt2pKnkfhbv3ExmAbrJBAy8NEY5NFZH1pK  Tutarli-CsUC
 G3bRFhiCr3nGZEhDUss6dnGjqyTzCwdXEWCsepdpZ9r4  Tutarli-G3bR
 EaZNBezvDDhhm6hcafAUTZzm12PiYNMm6zzizGq9yzaP  Tutarli-EaZN
