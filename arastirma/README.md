@@ -6,3 +6,5 @@ Her oturumda yeniden üretmemek için (PROJE.md §7). Klasör adı = üretildiğ
 - `winners.parquet` — `scripts/winner_study.py` çıktısı (Fomo 3./5./10./20. alıcı anları + kriterler + sonraki zirve), 3 Eylül – 12 Ekim
 - `picks_top5.parquet` — `scripts/profit_study.py <db> winners.parquet 2026-09-10 5` "2x" modelinin gün gün (walk-forward) en iyi %5'i (10 Eylül – 11 Ekim, 668 seçim)
 - `events_5x.jsonl.gz` — bu seçimlerden 3 saatte 5x yapan 153'ünün zincir olayları (curve + V4 işlemleri, likidite çekilmesi), bildirimden 5x'ten 70 dk sonrasına (`scripts/after5x.py --fetch`)
+- `picks_top10.parquet` — aynı walk-forward'un en iyi %10'u (seçim payı sorusu, `scripts/share5x.py`)
+- `events_3h.jsonl.gz` — en iyi %10'dan 5x yapmayanların zincir olayları, bildirimden 3 saat sonrasına (24 saatlikler dahil); **yarım** (12 Ekim'de 956 coinin ~290'ı indi). Devam: `share5x.py <db> picks_top10.parquet <açılmış events_3h.jsonl> --fetch` kaldığı yerden sürer
