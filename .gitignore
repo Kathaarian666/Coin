@@ -6,3 +6,4 @@ __pycache__/
 paper_copy/live.log
 research/v2/*.log
 paper_copy/paper_eski_*.db
+paper_copy/paper.db

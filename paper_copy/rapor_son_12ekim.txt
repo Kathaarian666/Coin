@@ -1,0 +1,6 @@
++1sn: 1 işlem, kazanan %0, medyan -4%, toplam -0.02 SOL
++3sn: 1 işlem, kazanan %0, medyan -15%, toplam -0.07 SOL
++30sn: 1 işlem, kazanan %100, medyan +33%, toplam +0.16 SOL
+Cüzdan bazında (+1sn):
+  Eski-J4d9: 1 işlem, -0.02 SOL
+Durum: kapali=3

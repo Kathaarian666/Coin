@@ -57,6 +57,11 @@ Telegram onaylı bir kripto trading botu var (merkezi borsa spot); bu proje onda
 - Bir tokende fiyat verisi hatası saçma getiri üretti; >20x getiriler şüpheli sayılıyor.
 - Adres yazarken asla kısaltmadan tahmin etme; her zaman veriden programatik al (bir kez bu hata yapıldı, düzeltildi).
 
+## DURUM (12 Ekim): PROJE DURDURULDU
+Kullanıcıyla birlikte karar verildi: cüzdan kopyalama yolu kâr getirmiyor (bulgular aşağıda). Servis
+hiçbir yerde çalışmıyor, sunucuya kurulmadı. İleride dönülürse önce aşağıdaki bulguları oku; aynı testleri
+tekrarlamak yerine yeni bir fikirle başla. Helius anahtarı sohbette paylaşıldı, kullanıcıya yenilemesi önerildi.
+
 ## 12 Ekim oturumu: research/v2 (bias'sız yeniden tarama) — ÖNCE BUNU OKU
 Kod `research/v2/`, önbellek repoda (`trades/` 3.700+ cüzdanın 21 günlük ham swap'ları, `prices.json`,
 `launch.json`, `pricepath2/`, `copysim*/`). Yeni oturum kredi harcamadan devam edebilir.
