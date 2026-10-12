@@ -399,6 +399,29 @@ class ScannerApp:
                 if trade["kind"] == "5x" and plog is self.paper_log and now - trade["legs"][0][0] < 600:
                     # announced only when fresh: after an update the last days' picks are worked out afresh
                     self.paper5_hits.append((token, trade["legs"][0][0] - ts))
+            for token, ts, depth, kind10, risky, _, ret5, closed5, chain5, *_ in plog.open10():  # side rule, §4.10
+                if kind10 == "5x+10":
+                    continue  # the rest's on-chain check (paper5_step)
+                coin = self.follower.coins.get(token)
+                if coin is None:
+                    plog.update10(token, None, None, True)
+                    continue
+                trade = paper.paper_trade_10(coin.trades, ts, now, paper.hold5(risky))
+                if trade is None:
+                    continue
+                if trade["kind"] == "süre":  # no 5x: the 5x rule's trade, once its on-chain check is done
+                    if closed5:
+                        plog.update10(token, "süre", ret5, True, chain5)
+                    continue
+                depth = depth if depth and depth == depth else 3000.0
+                value = paper.last_value(coin.trades, now, trade["p_alert"]) if trade["open"] else None
+                ret = paper.net_return(trade, depth, 20.0, value)
+                if trade["kind"] == "5x+10":
+                    t_exit = trade["legs"][1][0]
+                    pulled = paper.net_return({**trade, "legs": [trade["legs"][0], (t_exit, 0.5, 0.0)]}, depth, 20.0)
+                    plog.update10(token, "5x+10", ret, False, None, pulled, t_exit)
+                else:
+                    plog.update10(token, trade["kind"], ret, False)
         self.follower.prune(now)
 
     async def pool_pulled(self, token: str, t_exit: float, now: float) -> str:
@@ -439,6 +462,20 @@ class ScannerApp:
                     continue  # try again next minute
                 ret = plog.db.execute(f"SELECT ret5 FROM {plog.t} WHERE token = ?", (token,)).fetchone()[0]
                 plog.update5(token, "süre", -1.0 if status == "çekildi" else ret, True, status or "bakılamadı")
+            for token, ts, depth, kind10, *_, t10, ret10, ret10_pulled in plog.open10():  # side rule's rest, §4.10
+                if kind10 != "5x+10":
+                    continue
+                if (token, t10) not in checked:
+                    try:
+                        checked[(token, t10)] = await self.pool_pulled(token, t10, now)
+                    except Exception as exc:
+                        log.warning("pool check failed for %s: %s", token, exc)
+                        checked[(token, t10)] = None
+                status = checked[(token, t10)]
+                if status is None and now - t10 < 6 * 3600:
+                    continue
+                plog.update10(token, "5x+10", ret10_pulled if status == "çekildi" else ret10, True, status or "bakılamadı",
+                              ret10_pulled, t10)
 
     async def paper_loop(self):
         while True:

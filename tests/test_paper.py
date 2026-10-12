@@ -154,6 +154,18 @@ def test_5x_rule_sells_everything_at_5x_or_at_3_hours():
     assert abs(t["legs"][0][2] / (1.5 * p) - 1) < 1e-5  # median of the last prices before the limit
 
 
+def test_side_rule_sells_half_at_5x_and_the_rest_10_minutes_later():
+    p = 1e-6
+    hit = [buy(0, p), buy(100, 5.2 * p), buy(200, 5.5 * p), buy(500, 8 * p), buy(700, 9 * p), buy(900, 9.5 * p)]
+    t = paper.paper_trade_10(hit, 0, 300)
+    assert t["kind"] == "5x" and t["open"] == 0.5 and t["legs"] == [(200, 0.5, 5 * t["p_alert"])]
+    t = paper.paper_trade_10(hit, 0, 200 + paper.LATER10 + 1)
+    assert t["kind"] == "5x+10" and t["open"] == 0 and t["legs"][1][0] == 200 + paper.LATER10
+    assert abs(t["legs"][1][2] / (5.5 * p) - 1) < 1e-5  # median of the last 5 prices at the time
+    slow = [buy(0, p), buy(100, 1.5 * p), buy(200, 1.6 * p)]  # no 5x: the 5x rule's trade
+    assert paper.paper_trade_10(slow, 0, paper.HOLD5 + 1) == paper.paper_trade_5x(slow, 0, paper.HOLD5 + 1)
+
+
 def test_risky_picks_leave_after_15_minutes():
     p = 1e-6
     assert paper.hold5(True) == paper.HOLD5_RISKY == 900 and paper.hold5(False) == paper.hold5(None) == paper.HOLD5
@@ -177,6 +189,10 @@ def test_paper_log_keeps_the_5x_trade_beside_the_main_one():
     log.update5("0xa", "5x", 3.9, True)
     log.update5("0xb", "süre", -1.0, True, "çekildi")
     assert log.open5() == []
+    assert [r[0] for r in log.open10()] == ["0xa", "0xb"]  # the side rule beside it
+    log.update10("0xa", "5x+10", 2.5, True, "çekildi", 1.2, 800.0)
+    log.update10("0xb", "süre", -1.0, True, "çekildi")
+    assert log.open10() == []
     s = paper.summary(log.alerts(0), log.scored(0))
     assert (s["x5"], s["time5"], s["pulled5"], s["risky"]) == (1, 1, 1, 1)
     assert abs(s["bank5"] - 1000 * (1 + 0.04 * 3.9) * (1 - 0.02)) < 1e-6

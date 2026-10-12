@@ -38,6 +38,9 @@ HOLD5 = 3 * 3600  # ... or at this many seconds after the alert (worth 0 if the 
 # ... but a risky pick (its V4 pool has no hook, or its owner() is not the launchpad's) is left after 15 minutes: those
 # picks are the rule's biggest winners and nearly all of them are pulled later (PROJE.md §4.8, §0 B4; user 11 Oct)
 HOLD5_RISKY = 15 * 60
+# side rule beside the 5x rule (PROJE.md §4.10, §0 B6; user 12 Oct): half sold at the 5x, the rest this many seconds
+# later (0 if the pool's liquidity was pulled by then); without a 5x it is the 5x rule's trade
+LATER10 = 10 * 60
 
 
 def hold5(risky) -> float:
@@ -255,6 +258,21 @@ def paper_trade_5x(trades: list[Trade], t_alert: float, now: float, hold: float 
         out.update(legs=[(buys[j][0], 1.0, TP5 * p_alert)], open=0.0, kind="5x")
     elif now >= t_end:
         out.update(legs=[(t_end, 1.0, last_value(trades, t_end, p_alert))], open=0.0, kind="süre")
+    return out
+
+
+def paper_trade_10(trades: list[Trade], t_alert: float, now: float, hold: float = HOLD5) -> dict | None:
+    """The side rule (PROJE.md §4.10): as paper_trade_5x, but at the 5x only half is sold (kind '5x', half open) and
+    the rest LATER10 s later at the last Fomo price then (kind '5x+10'; the bot then checks on-chain whether the pool's
+    liquidity was pulled, which makes that half worth 0)."""
+    out = paper_trade_5x(trades, t_alert, now, hold)
+    if out is None or out["kind"] != "5x":
+        return out
+    t5, _, p5 = out["legs"][0]
+    out.update(legs=[(t5, 0.5, p5)], open=0.5)
+    if now >= t5 + LATER10:
+        out["legs"].append((t5 + LATER10, 0.5, last_value(trades, t5 + LATER10, out["p_alert"])))
+        out.update(open=0.0, kind="5x+10")
     return out
 
 
@@ -497,8 +515,10 @@ class PaperLog:
         cols = {r[1] for r in db.execute(f"PRAGMA table_info({table})")}
         # the 5x rule's trade beside the main one (PROJE.md §4.4c); chain5: the pool at its time exit
         # risky: the pick's risk flag (hold5; NULL = not known)
+        # the side rule (PROJE.md §4.10): ret10_pulled = its return if the rest's pool turns out pulled
         for c, kind in (("kind5", "TEXT"), ("ret5", "REAL"), ("closed5", "INTEGER NOT NULL DEFAULT 0"), ("chain5", "TEXT"),
-                        ("risky", "INTEGER")):
+                        ("risky", "INTEGER"), ("kind10", "TEXT"), ("ret10", "REAL"), ("ret10_pulled", "REAL"),
+                        ("closed10", "INTEGER NOT NULL DEFAULT 0"), ("chain10", "TEXT"), ("t10", "REAL")):
             if c not in cols:
                 db.execute(f"ALTER TABLE {table} ADD COLUMN {c} {kind}")
         db.commit()
@@ -560,9 +580,19 @@ class PaperLog:
                         (kind, ret, int(closed), chain, token))
         self.db.commit()
 
+    def open10(self) -> list[tuple]:
+        return self.db.execute(f"""SELECT token, ts, depth, kind10, risky, kind5, ret5, closed5, chain5, t10,
+                                         ret10, ret10_pulled FROM {self.t} WHERE alert = 1 AND closed10 = 0""").fetchall()
+
+    def update10(self, token: str, kind: str | None, ret: float | None, closed: bool, chain: str | None = None,
+                 ret_pulled: float | None = None, t_exit: float | None = None):
+        self.db.execute(f"""UPDATE {self.t} SET kind10 = ?, ret10 = ?, closed10 = ?, chain10 = ?, ret10_pulled = ?, t10 = ?
+                           WHERE token = ?""", (kind, ret, int(closed), chain, ret_pulled, t_exit, token))
+        self.db.commit()
+
     def alerts(self, since: float) -> list[dict]:
         cur = self.db.execute(f"""SELECT token, ts, score, size, seen, kind, ret, closed, kind5, ret5, closed5, chain5,
-                                        risky FROM {self.t}
+                                        risky, kind10, ret10, closed10, chain10 FROM {self.t}
                                  WHERE alert = 1 AND ts >= ? ORDER BY ts""", (since,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
@@ -600,6 +630,7 @@ def summary(rows: list[dict], scored: int) -> dict:
         "time5": sum(1 for r in rows if r.get("kind5") == "süre" and r.get("closed5")),
         "pulled5": sum(1 for r in rows if r.get("chain5") == "çekildi"),
         "bank5": bankroll(rows, "ret5"), "risky": sum(1 for r in rows if r.get("risky")),
+        "bank10": bankroll(rows, "ret10"), "pulled10": sum(1 for r in rows if r.get("chain10") == "çekildi"),
     }
 
 

@@ -129,6 +129,8 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
              f"5x yapan: <b>{s['x5']}</b> · süresi dolup satılan: {s['time5']} (likiditesi çekilmiş: {s['pulled5']})"
              + (f" · riskli seçim: {s['risky']}" if s.get("risky") else ""),
              f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${s['bank5']:,.0f}</b> ({s['bank5'] / 1000:.2f}x)",
+             f"Yan kural (5x'te yarısı, kalanı 10 dk sonra): sanal kasa <b>${s['bank10']:,.0f}</b> "
+             f"({s['bank10'] / 1000:.2f}x) · kalan yarının likiditesi çekilmiş: {s['pulled10']}",
              "",
              "Eski kural, karşılaştırma için (2x'te yarısı, kalan zirveden %50 düşünce, %50 zarar-kes; açık işlemler son "
              "fiyatla, iyimser):",
@@ -147,11 +149,15 @@ def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], t
                      + (" (likidite çekilmiş ❌)" if r.get("chain5") == "çekildi" else "")}.get(k5 or "", "bekliyor")
             rule5 += " ⚠️" if r.get("risky") else ""
             res5 = f" <b>{_pct(r['ret5'])}</b>" if r.get("ret5") is not None else ""
+            if k5 == "5x" and r.get("ret10") is not None:
+                res5 += f" (yan kural {_pct(r['ret10'])}{'' if r.get('closed10') else ', bekliyor'}"
+                res5 += ", çekildi ❌)" if r.get("chain10") == "çekildi" else ")"
             lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {rule5}{res5} · eski: {state}{res}")
     if other is not None:
         lines += ["", f"🧪 <b>İkinci model (+ holder kriterleri)</b>, aynı coinler, kendi en iyi %{100 * TOP:g}'i:",
                   f"Puanlanan: {other['scored']} · seçilen: <b>{other['alerts']}</b> · 5x yapan: {other['x5']}",
-                  f"Sanal kasa, 5x kuralı: <b>${other['bank5']:,.0f}</b> ({other['bank5'] / 1000:.2f}x) · eski kural: "
+                  f"Sanal kasa, 5x kuralı: <b>${other['bank5']:,.0f}</b> ({other['bank5'] / 1000:.2f}x) · yan kural: "
+                  f"${other['bank10']:,.0f} ({other['bank10'] / 1000:.2f}x) · eski kural: "
                   f"${other['bank']:,.0f} ({other['bank'] / 1000:.2f}x)"]
     if trained_until:
         lines.append(f"\n<i>Model {time.strftime('%d.%m', time.gmtime(trained_until))} tarihine kadarki veriyle eğitildi.</i>")

@@ -109,6 +109,9 @@ async def test_paper_test_scores_a_new_coin_at_its_fifth_buyer_and_follows_its_v
     assert row["closed5"] and row["ret5"] == -1.0 and row["chain5"] == "çekildi"
     assert checked == [(token, rows[0]["ts"] + paper.HOLD5)]  # once for both models
     assert app.paper_log_h.alerts(0)[0]["chain5"] == "çekildi"
+    app.paper_step(later_now)  # the side rule (no 5x): the 5x rule's trade, once it is checked
+    row = app.paper_log.alerts(0)[0]
+    assert row["kind10"] == "süre" and row["closed10"] and row["ret10"] == -1.0 and row["chain10"] == "çekildi"
     await app.rpc.close()
 
 
