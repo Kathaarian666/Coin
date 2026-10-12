@@ -13,7 +13,9 @@ HERE = metrics.HERE
 DELAYS = (1, 3, 10)
 FEE = 0.015
 MAX_TOK = 40  # cüzdan başına en yeni 40 token (kredi sınırı)
-SINCE = 1790812800  # 2026-10-01
+SINCE = int(os.environ.get("SIM_SINCE", 1790812800))  # varsayılan 2026-10-01
+UNTIL = int(os.environ.get("SIM_UNTIL", 4e9))
+OUTDIR = os.environ.get("SIM_OUT", "copysim")
 PX = json.load(open(os.path.join(HERE, "prices.json")))["px"]
 CACHE = os.path.join(HERE, "pricepath2"); os.makedirs(CACHE, exist_ok=True)
 
@@ -84,12 +86,12 @@ def sim_token(mint, ts):
     return res
 
 def wallet(w):
-    out_path = os.path.join(HERE, "copysim", w + ".json")
+    out_path = os.path.join(HERE, OUTDIR, w + ".json")
     if os.path.exists(out_path): return json.load(open(out_path))
     d = json.load(open(os.path.join(HERE, "trades", w + ".json")))
     by = collections.defaultdict(list)
     for t, m, s, q, sol, sig, sg in d["rows"]: by[m].append((t, s, q, sol))
-    items = sorted([(m, ts) for m, ts in by.items() if ts[0][0] >= SINCE], key=lambda x: -x[1][0][0])[:MAX_TOK]
+    items = sorted([(m, ts) for m, ts in by.items() if SINCE <= ts[0][0] < UNTIL], key=lambda x: -x[1][0][0])[:MAX_TOK]
     with ThreadPoolExecutor(6) as ex:
         sims = list(ex.map(lambda x: sim_token(*x), items))
     res = {m: s for (m, _), s in zip(items, sims) if s}
