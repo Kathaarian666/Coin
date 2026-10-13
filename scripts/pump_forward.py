@@ -24,7 +24,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pump_fetch  # noqa: E402
-from pump_lab import GRAD_RULES, grad_coin, grad_net, load  # noqa: E402
+from pump_lab import GRAD_RULES, WSOL, grad_coin, grad_net  # noqa: E402
 
 RULE = "tp1.5_sl0.15_h0.0833333"
 VOL5, RET5, MCAP, MIN_AFTER = 1e5, 1.1, 3e5, 1
@@ -34,17 +34,25 @@ FIRST_FORWARD_DAY = "2026-10-09"  # 3-8 Oct is where the rule was found
 
 
 def graduations(work: Path) -> tuple[pd.DataFrame, pd.Series]:
-    """Every graduation Fomo saw (ts) and each coin's busiest SOL-quoted PumpSwap pool."""
+    """Every graduation Fomo saw (ts) and each coin's busiest SOL-quoted PumpSwap pool.
+
+    Same trades as pump_lab.load (tokens > 0, lamports > 0, no WSOL mint, curve or SOL-quoted pools), aggregated in
+    SQLite: loading every trade of the whole archive no longer fits in memory (13 Oct, killed at ~6 GB)."""
     import sqlite3
-    t = load(str(work / "sol.db"))
-    created = pd.read_sql("SELECT base, created_ts FROM pools", sqlite3.connect(work / "sol.db"))
+    db = sqlite3.connect(work / "sol.db")
+    base = (f"FROM trades t LEFT JOIN pools p ON p.pool = t.pool WHERE t.tokens > 0 AND t.lamports > 0 "
+            f"AND t.mint != '{WSOL}' AND (t.venue = 1 OR p.quote = '{WSOL}')")
+    t0 = db.execute(f"SELECT MIN(t.ts) {base}").fetchone()[0]
+    first = pd.read_sql(f"SELECT t.mint, MIN(t.ts) AS ts {base} AND t.venue = 2 GROUP BY t.mint ORDER BY t.mint",
+                        db).set_index("mint").ts
+    had_curve = set(pd.read_sql(f"SELECT DISTINCT t.mint {base} AND t.venue = 1", db).mint)
+    created = pd.read_sql("SELECT base, created_ts FROM pools", db)
     created = created.dropna().groupby("base").created_ts.min()
-    swap = t[t.venue == 2]
-    first = swap.groupby("mint").ts.min()
-    had_curve = set(t.mint[t.venue == 1])
-    new_pool = first.index.map(lambda m: created.get(m, -1) > t.ts.min()).to_numpy(bool)
+    new_pool = first.index.map(lambda m: created.get(m, -1) > t0).to_numpy(bool)
     grads = first[first.index.isin(had_curve) | new_pool].to_frame("ts")
-    main_pool = swap.groupby(["mint", "pool"]).size().reset_index().sort_values(0).drop_duplicates("mint", keep="last")
+    main_pool = pd.read_sql(f"SELECT t.mint, t.pool, COUNT(*) AS n {base} AND t.venue = 2 GROUP BY t.mint, t.pool "
+                            "ORDER BY t.mint, t.pool", db).rename(columns={"n": 0})
+    main_pool = main_pool.sort_values(0).drop_duplicates("mint", keep="last")
     return grads, main_pool.set_index("mint")["pool"]
 
 
