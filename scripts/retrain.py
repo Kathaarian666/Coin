@@ -12,6 +12,7 @@ Nothing is pushed or deployed: the session reviews the numbers, runs the tests, 
 the server (bash ~/Coin/deploy/install.sh; the paper test survives the restart).
 """
 
+import os
 import sqlite3
 import subprocess
 import sys
@@ -21,6 +22,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PY = sys.executable
 DAY_BLOCKS = 864_000
+if Path("/dev/shm").is_dir():  # SQLite's sort files in RAM: the disk can be nearly full (15 Oct)
+    os.environ.setdefault("SQLITE_TMPDIR", "/dev/shm")
 
 
 def run(*args, log: Path | None = None):
@@ -65,7 +68,11 @@ def main():
     winners, winners_h = work / "winners.parquet", work / "winners_h5.parquet"
     run(PY, s("winner_study.py"), db_path, winners, "2026-09-03", end, log=work / "winners.log")
     import pandas as pd
-    pd.read_parquet(winners, columns=["coin", "k"]).query("k == 3")[["coin"]].drop_duplicates().to_parquet(work / "coins.parquet")
+    # holder features are only used at the 5th buyer: those coins, newest first (if the download has to stop - the
+    # session's disk allowance, ~17 GB DB on 15 Oct - the recent days are complete; paper_export --holder leaves the
+    # rest out of training)
+    (pd.read_parquet(winners, columns=["coin", "k", "ts"]).query("k == 5").sort_values("ts", ascending=False)
+     [["coin"]].drop_duplicates().to_parquet(work / "coins.parquet"))
     run(PY, s("transfer_download.py"), db_path, work / "coins.parquet", 1, log=work / "transfers.log")
     run(PY, s("transfer_features.py"), db_path, winners, winners_h, 5, 1, log=work / "features.log")
 

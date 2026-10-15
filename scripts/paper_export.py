@@ -99,6 +99,14 @@ def main():
     cols = [c for c in rise_study.CHOSEN if c in df and c not in paper.HOLDER_FEATURES]
     if holder:
         cols = cols + paper.HOLDER_FEATURES
+        # a coin whose Transfer logs were never downloaded has blank holder criteria for a reason that is not the
+        # rule-10 "moment later than the window" (e.g. the download stopped on a full disk): left out of training
+        done = {t for (t,) in db.execute("SELECT token FROM transfers_done")}
+        missing = ~df.coin.str.lower().isin(done)
+        if missing.any():
+            days = pd.to_datetime(df.ts[missing], unit="s").dt.strftime("%d %b")
+            print(f"transfer logu indirilmemiş {int(missing.sum())} an eğitimde yok ({days.min()} – {days.max()})")
+            df = df[~missing].reset_index(drop=True)
     live = set(paper.alert_features([paper.Trade(0, 0, 1, "a", 1, 1), paper.Trade(1, 1, 1, "b", 1, 1)], 1, K,
                                     None, None, math.nan)) | set(paper.HOLDER_FEATURES)
     missing = [c for c in cols if c not in live]
