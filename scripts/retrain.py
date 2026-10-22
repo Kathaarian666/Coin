@@ -56,9 +56,20 @@ def main():
         with gzip.open(veri / "robinhood" / rh[0] / "trades.csv.gz", "rt") as f:
             first_bot = min(int(r["block"]) for r in csv.DictReader(f))
         if first_bot > last[0] + 1:
-            days_ago = (time.time() - last[1]) / 86400
-            run(PY, s("fomo_download.py"), round(days_ago + 0.05, 3), work / "hole.db", log=work / "hole.log")
-            run(PY, s("data_merge.py"), work / "hole.db", db_path, "--fill", log=work / "merge.log")
+            # only the hole, by block number (22 Oct: "days ago" from the clock downloaded the whole 2 weeks, and the
+            # chain's ~845k blocks a day put the window off by hours); fomo_download counts DAY_BLOCKS from the head
+            import json
+            import urllib.request
+            req = urllib.request.Request("https://rpc.mainnet.chain.robinhood.com", json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []}).encode(),
+                {"content-type": "application/json", "user-agent": "curl/8.0"})
+            head = int(json.load(urllib.request.urlopen(req, timeout=60))["result"], 16)
+            # 300 blocks of margin each side (the head moves on before fomo_download reads it)
+            run(PY, s("fomo_download.py"), (head - last[0] + 300) / DAY_BLOCKS, work / "hole.db",
+                max(0.0, (head - first_bot - 300) / DAY_BLOCKS), log=work / "hole.log")
+            # plain merge: only blocks after the archive's last one (no overlap); solana_import then adds the bot's
+            # days after the hole's last block
+            run(PY, s("data_merge.py"), work / "hole.db", db_path, log=work / "merge.log")
         run(PY, s("solana_import.py"), veri, db_path, "--chain", "robinhood", log=work / "rh_import.log")
     run(PY, s("fomo_supply.py"), db_path, log=work / "supply.log")
     run(PY, s("pons_launches.py"), db_path, log=work / "launches.log")
