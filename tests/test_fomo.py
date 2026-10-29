@@ -2,7 +2,8 @@ from eth_abi import encode
 
 from rhscanner.analyzer import fomo_findings
 from rhscanner.config import USDG
-from rhscanner.fomo import FOMO_ENTRY, FOMO_EXECUTOR, FOMO_TRANSFER_TOPIC, FomoTracker, parse_fomo_logs
+from rhscanner.fomo import (FOMO_ENTRY, FOMO_ENTRY_2, FOMO_EXECUTOR, FOMO_EXECUTOR_2, FOMO_TRANSFER_TOPIC, FomoTracker,
+                            parse_fomo_logs, set_sell_usd)
 
 TOKEN = "0x1111111111111111111111111111111111111111"
 USER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -31,6 +32,21 @@ def test_parse_buys_and_sells():
     trades = sorted(parse_fomo_logs(logs), key=lambda t: t.side)
     assert [(t.side, t.trader, t.usd) for t in trades] == [("buy", USER_A, 25.5), ("sell", USER_B, 10.0)]
     assert all(t.token.lower() == TOKEN for t in trades)
+
+
+def test_second_contract_pair():
+    """Fomo's contracts since 26 Oct: same event and legs; the sell's USDG goes on to a settlement address."""
+    settle = "0x4cd00e0000000000000000000000000000000000"
+    logs = [leg(FOMO_ENTRY_2, USER_A, FOMO_EXECUTOR_2, USDG, 2_000_000, "0x7"),
+            leg(FOMO_EXECUTOR_2, FOMO_EXECUTOR_2, USER_A, TOKEN, 10**18, "0x7"),
+            leg(FOMO_ENTRY_2, USER_B, FOMO_EXECUTOR_2, TOKEN, 10**18, "0x8"),
+            leg(FOMO_EXECUTOR_2, FOMO_EXECUTOR_2, settle, USDG, 3_000_000, "0x8")]
+    trades = sorted(parse_fomo_logs(logs), key=lambda t: t.side)
+    assert [(t.side, t.trader, t.usd) for t in trades] == [("buy", USER_A, 2.0), ("sell", USER_B, 3.0)]
+    set_sell_usd(trades, {})  # no USDG transfer found: the event's dollar size stays
+    assert trades[1].usd == 3.0
+    set_sell_usd(trades, {"0x8": 3.5})
+    assert trades[1].usd == 3.5
 
 
 def test_eth_paid_buy_and_cash_only_legs():

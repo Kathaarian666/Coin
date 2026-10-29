@@ -15,10 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from rhscanner.config import USDG  # noqa: E402
-from rhscanner.fomo import FOMO_ENTRY, FOMO_EXECUTOR, FOMO_TRANSFER_TOPIC, parse_fomo_logs  # noqa: E402
+from rhscanner.fomo import FOMO_CONTRACTS, FOMO_EXECUTORS, FOMO_TRANSFER_TOPIC, parse_fomo_logs  # noqa: E402
 
 TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-TO_EXECUTOR = "0x" + "0" * 24 + FOMO_EXECUTOR[2:]
+TO_EXECUTORS = ["0x" + "0" * 24 + x[2:] for x in FOMO_EXECUTORS]  # both Fomo pairs (26 Oct)
 
 URLS = ["https://rpc.mainnet.chain.robinhood.com", "https://robinhood.drpc.org"]
 DAY_BLOCKS = 864_000
@@ -89,14 +89,14 @@ def main():
         to = min(done + step, end)
         try:
             logs = call("eth_getLogs", [{"fromBlock": hex(done), "toBlock": hex(to - 1),
-                                         "address": [FOMO_ENTRY, FOMO_EXECUTOR], "topics": [FOMO_TRANSFER_TOPIC]}])
+                                         "address": list(FOMO_CONTRACTS), "topics": [FOMO_TRANSFER_TOPIC]}])
         except OverflowError:
             step = max(500, step // 2)
             continue
         # Fomo's own events carry no dollar amount for sells: the USDG the DEX pays the executor does
         try:
             paid = call("eth_getLogs", [{"fromBlock": hex(done), "toBlock": hex(to - 1), "address": USDG,
-                                         "topics": [TRANSFER, None, TO_EXECUTOR]}])
+                                         "topics": [TRANSFER, None, TO_EXECUTORS]}])
         except OverflowError:
             step = max(500, step // 2)
             continue

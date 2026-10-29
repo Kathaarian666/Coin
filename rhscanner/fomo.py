@@ -8,7 +8,8 @@ buys; ~4k buys/hour by ~2.7k distinct users at the time of writing):
   executor FOMO_EXECUTOR  executor -> user   (what the user receives)
 
 A buy pays USDG (or ETH) in and delivers the token out; a sell does the
-reverse. Counting distinct buyers per token gives a live "trending on Fomo"
+reverse. On 26 Oct ~14:00 UTC Fomo moved to a second pair of contracts (FOMO_ENTRY_2 /
+FOMO_EXECUTOR_2, same event, same legs; the same addresses on BNB Chain); both pairs are read. Counting distinct buyers per token gives a live "trending on Fomo"
 signal without any Fomo account or API.
 """
 
@@ -28,12 +29,18 @@ log = logging.getLogger(__name__)
 
 FOMO_ENTRY = "0xccc88a9d1b4ed6b0eaba998850414b24f1c315be"
 FOMO_EXECUTOR = "0xb92fe925dc43a0ecde6c8b1a2709c170ec4fff4f"
+# since 26 Oct ~14:00 UTC (the first pair still sees a trickle)
+FOMO_ENTRY_2 = "0x5567954cd026cebfe486062cb75848e0f1c12e58"
+FOMO_EXECUTOR_2 = "0x0729e2a4716d9f7dd17858d5d504426d228697f7"
+FOMO_ENTRIES = (FOMO_ENTRY, FOMO_ENTRY_2)
+FOMO_EXECUTORS = (FOMO_EXECUTOR, FOMO_EXECUTOR_2)
+FOMO_CONTRACTS = FOMO_ENTRIES + FOMO_EXECUTORS
 # Event(address from, address to, address token, uint256 amount, bytes ref), none indexed.
 FOMO_TRANSFER_TOPIC = "0xafbab204e8271965231d37baed9b1abca8725b7409c70314455f68bc89142b91"
 
 _USDG = USDG.lower()
 ERC20_TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-_TO_EXECUTOR = "0x" + "0" * 24 + FOMO_EXECUTOR[2:]
+_TO_EXECUTORS = ["0x" + "0" * 24 + x[2:] for x in FOMO_EXECUTORS]
 _ETH = "0x" + "0" * 40
 # What Fomo pays and gets paid in; WETH shows up when a route goes through it.
 _CASH = {_USDG, _ETH, DEFAULT_WETH.lower()}
@@ -88,9 +95,9 @@ def parse_fomo_logs(logs: list[dict]) -> list[FomoTrade]:
         for leg in legs:
             if leg["token"] in _CASH:
                 continue
-            if leg["from"] == FOMO_EXECUTOR and leg["to"] != FOMO_EXECUTOR:
+            if leg["from"] in FOMO_EXECUTORS and leg["to"] not in FOMO_EXECUTORS:
                 side, trader = "buy", leg["to"]
-            elif leg["emitter"] == FOMO_ENTRY and leg["to"] == FOMO_EXECUTOR:
+            elif leg["emitter"] in FOMO_ENTRIES and leg["to"] in FOMO_EXECUTORS:
                 side, trader = "sell", leg["from"]
             else:
                 continue
@@ -164,7 +171,7 @@ class FomoTracker:
 async def fetch_sell_usd(rpc: RpcClient, from_block: int, to_block: int) -> dict[str, float]:
     """Fomo's own events carry no dollar amount for sells: the USDG the DEX pays the executor does (the research
     data is built the same way, scripts/fomo_download.py). tx hash -> dollars."""
-    logs = await rpc.get_logs(from_block, to_block, [ERC20_TRANSFER, None, _TO_EXECUTOR], address=USDG)
+    logs = await rpc.get_logs(from_block, to_block, [ERC20_TRANSFER, None, _TO_EXECUTORS], address=USDG)
     paid: dict[str, float] = {}
     for entry in logs:
         tx = entry["transactionHash"]
@@ -175,7 +182,7 @@ async def fetch_sell_usd(rpc: RpcClient, from_block: int, to_block: int) -> dict
 def set_sell_usd(trades: list[FomoTrade], paid: dict[str, float]):
     for t in trades:
         if t.side == "sell":
-            t.usd = paid.get(t.tx_hash)
+            t.usd = paid.get(t.tx_hash, t.usd)  # the second pair's sells also carry the USDG leg in the event
 
 
 async def fetch_fomo_logs(rpc: RpcClient, from_block: int, to_block: int) -> list[dict]:
@@ -183,7 +190,7 @@ async def fetch_fomo_logs(rpc: RpcClient, from_block: int, to_block: int) -> lis
     (the public RPC caps result size; dRPC's free tier only serves ~100 blocks)."""
     try:
         return await rpc.get_logs(
-            from_block, to_block, [FOMO_TRANSFER_TOPIC], address=[FOMO_ENTRY, FOMO_EXECUTOR], retries=1
+            from_block, to_block, [FOMO_TRANSFER_TOPIC], address=list(FOMO_CONTRACTS), retries=1
         )
     except Exception:
         if to_block - from_block < 50:

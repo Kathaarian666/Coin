@@ -13,7 +13,7 @@ from .checks.launch import analyse_launch, launch_logs
 from .checks.honeypot import check_honeypot
 from .checks.liquidity import check_liquidity
 from .checks.wash import recent_flow, wash_findings
-from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
+from .fomo import FOMO_CONTRACTS
 from .launches import LaunchIndex
 from .rpc import RpcClient
 from .scoring import missing_checks, score
@@ -164,7 +164,7 @@ class Analyzer:
             return self._finish(report, findings)
 
         # The V4 PoolManager holds every V4 pool's liquidity; Fomo's contracts only pass tokens through.
-        exclude = {token, self.settings.v4_pool_manager, FOMO_ENTRY, FOMO_EXECUTOR}
+        exclude = {token, self.settings.v4_pool_manager, *FOMO_CONTRACTS}
         if pool:
             exclude.add(pool["pool"])
             if pool.get("factory") and pool["dex"] == "v4":

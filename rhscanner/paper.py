@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .config import DEFAULT_V4_POOL_MANAGER
-from .fomo import FOMO_ENTRY, FOMO_EXECUTOR
+from .fomo import FOMO_CONTRACTS
 
 CHECKPOINT_BUYERS = 5
 DELAY = 30  # s: the user's reaction time
@@ -126,7 +126,7 @@ HOLDER_WINDOW = 3600  # s after the coin's first Fomo trade: later moments get n
 HOLDER_LOOKBACK_BLOCKS = 36_000  # before the first Fomo trade where the coin's Transfer logs start (or its launch)
 ZERO = "0x" + "0" * 40
 HOLDER_SYSTEM = {ZERO, "0x000000000000000000000000000000000000dead", DEFAULT_V4_POOL_MANAGER.lower(),
-                 FOMO_ENTRY.lower(), FOMO_EXECUTOR.lower()}
+                 *FOMO_CONTRACTS}
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"  # ERC-20 Transfer
 HOLDER_FEATURES = ["holders", "holder_growth_10m", "top10_pct", "top1_pct", "dev_pct", "dev_sent_pct",
                    "sniper_pct", "transfers_10m"]

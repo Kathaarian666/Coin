@@ -49,7 +49,7 @@ class FakeRpc:
         self.queries.append((int(q["fromBlock"], 16), int(q["toBlock"], 16), q["address"]))
         lo, hi = int(q["fromBlock"], 16), int(q["toBlock"], 16)
         out = []
-        if q["address"] == [bnb.FOMO_ENTRY, bnb.FOMO_EXECUTOR] and lo <= 950 <= hi:
+        if q["address"] == [bnb.FOMO_ENTRY, bnb.FOMO_EXECUTOR, bnb.FOMO_ENTRY_2, bnb.FOMO_EXECUTOR_2] and lo <= 950 <= hi:
             out = [_fomo(950, 1, bnb.FOMO_ENTRY, USER, bnb.FOMO_EXECUTOR, bnb.USDC, 5 * 10**18),
                    _fomo(950, 2, bnb.FOMO_EXECUTOR, bnb.FOMO_EXECUTOR, USER, TOKEN, 10**24)]
         elif q["address"] == bnb.USDC and lo <= 960 <= hi:

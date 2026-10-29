@@ -32,13 +32,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from security_study import URLS, rpc_many  # noqa: E402
 from rhscanner.checks.contract import EIP1967_IMPL_SLOT  # noqa: E402
 from rhscanner.config import DEFAULT_V4_POOL_MANAGER  # noqa: E402
-from rhscanner.fomo import FOMO_ENTRY, FOMO_EXECUTOR  # noqa: E402
+from rhscanner.fomo import FOMO_CONTRACTS  # noqa: E402
 from rhscanner.hooks import NAMED_HOOKS, TOPIC_V4_INITIALIZE  # noqa: E402
 
 PM = DEFAULT_V4_POOL_MANAGER.lower()
 ZERO = "0x" + "0" * 40
 DEAD = "0x000000000000000000000000000000000000dead"
-SYSTEM = {ZERO, DEAD, PM, FOMO_ENTRY.lower(), FOMO_EXECUTOR.lower()}
+SYSTEM = {ZERO, DEAD, PM, *FOMO_CONTRACTS}
 TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 ZERO_TOPIC = "0x" + "0" * 64
 SNIPER_BLOCKS = 30

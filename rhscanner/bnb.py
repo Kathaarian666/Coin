@@ -27,6 +27,9 @@ log = logging.getLogger(__name__)
 URL = "https://bsc-rpc.publicnode.com"  # getLogs needs an address filter; ~1 h of logs
 FOMO_ENTRY = "0xccc88a9d1b4ed6b0eaba998850414b24f1c315be"
 FOMO_EXECUTOR = "0xb92fe925dc43a0ecde6c8b1a2709c170ec4fff4f"
+# Fomo's second pair since 26 Oct ~14:00 UTC (same addresses as on Robinhood Chain, rhscanner/fomo.py)
+FOMO_ENTRY_2 = "0x5567954cd026cebfe486062cb75848e0f1c12e58"
+FOMO_EXECUTOR_2 = "0x0729e2a4716d9f7dd17858d5d504426d228697f7"
 FOMO_TOPIC = "0xafbab204e8271965231d37baed9b1abca8725b7409c70314455f68bc89142b91"
 USDC = "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
 TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
@@ -125,9 +128,10 @@ class Collector:
         while lo <= hb:
             hi = min(hb, lo + MAX_RANGE - 1)
             fomo = await self.rpc("eth_getLogs", [{"fromBlock": hex(lo), "toBlock": hex(hi),
-                                                   "address": [FOMO_ENTRY, FOMO_EXECUTOR], "topics": [FOMO_TOPIC]}])
+                                                   "address": [FOMO_ENTRY, FOMO_EXECUTOR, FOMO_ENTRY_2, FOMO_EXECUTOR_2],
+                                                   "topics": [FOMO_TOPIC]}])
             usdc = await self.rpc("eth_getLogs", [{"fromBlock": hex(lo), "toBlock": hex(hi), "address": USDC,
-                                                   "topics": [TRANSFER, None, "0x" + "0" * 24 + FOMO_EXECUTOR[2:]]}])
+                                                   "topics": [TRANSFER, None, ["0x" + "0" * 24 + x[2:] for x in (FOMO_EXECUTOR, FOMO_EXECUTOR_2)]]}])
             made = await self.rpc("eth_getLogs", [{"fromBlock": hex(lo), "toBlock": hex(hi), "address": FLAP_PORTAL,
                                                    "topics": [FLAP_CREATED]}])
             rows_f, rows_u, rows_l = [], [], []

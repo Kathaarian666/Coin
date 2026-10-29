@@ -136,7 +136,8 @@ def main():
             continue
         mult = [sum(sh * p for _, sh, p in a["legs"][(rule, mode)]) / a["p_in"] for a in sel]
         cut = np.quantile(mult, 0.99)
-        wl = weeks([a for a, m in zip(sel, mult) if m < cut], (rule, mode), sizing) or [np.nan]
+        luck = [a for a, m in zip(sel, mult) if m < cut]  # empty with a single pick (29 Oct: a thin week)
+        wl = (weeks(luck, (rule, mode), sizing) if luck else []) or [np.nan]
         rows.append({"pick": pick, "filter": fname, "tp": rule[0], "share": round(rule[1], 2), "stop": rule[2],
                      "trail": rule[3], "hold": rule[4], "mode": mode, "size": sizing, "n": len(sel),
                      "weeks": " / ".join(f"{x:.2f}" for x in w), "geo": float(np.prod(w) ** (1 / len(w))),

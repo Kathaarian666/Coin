@@ -23,10 +23,10 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from rhscanner.config import DEFAULT_V4_POOL_MANAGER  # noqa: E402
-from rhscanner.fomo import FOMO_ENTRY, FOMO_EXECUTOR  # noqa: E402
+from rhscanner.fomo import FOMO_CONTRACTS  # noqa: E402
 
 SYSTEM = {"0x" + "0" * 40, "0x000000000000000000000000000000000000dead", DEFAULT_V4_POOL_MANAGER.lower(),
-          FOMO_ENTRY.lower(), FOMO_EXECUTOR.lower()}
+          *FOMO_CONTRACTS}
 
 
 def main():
