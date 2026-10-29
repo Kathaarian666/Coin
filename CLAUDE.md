@@ -76,8 +76,10 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - Public RPC `https://rpc.mainnet.chain.robinhood.com`: `eth_getLogs` sıkı rate-limit (429), 10k log sınırı,
   eski aralıklarda "log query timed out". Yedek: dRPC `https://robinhood.drpc.org`.
 - Blockscout sunucudan Cloudflare 403 veriyor → holder'lar RPC Transfer loglarından hesaplanıyor.
-- Fomo emir akışı: entry `0xccc88a9d...`, executor `0xb92fe925...` (sabitler `fomo.py`'de); her işlemde işlem
-  yapan cüzdan ve USDG tutarı görünür.
+- Fomo emir akışı: entry `0xccc88a9d...`, executor `0xb92fe925...`; **26 Ekim ~14:00 UTC'den beri ikinci çift**
+  entry `0x5567954c...`, executor `0x0729e2a4...` (aynı olay; BNB'de de aynı adresler) — `fomo.py` `FOMO_CONTRACTS` ikisini
+  de okur (`PROJE.md` §0 B7). Her işlemde işlem yapan cüzdan ve USDG tutarı görünür. Gece arşivindeki günlük işlem sayısı
+  birden düşerse önce Fomo'nun kontrat değiştirip değiştirmediğine bak.
 - Pons V2 factory `0x7ed598bc...`, lansman olayı: topic1=token, topic2=curve, topic3=launcher
   (`checks/deployer.py`). Günde ~6-7 bin lansman; `launches.py` hepsini (curve adresiyle) SQLite'ta indeksliyor.
 - Pons coini mezuniyete kadar kendi curve kontratında işlem görür: `CurveBuy`/`CurveSell` (topic2=alıcı/satıcı;
@@ -89,7 +91,7 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). 102 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). 103 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 
