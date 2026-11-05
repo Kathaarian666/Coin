@@ -8,6 +8,9 @@
                                                          features, scripts/transfer_features.py)
                                [--top <share>=0.02]      the pick share (the bot: paper.TOP)
                                [--model <model.json>]    another exported model (e.g. last week's, for a fair test)
+                               [--bot-bar]               pick with the bot's exact bar (paper.PaperBook.bar: under 300
+                                                         scores in the 48 h before, the model's starting bar; 29 Oct:
+                                                         a thin market left the >= 200 line without picks)
 
 winners_new = scripts/winner_study.py over the recent days with the latest data (longer follow-up); its coins
 replace theirs in winners_old, which supplies the first buyers' history (rise_study.add_history, outcome known
@@ -95,8 +98,8 @@ def main():
             opts[flag] = argv[i + 1]
             del argv[i:i + 2]
     out, top = opts.get("--picks"), float(opts["--top"]) if "--top" in opts else None
-    holder = "--holder" in argv
-    argv = [a for a in argv if a != "--holder"]
+    holder, bot_bar = "--holder" in argv, "--bot-bar" in argv
+    argv = [a for a in argv if a not in ("--holder", "--bot-bar")]
     top = top or paper.TOP
     db = sqlite3.connect(argv[1], timeout=300)
     old, new = pd.read_parquet(argv[2]), pd.read_parquet(argv[3])
@@ -107,18 +110,23 @@ def main():
     w["score"] = [model.score({c: getattr(r, c) for c in model.features}) for r in w.itertuples()]
     w = w.sort_values("ts").reset_index(drop=True)
     ts, sc = w.ts.values, w.score.values
-    bars = []
+    bars, bot = [], []
     for i, t in enumerate(ts):
         lo = np.searchsorted(ts, t - WINDOW)
         bars.append(np.percentile(sc[lo:i], 100 * (1 - top)) if i - lo >= 200 else np.nan)
-    w["bar"] = bars
+        prev = np.sort(sc[lo:i])  # as paper.PaperBook.bar (the bot's own rule)
+        bot.append(model.bar if len(prev) < 300 else prev[min(len(prev) - 1, int((1 - top) * len(prev)))])
+    w["bar"] = bot if bot_bar else bars
+    w["bot_bar"] = bot
     fresh = w[w.ts > model.trained_until]
     data_end = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0]
     print(f"Model {pd.to_datetime(model.trained_until, unit='s'):%d %b %H:%M} UTC'ye kadarki anlarla eğitildi. Taze: "
           f"{pd.to_datetime(fresh.ts.min(), unit='s'):%d %b %H:%M} – {pd.to_datetime(fresh.ts.max(), unit='s'):%d %b %H:%M}, "
           f"{len(fresh)} coin 5. alıcıya ulaştı; veri sonu {pd.to_datetime(data_end, unit='s'):%d %b %H:%M}.\n")
     print(f"{'hepsi':>28}: {outcome_line(fresh)}")
-    for label, sel in [(f"en iyi %{100 * top:g} (bot gibi, 48 sa)", fresh[fresh.score >= fresh.bar]),
+    bar200 = np.array(bars)[(w.ts > model.trained_until).values]
+    for label, sel in [(f"en iyi %{100 * top:g} (48 sa, ≥200 an)", fresh[fresh.score >= bar200]),
+                       ("botun eşiği (paper.bar)", fresh[fresh.score >= fresh.bot_bar]),
                        (f"en iyi %2 (sabit eşik {model.bar:.3f})", fresh[fresh.score >= model.bar])]:
         print(f"{label:>28}: {len(sel)} seçim · {outcome_line(sel)}")
         if len(sel):
