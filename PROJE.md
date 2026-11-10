@@ -39,9 +39,10 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    aralık içi ModifyLiquidity; Pons curve: lansmandan beri bütün CurveBuy/CurveSell'e sabit çarpım uydurma, `fit_spread`
    ~0 değilse curve sabit çarpım değil → önce `--probe` ile olay verisine bak). `scorecard.py ... --depth pool_depth.parquet`
    ölçüleni kullanır (ölçülemeyen an tahmine düşer). Kalan: fomo.db kurulumu + RPC ile çalıştırma (RPC izinli ortamda).
-2. ~~BNB'ye ilk bakış~~ **yapıldı (10 Kasım, §4.17): BNB'de yöntem kaldı.** Pazar Robinhood kadar büyük (günde ~145 coin
-   5. alıcıya ulaşıyor) ama 2x/5x oranı ve havuz derinliği daha düşük; aynı sınavda (iyimser çıkışla bile) 2 haftanın 2'si
-   kaldı, aynı haftalarda Robinhood +$1.200 – 2.700. Öneri: `fombnb` kapatılsın (kullanıcı kararı bekliyor).
+2. **BNB testi (§4.17, sürüyor; kullanıcı: "kapatmıyoruz, testi gerçekleştireceğiz").** İlk bakış: pazar Robinhood kadar
+   büyük (günde ~145 coin 5. alıcıya), 2x/5x oranı ve tahmini derinlik daha düşük. Sınav tahmini derinlikle 2 haftanın 2'si
+   kaldı, derinlik 3-5 katıysa geçiyor → karar gerçek derinliğe bağlı; ileriye dönük ölçüm (toplayıcıya havuz rezervi +
+   3 sa havuz olayları) kullanıcıya soruldu. Robinhood modeli BNB'de kötü (3/3 kaldı).
 3. **Haftalık görevi yeni ölçüte çevir** (kullanıcı onayıyla `update_trigger`): her Perşembe veri güncelle → `profit_study`
    → `scorecard.py --fetch` → karne tablosuna yeni hafta; holder modelini ve ana ↔ holder sorusunu bırak (5 haftada üstünlük
    yok, eğitimin en pahalı kısmı); bot modeli seyrek güncellensin. Rapor kısa, kullanıcıya bildirimle.
@@ -970,9 +971,18 @@ görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser
 
 - BNB 2 haftanın 2'sinde kaldı (5x'te yarısı kuralıyla da +$36 / +$84). Seçimlerin 3 sa'te 5x oranı %9 (Robinhood %22).
 - Pons dışı ↔ flap.sh ayrımı BNB'de de aynı yönde (flap.sh işlem başı −$33, diğerleri +$35) ama örnek küçük.
-- **Sonuç:** BNB ayrı bir fırsat değil; pazar aynı büyüklükte ama daha sığ ve daha az yükselen. Yöntem taşınmıyor.
-  Öneri: `fombnb` kapatılsın (veri dalını da doldurmasın). İleride denenebilecek tek şey Robinhood modelinin BNB'ye
-  doğrudan uygulanması (az eğitim verisi sorununu aşar), ama oranlar zaten düşük.
+- **Kullanıcı (10 Kasım): "Kapatmıyoruz, testi gerçekleştireceğiz"** → `fombnb` açık kalır, BNB sınavı tamamlanacak.
+- **Robinhood modeli BNB'de** (`scripts/cross_chain_test.py`: her gün Robinhood'un o güne kadarki anlarıyla eğitilir, BNB
+  anlarını puanlar; 5 Ekim'den, 139 seçim): 3 haftanın 3'ü kaldı (−$950 civarı, kasa bitiyor), seçimlerin %88'i flap.sh.
+  Robinhood'un kalıbı BNB'ye taşınmıyor; BNB'nin kendi modeli daha iyi.
+- **Sonucu belirleyen bilinmeyen: havuz derinliği** (Robinhood'daki 1. işin aynısı). BNB'nin kendi modeli, derinlik
+  tahmininin katı (`--depth-scale`) ile: x1 −$110 / +$84 · x2 +$374 / +$377 · x3 +$639 / +$496 · x5 +$953 / +$600 ·
+  sonsuz +$2.042 / +$768. Gerçek derinlik tahminin ~3-5 katıysa 2 hafta geçiyor (ikinci hafta tek işleme bağlı: en iyi
+  işlem hariç zararda). Seçimlerin tahmini derinlik medyanı BNB $1.632, Robinhood $4.018.
+- Ayrıca çıkış iyimser (likidite çekilmesi görülmüyor) ve sadece 2 tam hafta var. **Sonuç: BNB henüz karar verilemez.**
+  Geçmiş için gerçek derinlik ölçülemiyor (ücretsiz BNB RPC'leri ~1 saatlik log tutuyor); ileriye dönük ölçüm gerekir:
+  toplayıcı her coinin 5. alıcı anında havuz rezervini ve sonraki 3 saatteki havuz olaylarını kaydetmeli (kullanıcıya
+  soruldu). 10 Kasım'dan beri toplayıcı Fomo'nun yeni kontratını da görüyor (B7) → yeni haftalar gelecek.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
@@ -1077,6 +1087,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Veri | `data_export.py` / `data_import.py` | `veri` dalı arşivi |
 | Veri | `fomo_supply.py` | Coin arzları (FDV için) |
 | Veri | `pons_launches.py` | Bütün Pons lansmanları (token, curve, geliştirici) |
+| Araştırma (BNB) | `cross_chain_test.py` | Bir zincirde eğitilen modelle diğer zincirde walk-forward seçim (§4.17) |
 | Veri (BNB) | `bnb_trades.py` | `veri` dalındaki `bnb/` günlerini işlem veritabanı biçimine çevirir (winner_study / profit_study / scorecard aynen çalışır, §4.17) |
 | Veri (pump.fun) | `solana_import.py` | `veri` dalındaki `solana/` günlerini araştırma veritabanına yükler (toplayıcı: `rhscanner/solana.py`, gece gönderim: `rhscanner/solana_export.py`) |
 | Veri | `transfer_download.py` | Coinlerin ilk saat token transferleri (holder özellikleri) |
