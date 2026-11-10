@@ -12,6 +12,16 @@ Tables (amounts REAL, raw units; ts = block time, interpolated between the polle
 - launches(token, block, ts, creator, name, symbol): flap.sh TokenCreated (portal 0xe2ce6ab8...; most Fomo coins on
   BNB end in ...7777), the launch index like Pons on Robinhood
 - heads(block, ts): the polled head blocks
+Pool depth and exits, measured forward (PROJE.md §4.17, user 10 Nov: free BNB nodes keep ~1 h of logs, so the depth at
+an alert cannot be looked up later). A coin is watched from its WATCH_K-th distinct Fomo buyer for WATCH_S:
+- watch(token, block, ts, until_ts): the watched moments
+- coin_xfer(block, ts, tx, li, token, src, dst, amount): every Transfer of the coin (any venue, any wallet: trades
+  outside Fomo, liquidity added / removed)
+- venue_logs(block, ts, tx, li, address, topics, data): the raw logs of the transactions that moved the coin (the
+  venue's own events: PancakeSwap Sync / Swap with reserves, flap.sh curve events ...), at most one transaction per
+  coin every RECEIPT_GAP s plus the first one of the watch (the alert's own trade); decoded later in the research,
+  so no venue's event layout has to be known here
+- buyers(token, wallet): distinct Fomo buyers (which buyer is the k-th survives a restart)
 """
 
 import asyncio
@@ -39,6 +49,10 @@ FLAP_CREATED = "0x504e7f360b2e5fe33cbaaae4c593bc55305328341bf79009e43e0e3b7f6996
 POLL = 4.0  # s
 MAX_RANGE = 400  # blocks per query (~3 min)
 START_BACK = 100  # blocks before the head on a fresh start
+WATCH_K = 5  # the paper test's moment: the 5th distinct Fomo buyer
+WATCH_S = 3 * 3600 + 15 * 60  # the 5x rule's 3 h plus the side rule's 10 min, as scripts/scorecard.py
+RECEIPT_GAP = 15.0  # s between two receipts of one watched coin
+CASH = {USDC, "0x" + "0" * 40, "0xbb4cdb9cbd36b01bd8cbae1bc2b4f2c3a2ae8f0d"}  # USDC, BNB, WBNB
 
 SCHEMA = """CREATE TABLE IF NOT EXISTS fomo (block INTEGER, ts REAL, tx TEXT, li INTEGER, emitter TEXT, src TEXT,
             dst TEXT, token TEXT, amount REAL, PRIMARY KEY (tx, li));
@@ -48,7 +62,13 @@ SCHEMA = """CREATE TABLE IF NOT EXISTS fomo (block INTEGER, ts REAL, tx TEXT, li
             CREATE TABLE IF NOT EXISTS launches (token TEXT PRIMARY KEY, block INTEGER, ts REAL, creator TEXT,
                                                  name TEXT, symbol TEXT);
             CREATE TABLE IF NOT EXISTS heads (block INTEGER PRIMARY KEY, ts INTEGER);
-            CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value INTEGER);"""
+            CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value INTEGER);
+            CREATE TABLE IF NOT EXISTS buyers (token TEXT, wallet TEXT, PRIMARY KEY (token, wallet));
+            CREATE TABLE IF NOT EXISTS watch (token TEXT PRIMARY KEY, block INTEGER, ts REAL, until_ts REAL);
+            CREATE TABLE IF NOT EXISTS coin_xfer (block INTEGER, ts REAL, tx TEXT, li INTEGER, token TEXT, src TEXT,
+                                                  dst TEXT, amount REAL, PRIMARY KEY (tx, li));
+            CREATE TABLE IF NOT EXISTS venue_logs (block INTEGER, ts REAL, tx TEXT, li INTEGER, address TEXT,
+                                                   topics TEXT, data TEXT, PRIMARY KEY (tx, li));"""
 
 
 def _words(data: str) -> list[str]:
@@ -93,6 +113,59 @@ class Collector:
         self.prev = row  # (block, ts) of the last polled head
         done = self.db.execute("SELECT value FROM state WHERE key = 'done'").fetchone()
         self.done = done[0] if done else None
+        if self.db.execute("SELECT 1 FROM buyers LIMIT 1").fetchone() is None:  # first start with the watch: history
+            ex = ", ".join(f"'{x}'" for x in (FOMO_EXECUTOR, FOMO_EXECUTOR_2))
+            cash = ", ".join(f"'{x}'" for x in CASH)
+            self.db.execute(f"INSERT OR IGNORE INTO buyers SELECT DISTINCT token, dst FROM fomo WHERE src IN ({ex}) "
+                            f"AND dst NOT IN ({ex}) AND token NOT IN ({cash})")
+            self.db.commit()
+        self.last_receipt: dict[str, float] = {}
+
+    def new_buyers(self, rows_f: list[tuple]) -> None:
+        """Records the Fomo buyers of the rows; a coin reaching its WATCH_K-th distinct buyer starts a watch."""
+        executors = {FOMO_EXECUTOR, FOMO_EXECUTOR_2}
+        for b, ts, _tx, _li, _emitter, src, dst, token, _amount in rows_f:
+            if src not in executors or dst in executors or token in CASH:
+                continue
+            if self.db.execute("INSERT OR IGNORE INTO buyers VALUES (?, ?)", (token, dst)).rowcount == 0:
+                continue
+            n = self.db.execute("SELECT COUNT(*) FROM buyers WHERE token = ?", (token,)).fetchone()[0]
+            if n == WATCH_K:
+                self.db.execute("INSERT OR IGNORE INTO watch VALUES (?, ?, ?, ?)", (token, b, ts, ts + WATCH_S))
+
+    async def watch_step(self, lo: int, hi: int, head: tuple) -> None:
+        """Transfers of the watched coins in [lo, hi] and the venue logs of (some of) their transactions."""
+        t_lo = self.ts_of(lo, head)
+        tokens = [t for (t,) in self.db.execute("SELECT token FROM watch WHERE block <= ? AND until_ts >= ?", (hi, t_lo))]
+        rows_x, txs = [], {}
+        for i in range(0, len(tokens), 50):
+            for e in await self.rpc("eth_getLogs", [{"fromBlock": hex(lo), "toBlock": hex(hi), "address": tokens[i:i + 50],
+                                                     "topics": [TRANSFER]}]):
+                if len(e.get("topics", [])) < 3:
+                    continue
+                b = int(e["blockNumber"], 16)
+                token, ts = e["address"].lower(), self.ts_of(b, head)
+                rows_x.append((b, ts, e["transactionHash"], int(e["logIndex"], 16), token, _addr(e["topics"][1]),
+                               _addr(e["topics"][2]), float(int(e["data"], 16)) if e["data"] not in ("0x", "") else 0.0))
+                txs.setdefault((token, e["transactionHash"]), (b, ts))
+        self.db.executemany("INSERT OR IGNORE INTO coin_xfer VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows_x)
+        rows_v = []
+        for (token, tx), (b, ts) in sorted(txs.items(), key=lambda kv: kv[1]):
+            if ts - self.last_receipt.get(token, -1e18) < RECEIPT_GAP:
+                continue
+            self.last_receipt[token] = ts
+            try:
+                rec = await self.rpc("eth_getTransactionReceipt", [tx])
+            except Exception as exc:  # the trades come first; a missing receipt only thins the depth samples
+                log.debug("receipt %s: %s", tx, exc)
+                continue
+            for e in (rec or {}).get("logs", []):
+                if e["address"].lower() in (FOMO_ENTRY, FOMO_EXECUTOR, FOMO_ENTRY_2, FOMO_EXECUTOR_2):
+                    continue
+                rows_v.append((b, ts, tx, int(e["logIndex"], 16), e["address"].lower(), ",".join(e["topics"]), e["data"]))
+        self.db.executemany("INSERT OR IGNORE INTO venue_logs VALUES (?, ?, ?, ?, ?, ?, ?)", rows_v)
+        if len(self.last_receipt) > 5000:
+            self.last_receipt.clear()
 
     async def rpc(self, method: str, params: list):
         for attempt in range(6):
@@ -152,6 +225,11 @@ class Collector:
             self.db.executemany("INSERT OR IGNORE INTO fomo VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows_f)
             self.db.executemany("INSERT OR IGNORE INTO usdc_in VALUES (?, ?, ?, ?, ?, ?)", rows_u)
             self.db.executemany("INSERT OR IGNORE INTO launches VALUES (?, ?, ?, ?, ?, ?)", rows_l)
+            self.new_buyers(rows_f)
+            try:
+                await self.watch_step(lo, hi, (hb, ht))
+            except Exception as exc:  # never lose the Fomo trades over the watch
+                log.warning("watch failed for %d-%d (%s)", lo, hi, exc)
             self.done = hi
             self.db.execute("INSERT OR REPLACE INTO state VALUES ('done', ?)", (hi,))
             self.db.commit()
@@ -168,7 +246,9 @@ class Collector:
                 if time.time() - last_log >= 60:
                     n = self.db.execute("SELECT COUNT(DISTINCT tx) FROM fomo WHERE ts >= ?", (time.time() - 60,)).fetchone()[0]
                     k = self.db.execute("SELECT COUNT(*) FROM launches WHERE ts >= ?", (time.time() - 60,)).fetchone()[0]
-                    log.info("last minute: %d Fomo trades, %d flap.sh launches (block %s)", n, k, self.done)
+                    w = self.db.execute("SELECT COUNT(*) FROM watch WHERE until_ts >= ?", (time.time(),)).fetchone()[0]
+                    log.info("last minute: %d Fomo trades, %d flap.sh launches, %d coins watched (block %s)",
+                             n, k, w, self.done)
                     last_log = time.time()
             except asyncio.CancelledError:
                 raise

@@ -77,6 +77,9 @@ def main():
             n = sum(put(db, "fomo", part, "INSERT OR IGNORE") for part in sorted((src / day).glob("fomo_*.csv.gz")))
             put(db, "usdc_in", src / day / "usdc_in.csv.gz", "INSERT OR IGNORE")
             put(db, "launches", src / day / "launches.csv.gz", "INSERT OR REPLACE")
+            for table in ("watch", "coin_xfer", "venue_logs"):  # 11 Nov on (PROJE.md §4.17)
+                if (src / day / f"{table}.csv.gz").exists():
+                    put(db, table, src / day / f"{table}.csv.gz", "INSERT OR IGNORE")
         else:
             n = sum(put(db, "trades", part) for part in sorted((src / day).glob("trades_*.csv.gz")))
             put(db, "stats", src / day / "stats.csv.gz", "INSERT OR REPLACE")

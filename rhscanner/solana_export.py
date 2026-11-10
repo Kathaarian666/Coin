@@ -65,6 +65,10 @@ Her gece rhscanner/solana_export.py --chain bnb ile gönderilir. Okumak için: s
 <gün>/usdc_in.csv.gz      executor'a giden USDC transferleri (satış tutarı; USDC 18 ondalık): block, ts, tx, li, src,
                           amount
 <gün>/launches.csv.gz     flap.sh TokenCreated: token, block, ts, creator, name, symbol
+<gün>/watch.csv.gz        5. Fomo alıcısından 3 sa 15 dk izlenen coinler (11 Kasım'dan): token, block, ts, until_ts
+<gün>/coin_xfer.csv.gz    izlenen coinlerin bütün Transfer'leri: block, ts, tx, li, token, src, dst, amount
+<gün>/venue_logs.csv.gz   o işlemlerin ham logları (havuz olayları; coin başına ~15 sn'de bir işlem): block, ts, tx, li,
+                          address, topics (virgülle), data — havuz derinliği ve çıkış araştırmada çözülür (PROJE.md §4.17)
 """
 
 
@@ -128,7 +132,9 @@ def write_bnb_day(db: sqlite3.Connection, day: str, root: Path) -> int:
         a, b = start + h * 3600, start + (h + PART_HOURS) * 3600
         rows += _write(folder / f"fomo_{h:02d}.csv.gz", cols.split(", "),
                        db.execute(f"SELECT {cols} FROM fomo WHERE ts >= ? AND ts < ? ORDER BY block, li", (a, b)))
-    for table, cols in (("usdc_in", "block, ts, tx, li, src, amount"), ("launches", "token, block, ts, creator, name, symbol")):
+    for table, cols in (("usdc_in", "block, ts, tx, li, src, amount"), ("launches", "token, block, ts, creator, name, symbol"),
+                        ("watch", "token, block, ts, until_ts"), ("coin_xfer", "block, ts, tx, li, token, src, dst, amount"),
+                        ("venue_logs", "block, ts, tx, li, address, topics, data")):
         _write(folder / f"{table}.csv.gz", cols.split(", "),
                db.execute(f"SELECT {cols} FROM {table} WHERE ts >= ? AND ts < ? ORDER BY block", (start, end)))
     return rows

@@ -983,6 +983,14 @@ görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser
   Geçmiş için gerçek derinlik ölçülemiyor (ücretsiz BNB RPC'leri ~1 saatlik log tutuyor); ileriye dönük ölçüm gerekir:
   toplayıcı her coinin 5. alıcı anında havuz rezervini ve sonraki 3 saatteki havuz olaylarını kaydetmeli (kullanıcıya
   soruldu). 10 Kasım'dan beri toplayıcı Fomo'nun yeni kontratını da görüyor (B7) → yeni haftalar gelecek.
+- **Kullanıcı (10 Kasım): ileriye dönük ölçüm eklensin** → `rhscanner/bnb.py` izleme: 5. Fomo alıcısından 3 sa 15 dk
+  coinin bütün Transfer'leri (`coin_xfer`) + o işlemlerin ham havuz logları (`venue_logs`, coin başına ~15 sn'de bir), gece
+  gönderimine eklendi (`watch`, `coin_xfer`, `venue_logs`). Sunucuya kurulmadı (kullanıcı kurar).
+- **Kullanıcı itirazı (10 Kasım): "BNB'de havuz verisi nasıl olmaz?"** — doğru: veri zincirde; sınır sadece toplayıcının
+  ücretsiz node'u (publicnode ~1 saat log). Arşivli ücretsiz node adayları: dRPC (`bsc.drpc.org`), BlockPI, 1rpc, Ankr,
+  NodeReal MegaNode (ücretsiz katman, anahtar ister). BscScan'in ücretsiz katmanı BNB için kapandı. Sunucudan deneme
+  komutu kullanıcıya verildi; geçmişi veren node bulunursa 3-25 Ekim seçimleri geriye dönük gerçek derinlik ve çıkışla
+  ölçülecek.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
