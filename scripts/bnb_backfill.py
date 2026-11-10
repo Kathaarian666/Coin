@@ -51,15 +51,28 @@ def rpc(url, method, params):
             return res["result"]
         except Exception as exc:
             err = exc
+            if any(w in str(exc).lower() for w in ("range", "too many", "exceed", "10000")) and "rate" not in str(exc).lower():
+                raise RuntimeError(f"range: {exc}")  # transfers() splits the range
             time.sleep(min(30, 2 ** i))
     raise RuntimeError(f"{method} failed: {err}")
+
+
+def logs(url, coin, lo, hi):
+    """eth_getLogs over [lo, hi], halving the range when the node refuses it."""
+    try:
+        return rpc(url, "eth_getLogs", [{"fromBlock": hex(lo), "toBlock": hex(hi), "address": coin,
+                                         "topics": [bnb.TRANSFER]}])
+    except RuntimeError as exc:
+        if not str(exc).startswith("range") or hi - lo < 10:
+            raise
+        mid = (lo + hi) // 2
+        return logs(url, coin, lo, mid) + logs(url, coin, mid + 1, hi)
 
 
 def transfers(url, coin, lo, hi):
     out = []
     for a in range(lo, hi + 1, CHUNK):
-        for e in rpc(url, "eth_getLogs", [{"fromBlock": hex(a), "toBlock": hex(min(hi, a + CHUNK - 1)),
-                                           "address": coin, "topics": [bnb.TRANSFER]}]):
+        for e in logs(url, coin, a, min(hi, a + CHUNK - 1)):
             if len(e["topics"]) < 3:
                 continue
             out.append([coin, int(e["blockNumber"], 16), e["transactionHash"], int(e["logIndex"], 16),
