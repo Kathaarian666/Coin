@@ -2,7 +2,7 @@
 fixed STAKE $ per trade, bought DELAY s after the alert, costs included; a week passes with a net profit >= TARGET $.
 
   python scripts/scorecard.py <trades.db> <picks.parquet> <events .jsonl> [--fetch] [--top 0.05] [--delay 10]
-                              [--stake 100] [--bank 500] [--target 500]
+                              [--stake 100] [--bank 1000] [--target 500]
 
 picks: alerts on days the model had not seen (walk-forward: scripts/profit_study.py; fresh_test.py --picks) with coin,
 ts, pct. events: on-chain events of the picks (exit_truth.venue_prices; --fetch downloads the missing ones from the
@@ -92,7 +92,7 @@ def main():
     flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale"}
     args = [a for i, a in enumerate(sys.argv[1:]) if not a.startswith("--") and sys.argv[i] not in flags]
     top, delay = arg("--top", 0.05), arg("--delay", 10)
-    stake, bank0, target = arg("--stake", 100.0), arg("--bank", 500.0), arg("--target", 500.0)
+    stake, bank0, target = arg("--stake", 100.0), arg("--bank", 1000.0), arg("--target", 500.0)
     db = sqlite3.connect(args[0])
     picks = pd.read_parquet(args[1]).sort_values("ts")
     picks["coin"] = picks.coin.str.lower()

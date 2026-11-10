@@ -7,7 +7,7 @@ duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler 
 geçiş ikincil. Önce testte tatmin edici sonuç, sonra canlı."** → gerçek parayla deneme önerilmez; iş = test düzeneği + yöntem
 adaylarının sınanması.
 
-**Test ölçütü (kullanıcı, 10 Kasım) — her yöntem bununla ölçülür (`scripts/scorecard.py`):** haftalık kasa **$500**, işlem başı
+**Test ölçütü (kullanıcı, 10 Kasım) — her yöntem bununla ölçülür (`scripts/scorecard.py`):** haftalık kasa **$1.000** (kullanıcı "b": $500 kasa $100'lık işlemle ilk 5-7 işlemin şansına kalıyordu; $1.500 yanında gösterilir), işlem başı
 **$100**, alış gecikmesi **10 sn** (ileride otomatik işlem düşünülüyor; kullanıcının tepki süresi etken değil), masraflar dahil,
 görülmemiş haftalar; **geçme: haftada en az +$500 net** (eski "haftada kasa 2x" hedefinin yerine). Canlıya geçiş ancak testte
 tatmin edici sonuçtan sonra.
