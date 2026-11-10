@@ -1,6 +1,8 @@
 import sqlite3
 import subprocess
 
+import pytest
+
 from rhscanner import solana, solana_export
 
 
@@ -121,3 +123,19 @@ def test_robinhood_days_from_the_bot_reach_the_research_db(tmp_path):
     assert r.execute("SELECT block, token, side, usd, amount FROM trades ORDER BY block").fetchall() == \
         [(100, 1, 1, 9.0, 1.0), (101, 1, 0, 20.0, 5e20)]
     asyncio.run(app.rpc.close())
+
+
+def test_a_locked_database_is_waited_out_when_a_day_is_marked(tmp_path):
+    path = tmp_path / "s.db"
+    db = sqlite3.connect(path, timeout=0.1)
+    db.execute("CREATE TABLE exports (day TEXT PRIMARY KEY, ts INTEGER, rows INTEGER)")
+    db.commit()
+    other = sqlite3.connect(path)
+    other.execute("BEGIN IMMEDIATE")  # the collector in the middle of a write
+
+    def release(_):
+        other.commit()
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(solana_export.time, "sleep", release)
+        solana_export.mark_exported(db, "2026-11-01", 5, "solana")
+    assert db.execute("SELECT day, rows FROM exports").fetchall() == [("2026-11-01", 5)]

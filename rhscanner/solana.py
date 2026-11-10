@@ -119,6 +119,9 @@ def decode(logs: list[str]) -> list[dict]:
 class Collector:
     def __init__(self, path: str):
         self.db = sqlite3.connect(path, timeout=60)
+        # WAL: the nightly export (solana_export.py) reads and marks days while this keeps writing; in the default
+        # journal mode its write never got the lock and the export stopped on the same day every night (27 Oct)
+        self.db.execute("PRAGMA journal_mode=WAL")
         migrate(self.db)
         self.db.executescript(SCHEMA)
         self.pools = {p: b for p, b in self.db.execute("SELECT pool, base FROM pools")}

@@ -91,7 +91,7 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 
 ## Geliştirme
 - Test: `python -m pytest -q` (dev bağımlılıkları `requirements-dev.txt`). Sistem Python'unda `cryptography`
-  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). 103 test.
+  bozuksa temiz venv kur (`python -m venv ...; pip install -r requirements-dev.txt`). 104 test.
 - CLI: `python -m rhscanner check <adres>`, `trend`.
 - Kontratlar: `contracts/`, derleme `scripts/compile_contracts.mjs` (solc 0.8.26, viaIR).
 

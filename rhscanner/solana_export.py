@@ -207,6 +207,24 @@ def push(files_root: Path, message: str, token: str, repo: str = REPO, tries: in
             shutil.rmtree(work, ignore_errors=True)
 
 
+def mark_exported(db: sqlite3.Connection, day: str, rows: int, chain: str, tries: int = 20, wait: float = 30.0):
+    """Marks a pushed day; the collector writes to the same database all the time, so a locked database is waited
+    out (up to ~tries x (wait + the connection's timeout)) instead of ending the run with the day unmarked."""
+    for attempt in range(tries):
+        try:
+            db.execute("INSERT OR REPLACE INTO exports VALUES (?, ?, ?)", (day, int(time.time()), rows))
+            if chain == "robinhood":  # the bot's own database: keep only the last days
+                db.execute("DELETE FROM fomo_log WHERE ts < ?", (_day_bounds(day)[1] - 3 * 86400,))
+            db.commit()
+            return
+        except sqlite3.OperationalError as exc:
+            db.rollback()
+            if "locked" not in str(exc) or attempt == tries - 1:
+                raise
+            log.warning("%s: veritabanı kilitli, %d. deneme", day, attempt + 1)
+            time.sleep(wait)
+
+
 def main(argv=None):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -221,6 +239,11 @@ def main(argv=None):
         log.error("VERI_GITHUB_TOKEN yok: .env dosyasına eklenmeli (PROJE.md §4.5)")
         return 1
     db = sqlite3.connect(args[0] if args else "solana.db", timeout=120)
+    if chain == "solana":
+        try:  # the collector switches it too; whoever comes first (it needs a moment without other writers)
+            db.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.OperationalError as exc:
+            log.warning("WAL açılamadı (%s)", exc)
     if check:
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "solana").mkdir()
@@ -236,10 +259,7 @@ def main(argv=None):
             rows = write_day(db, day, Path(tmp), chain)
             (Path(tmp) / chain / "README.txt").write_text(readme)
             push(Path(tmp), f"{chain} {day}: {rows} kayıt", token)
-        db.execute("INSERT OR REPLACE INTO exports VALUES (?, ?, ?)", (day, int(time.time()), rows))
-        if chain == "robinhood":  # the bot's own database: keep only the last days
-            db.execute("DELETE FROM fomo_log WHERE ts < ?", (_day_bounds(day)[1] - 3 * 86400,))
-        db.commit()
+        mark_exported(db, day, rows, chain)
         log.info("%s gönderildi: %d işlem", day, rows)
     return 0
 
