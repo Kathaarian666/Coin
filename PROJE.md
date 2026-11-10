@@ -1,76 +1,78 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 10 Kasım (B7 sunucuya kuruldu; Solana gece gönderimi 27 Ekim'den beri takılıydı → düzeltme, §0 B8; yeni sohbete devir aşağıda). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 10 Kasım (denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
-**Kullanıcı ilkesi (10 Kasım, denetimden sonra): "Amacım test yapmak — kârlı bir yöntem bulabilir miyiz. Bot, kurulum ve canlıya
-geçiş ikincil. Önce testte tatmin edici sonuç, sonra canlı."** → gerçek parayla deneme önerilmez; iş = test düzeneği + yöntem
-adaylarının sınanması.
+## Yeni sohbete devir (10 Kasım) — yeni oturum ÖNCE BUNU okusun
 
-**Test ölçütü (kullanıcı, 10 Kasım) — her yöntem bununla ölçülür (`scripts/scorecard.py`):** haftalık kasa **$1.000** (kullanıcı "b": $500 kasa $100'lık işlemle ilk 5-7 işlemin şansına kalıyordu; $1.500 yanında gösterilir), işlem başı
-**$100**, alış gecikmesi **10 sn** (ileride otomatik işlem düşünülüyor; kullanıcının tepki süresi etken değil), masraflar dahil,
-görülmemiş haftalar; **geçme: haftada en az +$500 net** (eski "haftada kasa 2x" hedefinin yerine). Canlıya geçiş ancak testte
-tatmin edici sonuçtan sonra.
+### Projenin amacı (kullanıcı, 10 Kasım — eski hedeflerin yerine)
+**"Amacım test yapmak: kârlı bir yöntem bulabilir miyiz. Bot, kurulum ve canlıya geçiş ikincil. Önce testte tatmin edici
+sonuç, sonra canlı."** Gerçek parayla deneme önerilmez. Bot şimdilik sadece veri toplayıcı; yeni bot özelliği yapılmaz.
 
-**Denetim (10 Kasım, kullanıcı istedi): `DENETIM.md`** — neyi yanlış yaptık, neyi atladık, önerilen yol (gerçeklik testi, dolar
-hedefi, BNB'ye bakış, bot alarmı, sadeleştirme). Kullanıcının kararı bekleniyor; yeni işler bu rapora göre seçilecek.
+### Test ölçütü (her yöntem bununla ölçülür: `scripts/scorecard.py`)
+Haftalık kasa **$1.000**, işlem başı **$100**, alış gecikmesi **10 sn** (ileride otomatik işlem düşünülüyor; kullanıcının
+tepki süresi etken değil), masraflar dahil, modelin görmediği haftalar. **Geçme: haftada en az +$500 net.** (Eski "haftada
+kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; kötümser koşul (`--depth-scale 0.5 --delay 30`).
 
-## Yeni sohbete devir (11 Ekim, 12 Ekim güncellemesi) — yeni oturum önce bunu okusun
+### Nerede duruyoruz
+- **Denetim yapıldı: `DENETIM.md`** (neyi yanlış yaptık, neyi atladık). Özeti: hiç ölçüt koymadan test ettik, pazar küçülürken
+  aynı yerde kaldık, pump.fun'da bir ay dağıldık, bot 15 gün kör kaldı (alarm yok), BNB verisine hiç bakmadık.
+- **Şimdiki yöntemin karnesi (§4.16):** Robinhood, 5. alıcıda 2x modeli, en iyi %5, "5x olunca hepsini sat, yoksa 3 saatte".
+  10 Eylül – 10 Kasım: **8 tam haftanın 7'si geçti** (1 Ekim sonrası temiz haftalar: 5'in 4'ü). Kâr pazarla küçülüyor:
+  haftada 248 seçim / +$5.500 → 21 seçim / +$1.200; 5-10 Kasım'da 5 seçim, hepsi zarar. İşlem başı kazanç düşmüyor, fırsat
+  azalıyor. Kazanç Pons dışı coinlerden (işlem başı +$63 ↔ Pons +$7). "5x'te yarısı, kalanı 10 dk" kuralı daha kârlı
+  görünüyor (birkaç coine bağlı).
+- **Sunucu (10 Kasım, kullanıcı kurdu, `435a7a3`):** bot Fomo'nun yeni kontratını görüyor olmalı (B7), yan kural ve 4 Kasım
+  modelleri kurulu; Solana toplayıcı kapatıldı, gece gönderimi sadece BNB + Robinhood. `/canli` kapalı.
+- **Routine'ler:** haftalık yeniden eğitim `trig_01FWthyECauW2xYUgpiRz1u5` açık (Perşembe 08:53 İstanbul; **istemi hâlâ eski**:
+  ana ↔ holder sınavı + iki modelin eğitimi). pump.fun günlük görevi kapatıldı. Tek seferlik kontrol `trig_012NgRgpQkP7GqrxxPx5KFJh`
+  (11 Kasım 08:30, eski sohbete düşer).
 
-**Nerede kaldık:** Robinhood botu kâğıt testte (`/canli` kapalı), tek kârlı motor (görülmemiş günlerde 5x kuralıyla
-haftada ~1,6-1,7x). **B4 sunucuda (11 Ekim):** riskli seçimde (havuzda hook yok / sahibi launchpad dışı) 5x süre sınırı
-15 dk + bildirimde rug uyarısı. **Kullanıcı kısıtı:** Türkiye'den Robinhood erişimi yok → sadece Fomo'da yayınlanan
-coinlerde işlem. Kullanıcı ilkesi (10 Ekim): "kâr etmeyeni kâr ettirmeye çalışma, geç; amaç kâr edeni bulmak".
-pump.fun (§4.5e): yeni coinler ve büyük coinler kârsız (bırakıldı); mezuniyet sonrası "hacim patlaması" kuralı günlük
-ileri testte (9-11 Ekim: 51 işlem, işlem başı 1,00 / 1,04 / 1,06x) — ~1 hafta (≈17 Ekim) kâr yoksa Routine kapatılır.
+### Sıradaki işler (bu sırayla; kullanıcıya önerildi, **onayı bekleniyor** — yeni sohbette önce "1 ve 2'ye başlayayım mı" diye sor)
+1. **Havuz derinliğini zincirden ölç, karneyi kesinleştir.** Karnenin zayıf noktası: `depth_usd` Fomo işlemlerinin fiyat
+   etkisinden kaba tahmin ve $100'lık işlemde sonucu en çok o etkiliyor. Yapılacak: seçimlerin bildirim anındaki gerçek
+   rezervi (Pons curve: CurveBuy/CurveSell olaylarından ya da curve kontratının rezervi; V4 havuzu: likidite + sqrtPrice,
+   `exit_truth.py` olayları ve `live.py` havuz okuma kodları başlangıç) → `scorecard.py`'de tahmin yerine bu kullanılır.
+   5x anındaki satış için de o andaki rezerv. Sonuç §4.16'ya.
+2. **BNB'ye ilk bakış** (yeni indirme yok): `veri` dalında `bnb/2026-10-03 … 10-26` (26 Ekim – 10 Kasım kör: B7). Sorular:
+   günde kaç yeni coin Fomo'da 5. alıcıya ulaşıyor, 2x / 5x oranı, havuz derinliği, Robinhood'la kıyas. Okuma:
+   `solana_import.py <veri> bnb.db --chain bnb` (ayak biçimi `rhscanner/bnb.py`; fiyat için işlem birleştirme gerekebilir).
+   Büyük ve derinse yöntem oraya taşınır (aynı sınav); değilse `fombnb` de kapatılır.
+3. **Haftalık görevi yeni ölçüte çevir** (kullanıcı onayıyla `update_trigger`): her Perşembe veri güncelle → `profit_study`
+   → `scorecard.py --fetch` → karne tablosuna yeni hafta; holder modelini ve ana ↔ holder sorusunu bırak (5 haftada üstünlük
+   yok, eğitimin en pahalı kısmı); bot modeli seyrek güncellensin. Rapor kısa, kullanıcıya bildirimle.
+4. **Aynı sınavla denenecek adaylar:** sadece Pons dışı seçim; yan kural; seçim payı %10 (§4.11, yarım); 15 dk riskli
+   kuralının kaldırılması (4 sınavın 2'sinde zararlı).
+5. **Bot alarmı** (tek bot işi; verinin sigortası): 30 dk Fomo işlemi gelmezse Telegram'a uyarı.
+6. Bekleyen küçük kararlar: depo herkese açık (IP, strateji içinde) → gizli yapılsın mı; 11 Kasım sabahı gece arşivinde
+   Robinhood günlük işlem sayısı binlere döndü mü (B7 kontrolü); `PROJE.md` sadeleştirme (1.100 satır).
 
-**B5 kapatıldı (kullanıcı, 12 Ekim: "buradan sonuç çıkmayacak, kârlı olana odaklanıp geliştirme yapalım"):**
-tüm-pazar kriterleri ön sonuçta belirgin iyileşme vermedi (§4.9); indirme yarım bırakıldı, betikler (`rh_market.py`,
-`market_study.py`) duruyor. **Sıradaki iş (B6):** kârlı motorun (Robinhood, 5x kuralı) geliştirilmesi; ilk yön 5x'ten
-sonra satış (§4.10) → kâğıt teste yan kural eklendi (kullanıcı "ekle"; sunucuya kurulması gerekiyor); hız ölçümü
-yapıldı (§4.11, kayıp yok); seçim payı %10 yarım kaldı (§4.11, kullanıcı "bi duralım", 12 Ekim). İşlenmiş araştırma dosyaları artık `veri` dalında `arastirma/2026-10-12/` (§7).
+### Araştırma ortamını kurmak (yeni oturum)
+- Hazır dosyalar: `veri` dalı `arastirma/2026-11-10/` (`winners.parquet`, `picks_top5.parquet` 802 seçim,
+  `events_top5.jsonl.gz` zincir olayları). Kısmi klon (dal 3,7 GB, tamamını çekme):
+  `git fetch --depth 1 --filter=blob:none origin veri` + `git sparse-checkout set --no-cone '/arastirma/' '/*.parquet' '/robinhood/' '/bnb/'`.
+- İşlem veritabanı (`fomo.db`) depoda yok: parquet arşiv 3 Ekim'de bitiyor, `robinhood/` günleri 29 Ekim – 10 Kasım kör.
+  En kolayı: `data_import.py` (arşiv) + `fomo_download.py <gün> new.db` ile 3 Ekim'den bugüne zincirden (29 gün ≈ 26 dk) +
+  `data_merge.py new.db fomo.db`; sonra `fomo_supply.py`, `pons_launches.py`. `winner_study.py` ~7 GB RAM ister.
+- Karneyi yeniden üretmek: `python scripts/scorecard.py fomo.db picks_top5.parquet events_top5.jsonl.gz`
+  (`--fetch` eksik olayları indirir; `--bank`, `--stake`, `--delay`, `--depth-scale`, `--top`).
+- Venv: `numpy pandas pyarrow scikit-learn` + `requirements-dev.txt`. Testler: 104.
 
-**11 Ekim gece (yeni sohbet):** iki Routine bu sohbete taşındı (artık her çalışma yeni oturum açar, depoyu kendi klonlar):
-haftalık yeniden eğitim `trig_01FWthyECauW2xYUgpiRz1u5`, günlük pump.fun `trig_01FWwy5Q52vcrrTCfKxohadr`; eskileri kapalı.
-B5 ön sonucu §4.9 (belirgin iyileşme yok) → 12 Ekim'de kapatıldı.
+### Çalışma kuralları (özet; ayrıntı `CLAUDE.md`)
+Türkçe, kısa, telefondan okunur; sunucu komutları ayrı kod bloklarında; iki dala push (asıl dal + oturum dalı), önce testler;
+ölçüm kuralları §6 ("sonuç fazla iyiyse önce hata ara"); kararlar sade dille, seçenekli sorulur; her yeni yöntem önce
+`scorecard.py` ile ölçülür, geçti/kaldı diye raporlanır.
 
-**15 Ekim (haftalık Routine):** geçen haftanın modellerinin final sınavı (8-15 Ekim, görülmemiş): botun kuralıyla
-(5x ya da 3 sa, riskli seçimde 15 dk) **ana 1,92-1,96x/hafta ↔ holder 2,04-2,07x** (57 / 58 seçim, 36'sı ortak; en iyi
-işlem hariç 1,64 ↔ 1,74) — hedefe (haftada 2x) ilk kez yakın; fark gürültü düzeyinde, iki haftada ana önde (1,57 × 1,92 ↔
-1,25 × 2,04) → öneri: gerçek bildirim **ana modelde kalsın** (kullanıcı kararı bekleniyor). İki model 14 Ekim'e kadarki
-veriyle yeniden eğitildi (holder'da 18-29 Eylül disk yüzünden eğitim dışı, §4.12); sunucuya kurulacak.
-
-**22 Ekim (haftalık Routine, §4.13):** 15-22 Ekim final sınavı (görülmemiş), botun kuralıyla **ana 1,37-1,53x ↔ holder
-1,32-1,45x** (55 / 43 seçim, 29'u ortak) — geçen haftadan (~2x) belirgin düşük; üç hafta birlikte ana 1,57 × 1,92 × 1,37 ≈ 4,1
-↔ holder 1,25 × 2,04 × 1,32 ≈ 3,4 → **öneri: ana modelde kal**. Bu hafta riskli seçimlerde 15 dk kuralı iki modelde de
-zararlı (5x/3 sa herkes: ana 1,53-1,89, holder 1,57-1,65) ve yan kural "5x'te yarısı, kalanı 10 dk" belirgin önde (ana
-1,86-2,07, holder 2,08-2,26) → B4 / B6 kararlarına veri. İki model 21 Ekim'e kadarki veriyle yeniden eğitildi (holder artık
-tam veriyle); sunucuya kurulacak.
-
-**29 Ekim (haftalık Routine, §4.14) — önce bunu oku:** **Fomo 26 Ekim ~14:00 UTC'de işlemlerini yeni bir kontrat
-çiftine taşıdı** (entry `0x5567954c…`, executor `0x0729e2a4…`; aynı olay, aynı ayaklar; ilk işlem 22 Ekim 17:44, BNB'de de
-aynı adresler). Bot eski çifti izlediği için 26 Ekim öğleden beri neredeyse hiç işlem görmedi (gece arşivi 25 Ekim 51 bin
-→ 27 Ekim 32 işlem; kâğıt test, `/karne`, BNB toplayıcı kör). **Düzeltme asıl dalda (29 Ekim, §0 B7):** bot, BNB toplayıcı ve
-`fomo_download.py` iki çifti okuyor; kullanıcıya sunucu güncellemesi gönderildi. Araştırma DB'sinde 22 Ekim 17:44'ten
-sonrası zincirden yeniden indirildi. Pazar da küçüldü: günde ~60-70 coin 5. alıcıya ulaşıyor (önce ~150) → 48 saatte
-300'den az puan, bot sabit başlangıç eşiğiyle seçiyor (günde ~1-3 seçim). 22-28 Ekim final sınavı: **ana 0,90-0,92x ↔
-holder 0,88-0,89x** (11 / 18 seçim; 5x sadece 1-2 coin) → dört hafta ana ≈ 3,7 ↔ holder ≈ 3,0, **öneri: ana modelde kal**.
-
-**5 Kasım (haftalık Routine, §4.15) — önce bunu oku:** **Bot hâlâ kör:** gece arşivinde 29 Ekim – 4 Kasım günde 10-35 işlem
-(normali 15-45 bin) → B7 düzeltmesi sunucuya kurulmamış (zincirde Fomo'nun yeni çifti çalışıyor; eski çiftte 10 dk'da 9, yenide
-203 olay). Kâğıt test ve `/karne` bu günlerde boş; sınav ve eğitim zincirden indirilen veriyle (29 Ekim – 5 Kasım 189 bin işlem).
-29 Ekim – 4 Kasım final sınavı (botun eşiği, `fresh_test.py --bot-bar`; botun kuralı `weekly_exam.py`): **ana 1,31x ↔ holder
-1,47x** (50 / 44 seçim, 31'i ortak; en iyi işlem hariç 1,15 ↔ 1,29). Yan kural (5x'te yarısı, kalanı 10 dk) yine önde: ana 1,54,
-holder 1,73. Beş hafta: ana ≈ 4,9 ↔ holder ≈ 4,4 (son üç hafta holder 1,72 ↔ ana 1,63) → öneri: ana kalsın, holder bir hafta daha
-önde biterse holder'a geç. İki model 4 Kasım 05:54'e kadar yeniden eğitildi; sunucuya kurulacak (B7 ile aynı komut).
-
-Ertelenenler: A8 pump.fun ileri test kararı (~17 Ekim, gecikti), A9 veri dalı (~1 Kasım, **tarih geçti — kullanıcıya soruldu**), A7 Base, K3 token (Aralık sonu).
+Ertelenenler: A7 Base · K3 `VERI_GITHUB_TOKEN` yenileme (Aralık sonu) · seçim payı %10 (yukarıda 4).
 
 ## 0. Açık işler (kullanıcı kuralı, 3 Ekim: hiçbir iş atlanmaz)
 
 Kural: konuşulan bir iş bitmeden yeni işe geçilmez. Kullanıcı "şimdilik geç" derse iş burada **ertelendi** olarak
 kalır ve her adım sonunda / uygun anda kullanıcıya hatırlatılır. Yeni oturumda önce bu listeye bakılır; iş bitince
 satırı silinir (sonucu ilgili bölüme yazılır).
+
+**10 Kasım'dan beri güncel iş sırası devir bölümündeki "Sıradaki işler" listesidir**; aşağıdaki tablo önceki dönemin kaydı
+(B2 ana ↔ holder, B4, B6 kararları yeni ölçütle `scorecard.py` üzerinden yeniden ele alınacak).
 
 | # | İş | Durum |
 |---|---|---|
@@ -1056,6 +1058,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma (B4) | `pick_flags.py` | Seçimlerin havuz hook'u (Initialize) + owner (security_study) → risk bayrakları |
 | Araştırma (A10) | `exit_truth.py` | Seçimlerin çıkış anındaki gerçek fiyatı: curve + V4 havuzlarındaki bütün işlemler, net likidite çekilmesi |
 | Araştırma (A10) | `exit_truth_rules.py` | Çıkış kuralı taraması, gerçek çıkış değeriyle; Pons / güven puanı filtreleri |
+| **Standart sınav** | `scorecard.py` | Kullanıcının test ölçütü: haftalık kasa, sabit tutar, alış gecikmesi, dolar hedefi; her yöntem bununla ölçülür (§4.16) |
 | Araştırma (B6) | `after5x.py` | 5x'ten sonra satış kuralları (hemen / yarısı + T dk / T dk / iz), zincirdeki gerçek fiyatla; `--fetch` 5x yapanların zincir olaylarını indirir |
 | Araştırma (B6) | `share5x.py` | Seçim payı (en iyi %2 / %2-5 / %5-10 dilimleri) 5x kuralıyla, zincirdeki 3 saat değeriyle; `--fetch` |
 | Araştırma (A10) | `exit_truth_delay.py` | 5x kuralında satış gecikmesinin etkisi; Fomo 5x'inin zincirde doğrulanması |
@@ -1080,3 +1083,69 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | `ccr-...` / `claude/...` | Oturum dalları; her değişiklik bunlara ve asıl dala birlikte gönderilir. Silinmiyorlar (kullanıcı kararı). |
 | `veri` | Araştırma verisinin arşivi (günlük parquet). |
 | `main` | GitHub'ın boş ilk dalı, kullanılmıyor. |
+
+## 8. Eski devir notları (tarihçe; 11 Ekim – 10 Kasım)
+
+**Kullanıcı ilkesi (10 Kasım, denetimden sonra): "Amacım test yapmak — kârlı bir yöntem bulabilir miyiz. Bot, kurulum ve canlıya
+geçiş ikincil. Önce testte tatmin edici sonuç, sonra canlı."** → gerçek parayla deneme önerilmez; iş = test düzeneği + yöntem
+adaylarının sınanması.
+
+**Test ölçütü (kullanıcı, 10 Kasım) — her yöntem bununla ölçülür (`scripts/scorecard.py`):** haftalık kasa **$1.000** (kullanıcı "b": $500 kasa $100'lık işlemle ilk 5-7 işlemin şansına kalıyordu; $1.500 yanında gösterilir), işlem başı
+**$100**, alış gecikmesi **10 sn** (ileride otomatik işlem düşünülüyor; kullanıcının tepki süresi etken değil), masraflar dahil,
+görülmemiş haftalar; **geçme: haftada en az +$500 net** (eski "haftada kasa 2x" hedefinin yerine). Canlıya geçiş ancak testte
+tatmin edici sonuçtan sonra.
+
+**Denetim (10 Kasım, kullanıcı istedi): `DENETIM.md`** — neyi yanlış yaptık, neyi atladık, önerilen yol (gerçeklik testi, dolar
+hedefi, BNB'ye bakış, bot alarmı, sadeleştirme). Kullanıcının kararı bekleniyor; yeni işler bu rapora göre seçilecek.
+
+**(Eski) devir, 11-12 Ekim:**
+
+**Nerede kaldık:** Robinhood botu kâğıt testte (`/canli` kapalı), tek kârlı motor (görülmemiş günlerde 5x kuralıyla
+haftada ~1,6-1,7x). **B4 sunucuda (11 Ekim):** riskli seçimde (havuzda hook yok / sahibi launchpad dışı) 5x süre sınırı
+15 dk + bildirimde rug uyarısı. **Kullanıcı kısıtı:** Türkiye'den Robinhood erişimi yok → sadece Fomo'da yayınlanan
+coinlerde işlem. Kullanıcı ilkesi (10 Ekim): "kâr etmeyeni kâr ettirmeye çalışma, geç; amaç kâr edeni bulmak".
+pump.fun (§4.5e): yeni coinler ve büyük coinler kârsız (bırakıldı); mezuniyet sonrası "hacim patlaması" kuralı günlük
+ileri testte (9-11 Ekim: 51 işlem, işlem başı 1,00 / 1,04 / 1,06x) — ~1 hafta (≈17 Ekim) kâr yoksa Routine kapatılır.
+
+**B5 kapatıldı (kullanıcı, 12 Ekim: "buradan sonuç çıkmayacak, kârlı olana odaklanıp geliştirme yapalım"):**
+tüm-pazar kriterleri ön sonuçta belirgin iyileşme vermedi (§4.9); indirme yarım bırakıldı, betikler (`rh_market.py`,
+`market_study.py`) duruyor. **Sıradaki iş (B6):** kârlı motorun (Robinhood, 5x kuralı) geliştirilmesi; ilk yön 5x'ten
+sonra satış (§4.10) → kâğıt teste yan kural eklendi (kullanıcı "ekle"; sunucuya kurulması gerekiyor); hız ölçümü
+yapıldı (§4.11, kayıp yok); seçim payı %10 yarım kaldı (§4.11, kullanıcı "bi duralım", 12 Ekim). İşlenmiş araştırma dosyaları artık `veri` dalında `arastirma/2026-10-12/` (§7).
+
+**11 Ekim gece (yeni sohbet):** iki Routine bu sohbete taşındı (artık her çalışma yeni oturum açar, depoyu kendi klonlar):
+haftalık yeniden eğitim `trig_01FWthyECauW2xYUgpiRz1u5`, günlük pump.fun `trig_01FWwy5Q52vcrrTCfKxohadr`; eskileri kapalı.
+B5 ön sonucu §4.9 (belirgin iyileşme yok) → 12 Ekim'de kapatıldı.
+
+**15 Ekim (haftalık Routine):** geçen haftanın modellerinin final sınavı (8-15 Ekim, görülmemiş): botun kuralıyla
+(5x ya da 3 sa, riskli seçimde 15 dk) **ana 1,92-1,96x/hafta ↔ holder 2,04-2,07x** (57 / 58 seçim, 36'sı ortak; en iyi
+işlem hariç 1,64 ↔ 1,74) — hedefe (haftada 2x) ilk kez yakın; fark gürültü düzeyinde, iki haftada ana önde (1,57 × 1,92 ↔
+1,25 × 2,04) → öneri: gerçek bildirim **ana modelde kalsın** (kullanıcı kararı bekleniyor). İki model 14 Ekim'e kadarki
+veriyle yeniden eğitildi (holder'da 18-29 Eylül disk yüzünden eğitim dışı, §4.12); sunucuya kurulacak.
+
+**22 Ekim (haftalık Routine, §4.13):** 15-22 Ekim final sınavı (görülmemiş), botun kuralıyla **ana 1,37-1,53x ↔ holder
+1,32-1,45x** (55 / 43 seçim, 29'u ortak) — geçen haftadan (~2x) belirgin düşük; üç hafta birlikte ana 1,57 × 1,92 × 1,37 ≈ 4,1
+↔ holder 1,25 × 2,04 × 1,32 ≈ 3,4 → **öneri: ana modelde kal**. Bu hafta riskli seçimlerde 15 dk kuralı iki modelde de
+zararlı (5x/3 sa herkes: ana 1,53-1,89, holder 1,57-1,65) ve yan kural "5x'te yarısı, kalanı 10 dk" belirgin önde (ana
+1,86-2,07, holder 2,08-2,26) → B4 / B6 kararlarına veri. İki model 21 Ekim'e kadarki veriyle yeniden eğitildi (holder artık
+tam veriyle); sunucuya kurulacak.
+
+**29 Ekim (haftalık Routine, §4.14) — önce bunu oku:** **Fomo 26 Ekim ~14:00 UTC'de işlemlerini yeni bir kontrat
+çiftine taşıdı** (entry `0x5567954c…`, executor `0x0729e2a4…`; aynı olay, aynı ayaklar; ilk işlem 22 Ekim 17:44, BNB'de de
+aynı adresler). Bot eski çifti izlediği için 26 Ekim öğleden beri neredeyse hiç işlem görmedi (gece arşivi 25 Ekim 51 bin
+→ 27 Ekim 32 işlem; kâğıt test, `/karne`, BNB toplayıcı kör). **Düzeltme asıl dalda (29 Ekim, §0 B7):** bot, BNB toplayıcı ve
+`fomo_download.py` iki çifti okuyor; kullanıcıya sunucu güncellemesi gönderildi. Araştırma DB'sinde 22 Ekim 17:44'ten
+sonrası zincirden yeniden indirildi. Pazar da küçüldü: günde ~60-70 coin 5. alıcıya ulaşıyor (önce ~150) → 48 saatte
+300'den az puan, bot sabit başlangıç eşiğiyle seçiyor (günde ~1-3 seçim). 22-28 Ekim final sınavı: **ana 0,90-0,92x ↔
+holder 0,88-0,89x** (11 / 18 seçim; 5x sadece 1-2 coin) → dört hafta ana ≈ 3,7 ↔ holder ≈ 3,0, **öneri: ana modelde kal**.
+
+**5 Kasım (haftalık Routine, §4.15) — önce bunu oku:** **Bot hâlâ kör:** gece arşivinde 29 Ekim – 4 Kasım günde 10-35 işlem
+(normali 15-45 bin) → B7 düzeltmesi sunucuya kurulmamış (zincirde Fomo'nun yeni çifti çalışıyor; eski çiftte 10 dk'da 9, yenide
+203 olay). Kâğıt test ve `/karne` bu günlerde boş; sınav ve eğitim zincirden indirilen veriyle (29 Ekim – 5 Kasım 189 bin işlem).
+29 Ekim – 4 Kasım final sınavı (botun eşiği, `fresh_test.py --bot-bar`; botun kuralı `weekly_exam.py`): **ana 1,31x ↔ holder
+1,47x** (50 / 44 seçim, 31'i ortak; en iyi işlem hariç 1,15 ↔ 1,29). Yan kural (5x'te yarısı, kalanı 10 dk) yine önde: ana 1,54,
+holder 1,73. Beş hafta: ana ≈ 4,9 ↔ holder ≈ 4,4 (son üç hafta holder 1,72 ↔ ana 1,63) → öneri: ana kalsın, holder bir hafta daha
+önde biterse holder'a geç. İki model 4 Kasım 05:54'e kadar yeniden eğitildi; sunucuya kurulacak (B7 ile aynı komut).
+
+Ertelenenler: A8 pump.fun ileri test kararı (~17 Ekim, gecikti), A9 veri dalı (~1 Kasım, **tarih geçti — kullanıcıya soruldu**), A7 Base, K3 token (Aralık sonu).
+
