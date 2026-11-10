@@ -93,26 +93,14 @@ if ! systemctl is-active -q $SERVICE; then
     exit 1
 fi
 
-say "Pump.fun veri toplayıcı kuruluyor (Fomo'nun Solana işlemleri -> $APP_DIR/solana.db)..."
-sudo tee /etc/systemd/system/fomosol.service >/dev/null <<EOF
-[Unit]
-Description=Fomo Solana (pump.fun / PumpSwap) trade collector
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-User=$(id -un)
-WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana $APP_DIR/solana.db
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo systemctl daemon-reload
-sudo systemctl enable -q fomosol
-sudo systemctl restart fomosol
+# pump.fun (Solana) collection stopped (user, 10 Nov: the strategy was dropped and its data filled the veri branch,
+# PROJE.md §0 A8 / A9); solana.db stays on the disk, the veri branch keeps the days sent up to 27 Oct
+if [ -f /etc/systemd/system/fomosol.service ]; then
+    say "Pump.fun veri toplayıcı durduruluyor (artık kullanılmıyor)..."
+    sudo systemctl disable -q --now fomosol || true
+    sudo rm -f /etc/systemd/system/fomosol.service
+    sudo systemctl daemon-reload
+fi
 
 say "BNB veri toplayıcı kuruluyor (Fomo'nun BNB işlemleri + flap.sh lansmanları -> $APP_DIR/bnb.db)..."
 sudo tee /etc/systemd/system/fombnb.service >/dev/null <<EOF
@@ -135,10 +123,10 @@ sudo systemctl daemon-reload
 sudo systemctl enable -q fombnb
 sudo systemctl restart fombnb
 
-# every night: the finished days of solana.db and bnb.db -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
+# every night: the finished days of bnb.db and the bot's own log -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
 sudo tee /etc/systemd/system/fomosol-export.service >/dev/null <<EOF
 [Unit]
-Description=Send the finished days of the pump.fun, BNB and Robinhood data to the GitHub veri branch
+Description=Send the finished days of the BNB and Robinhood data to the GitHub veri branch
 After=network-online.target
 Wants=network-online.target
 
@@ -146,13 +134,12 @@ Wants=network-online.target
 Type=oneshot
 User=$(id -un)
 WorkingDirectory=$APP_DIR
-ExecStart=-$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/solana.db
 ExecStart=-$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/bnb.db --chain bnb
 ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/rhscanner.db --chain robinhood
 EOF
 sudo tee /etc/systemd/system/fomosol-export.timer >/dev/null <<EOF
 [Unit]
-Description=Nightly pump.fun data export
+Description=Nightly BNB and Robinhood data export
 
 [Timer]
 OnCalendar=*-*-* 00:20:00 UTC

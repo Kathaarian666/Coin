@@ -59,9 +59,9 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - Cloud Shell'den bağlantı: `ssh -i ~/.ssh/fomo ubuntu@79.76.124.29`
 - Yapıştırma bozulmasın diye önce: `bind 'set enable-bracketed-paste off'`
 - Güncelleme: `bash ~/Coin/deploy/install.sh` (systemd servisi `rhscanner`, DB `~/Coin/rhscanner.db`)
-- İkinci servis `fomosol` = pump.fun/Solana veri toplayıcı (`rhscanner/solana.py` → `~/Coin/solana.db`); log:
-  `journalctl -u fomosol -n 20 --no-pager`. Gece 00:20 UTC `fomosol-export.timer` biten günleri `veri` dalına
-  `solana/<gün>/` olarak gönderir (`.env`: `VERI_GITHUB_TOKEN`); araştırmada `scripts/solana_import.py`.
+- Eski ikinci servis `fomosol` (pump.fun/Solana toplayıcı) **10 Kasım'da kapatıldı** (kullanıcı: pump.fun bırakıldı, veri dalı
+  doluyordu); `install.sh` onu durdurup siler, `~/Coin/solana.db` diskte kalır; `veri` dalında `solana/` 27 Ekim'e kadar.
+  Gece 00:20 UTC `fomosol-export.timer` (adı eski) BNB ve Robinhood günlerini `veri` dalına gönderir (`.env`: `VERI_GITHUB_TOKEN`).
 - Üçüncü servis `fombnb` = BNB Chain toplayıcı (`rhscanner/bnb.py` → `~/Coin/bnb.db`: Fomo ayakları + flap.sh
   lansmanları); aynı gece gönderimi `bnb/<gün>/` (`solana_export --chain bnb`); okuma `solana_import.py --chain bnb`.
 - Bot gördüğü her Robinhood Fomo işlemini `fomo_log`'a yazar; gece gönderimi `robinhood/<gün>/` (araştırmada
