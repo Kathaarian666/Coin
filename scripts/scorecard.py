@@ -12,7 +12,8 @@ alert to 3 h 15 min after it, which covers both rules). Rules:
 - yan: half at the 5x, the rest 10 min later at the on-chain value then (0 if pulled / moved)
 Costs: Fomo's fee each way (0.5 %, at least $0.95) and price impact: a constant-product pool with depth_usd of the
 pick (estimated from Fomo trades before the alert; unknown = the picks' median) on its quote side at the alert, x
---depth-scale (sensitivity). paper.net_return's linear impact is too harsh for a $100 trade in a $300 pool.
+--depth-scale (sensitivity). --depth <pool_depth.parquet>: the depth measured on chain (scripts/pool_depth.py) at the
+buy, the 5x, 10 min later and the 3 h exit instead (a moment it could not measure falls back to the estimate). paper.net_return's linear impact is too harsh for a $100 trade in a $300 pool.
 Bankroll: every week starts with BANK; a pick is traded only if STAKE of free cash is there (money comes back when the
 position is sold); the week's profit = cash at its end - BANK. "sınırsız" = every pick traded (no cash limit).
 """
@@ -40,16 +41,21 @@ def arg(name, default):
     return type(default)(sys.argv[sys.argv.index(name) + 1]) if name in sys.argv else default
 
 
-def net(stake, depth, legs, p_in, p_ref):
-    """$ back from `stake`: legs [(share, price)]; the fee both ways and price impact of a constant-product pool whose
-    quote side was `depth` $ at the price p_ref (the alert) and grows with the square root of the price."""
-    coins = (stake - max(FEE_MIN, FEE * stake)) / (p_in * (1 + stake / (depth * (p_in / p_ref) ** 0.5)))
+def net(stake, depth, legs, p_in, p_ref, depth_in=None):
+    """$ back from `stake`: legs [(share, price)] or [(share, price, depth $ then)]; the fee both ways and price impact
+    of a constant-product pool whose quote side was `depth` $ at the price p_ref (the alert) and grows with the square
+    root of the price. A depth measured on chain at the buy (depth_in) or at a sale (the leg's third item, NaN /
+    None = unknown) replaces the square-root guess there."""
+    def at(d, price):
+        return d if d is not None and np.isfinite(d) and d > 0 else depth * (price / p_ref) ** 0.5
+    coins = (stake - max(FEE_MIN, FEE * stake)) / (p_in * (1 + stake / at(depth_in, p_in)))
     total = 0.0
-    for share, price in legs:
+    for leg in legs:
+        share, price = leg[0], leg[1]
         if price <= 0:
             continue
         v = coins * share * price
-        v /= 1 + v / (depth * (price / p_ref) ** 0.5)
+        v /= 1 + v / at(leg[2] if len(leg) > 2 else None, price)
         total += max(0.0, v - max(FEE_MIN, FEE * v))
     return total
 
@@ -89,7 +95,7 @@ def time_exit(p, ev):
 
 
 def main():
-    flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale"}
+    flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale", "--depth"}
     args = [a for i, a in enumerate(sys.argv[1:]) if not a.startswith("--") and sys.argv[i] not in flags]
     top, delay = arg("--top", 0.05), arg("--delay", 10)
     stake, bank0, target = arg("--stake", 100.0), arg("--bank", 1000.0), arg("--target", 500.0)
@@ -109,6 +115,10 @@ def main():
     data_end = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0]
     picks = picks[picks.ts + HOLD + LATER < data_end]
     med_depth = float(np.nanmedian(picks.depth_usd)) if "depth_usd" in picks else 3000.0
+    real = {}
+    if "--depth" in sys.argv:
+        dp = pd.read_parquet(sys.argv[sys.argv.index("--depth") + 1])
+        real = {(c, t): r for c, t, r in zip(dp.coin, dp.ts, dp.to_dict("records"))}
     paths, firsts = {}, {}
     for r in picks.itertuples():
         tr = np.array(db.execute("SELECT ts, block, side, usd, amount FROM trades WHERE token=? ORDER BY ts",
@@ -132,30 +142,37 @@ def main():
                     out.flush()
                 if n % 50 == 0:
                     print(f"  {n}/{len(todo)} · {time.time() - t0:.0f} sn", flush=True)
-    rows, missing = [], 0
+    rows, missing, measured = [], 0, 0
     for r in picks.itertuples():
         p = paths[r.Index]
         depth = r.depth_usd if "depth_usd" in picks and np.isfinite(r.depth_usd) and r.depth_usd > 0 else med_depth
-        depth *= arg("--depth-scale", 1.0)
+        scale = arg("--depth-scale", 1.0)
+        depth *= scale
+        m = real.get((r.coin, r.ts), {})
+        rd = {k: m.get(f"depth_{k}", np.nan) * scale for k in ("buy", "5x", "later", "exit")}
+        if m:
+            measured += any(np.isfinite(v) for v in rd.values())
         e = ev.get(r.coin)
         if p["t5"] is None:
             px = time_exit(p, e)
             if px is None:
                 missing += 1
                 continue
-            back = net(stake, depth, [(1.0, px)], p["p_in"], p["pa"])
+            back = net(stake, depth, [(1.0, px, rd["exit"])], p["p_in"], p["pa"], rd["buy"])
             res = {"5x": (back, r.ts + HOLD), "yan": (back, r.ts + HOLD)}
         else:
             p5 = 5 * p["pa"]
             ven = Venue(e, p["hb"]) if e else None
             later = ven.value(p["hb"] + int(LATER * BPS))[0] if ven is not None and ven.ok else 1.0
-            res = {"5x": (net(stake, depth, [(1.0, p5)], p["p_in"], p["pa"]), p["t5"]),
-                   "yan": (net(stake, depth, [(0.5, p5), (0.5, p5 * later)], p["p_in"], p["pa"]), p["t5"] + LATER)}
+            res = {"5x": (net(stake, depth, [(1.0, p5, rd["5x"])], p["p_in"], p["pa"], rd["buy"]), p["t5"]),
+                   "yan": (net(stake, depth, [(0.5, p5, rd["5x"]), (0.5, p5 * later, rd["later"])], p["p_in"], p["pa"],
+                               rd["buy"]), p["t5"] + LATER)}
         rows.append({"ts": r.ts, "t_in": r.ts + delay, "hit": p["t5"] is not None,
                      "pons": bool(getattr(r, "is_pons", False)), "res": res})
     first = min(x["ts"] for x in rows)
     print(f"\nen iyi %{100 * top:g} · tutar ${stake:g} · kasa ${bank0:g}/hafta · alış gecikmesi {delay} sn · hedef "
-          f"+${target:g}/hafta · {len(rows)} seçim (zincir verisi olmayan {missing} dışarıda), 3 sa'te 5x {sum(x['hit'] for x in rows)}")
+          f"+${target:g}/hafta · {len(rows)} seçim (zincir verisi olmayan {missing} dışarıda), 3 sa'te 5x {sum(x['hit'] for x in rows)}"
+          + (f" · havuz derinliği zincirden: {measured} seçim" if real else " · havuz derinliği tahmin"))
     for rule in ("5x", "yan"):
         print(f"\n== kural: {'5x olunca hepsini sat' if rule == '5x' else '5x olunca yarısı, kalanı 10 dk sonra'}")
         passed = total = 0

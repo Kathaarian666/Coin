@@ -34,6 +34,11 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    rezervi (Pons curve: CurveBuy/CurveSell olaylarından ya da curve kontratının rezervi; V4 havuzu: likidite + sqrtPrice,
    `exit_truth.py` olayları ve `live.py` havuz okuma kodları başlangıç) → `scorecard.py`'de tahmin yerine bu kullanılır.
    5x anındaki satış için de o andaki rezerv. Sonuç §4.16'ya.
+   **Hazırlık yapıldı (10 Kasım akşamı, RPC'siz oturum):** `scripts/pool_depth.py <fomo.db> picks_top5.parquet
+   pool_depth.parquet` alış / 5x / 5x+10 dk / 3 sa çıkış bloklarında derinliği ölçer (V4: Swap'taki likidite + sqrtPrice,
+   aralık içi ModifyLiquidity; Pons curve: lansmandan beri bütün CurveBuy/CurveSell'e sabit çarpım uydurma, `fit_spread`
+   ~0 değilse curve sabit çarpım değil → önce `--probe` ile olay verisine bak). `scorecard.py ... --depth pool_depth.parquet`
+   ölçüleni kullanır (ölçülemeyen an tahmine düşer). Kalan: fomo.db kurulumu + RPC ile çalıştırma (RPC izinli ortamda).
 2. **BNB'ye ilk bakış** (yeni indirme yok): `veri` dalında `bnb/2026-10-03 … 10-26` (26 Ekim – 10 Kasım kör: B7). Sorular:
    günde kaç yeni coin Fomo'da 5. alıcıya ulaşıyor, 2x / 5x oranı, havuz derinliği, Robinhood'la kıyas. Okuma:
    `solana_import.py <veri> bnb.db --chain bnb` (ayak biçimi `rhscanner/bnb.py`; fiyat için işlem birleştirme gerekebilir).
