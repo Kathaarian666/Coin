@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 10 Kasım (denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 10 Kasım akşamı (BNB'ye ilk bakış §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
 ## Yeni sohbete devir (10 Kasım) — yeni oturum ÖNCE BUNU okusun
@@ -28,16 +28,16 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
   ana ↔ holder sınavı + iki modelin eğitimi). pump.fun günlük görevi kapatıldı. Tek seferlik kontrol `trig_012NgRgpQkP7GqrxxPx5KFJh`
   (11 Kasım 08:30, eski sohbete düşer).
 
-### Sıradaki işler (bu sırayla; kullanıcıya önerildi, **onayı bekleniyor** — yeni sohbette önce "1 ve 2'ye başlayayım mı" diye sor)
+### Sıradaki işler (bu sırayla; kullanıcı 10 Kasım akşamı 1 ve 2'yi onayladı)
 1. **Havuz derinliğini zincirden ölç, karneyi kesinleştir.** Karnenin zayıf noktası: `depth_usd` Fomo işlemlerinin fiyat
    etkisinden kaba tahmin ve $100'lık işlemde sonucu en çok o etkiliyor. Yapılacak: seçimlerin bildirim anındaki gerçek
    rezervi (Pons curve: CurveBuy/CurveSell olaylarından ya da curve kontratının rezervi; V4 havuzu: likidite + sqrtPrice,
    `exit_truth.py` olayları ve `live.py` havuz okuma kodları başlangıç) → `scorecard.py`'de tahmin yerine bu kullanılır.
    5x anındaki satış için de o andaki rezerv. Sonuç §4.16'ya.
-2. **BNB'ye ilk bakış** (yeni indirme yok): `veri` dalında `bnb/2026-10-03 … 10-26` (26 Ekim – 10 Kasım kör: B7). Sorular:
-   günde kaç yeni coin Fomo'da 5. alıcıya ulaşıyor, 2x / 5x oranı, havuz derinliği, Robinhood'la kıyas. Okuma:
-   `solana_import.py <veri> bnb.db --chain bnb` (ayak biçimi `rhscanner/bnb.py`; fiyat için işlem birleştirme gerekebilir).
-   Büyük ve derinse yöntem oraya taşınır (aynı sınav); değilse `fombnb` de kapatılır.
+2. ~~BNB'ye ilk bakış~~ **yapıldı (10 Kasım, §4.17): BNB'de yöntem kaldı.** Pazar Robinhood kadar büyük (günde ~145 coin
+   5. alıcıya ulaşıyor) ama 2x/5x oranı ve havuz derinliği daha düşük; aynı sınavda (iyimser çıkışla bile) 2 haftanın 2'si
+   kaldı, aynı haftalarda Robinhood +$1.200 – 2.700. Öneri: `fombnb` kapatılsın (kullanıcı kararı bekliyor).
+   1. iş bu oturumda yapılamadı (ağ politikası RPC'yi engelledi; kullanıcı izin verdi, yeni oturumda açık).
 3. **Haftalık görevi yeni ölçüte çevir** (kullanıcı onayıyla `update_trigger`): her Perşembe veri güncelle → `profit_study`
    → `scorecard.py --fetch` → karne tablosuna yeni hafta; holder modelini ve ana ↔ holder sorusunu bırak (5 haftada üstünlük
    yok, eğitimin en pahalı kısmı); bot modeli seyrek güncellensin. Rapor kısa, kullanıcıya bildirimle.
@@ -938,6 +938,38 @@ eşikle biraz daha çok seçer). Çıkış zincirdeki gerçek değerle. Veri 10 
 - **Zayıf nokta:** havuz derinliği tahmini kaba; $100'lık işlemde sonucu en çok o etkiler → zincirden gerçek rezerv ölçümü
   yapılacak. Denetimdeki "işlem başı $100-250 tavan" iddiası eski doğrusal etki formülüne dayanıyordu (fazla sert).
 
+### 4.17 BNB'ye ilk bakış (10 Kasım, devir notu iş 2)
+
+Veri: `veri` dalı `bnb/` → `scripts/bnb_trades.py` (Fomo ayaklarını Robinhood işlem veritabanı biçimine çevirir; $ =
+işlemde executor'a giden en büyük USDC; BNB ile ödenen işlemlerde $ yok) → aynı `winner_study.py` / `profit_study.py` /
+`scorecard.py`. Kullanılabilir günler 3-25 Ekim (26 Ekim'den sonra kör, B7). FDV yok (arz verisi yok, sütun sabit).
+
+5. alıcı anları, ilk Fomo işlemi 3 Ekim 06:00 – 25 Ekim 12:00 (Robinhood: `arastirma/2026-11-10/winners.parquet`, aynı aralık):
+
+| | Robinhood | BNB |
+|---|---|---|
+| 5. alıcıya ulaşan coin / gün | 138 | 145 |
+| 3 sa'te 2x / 5x | %21,5 / %6,3 | %17,1 / %5,0 |
+| 24 sa'te 2x / 5x | %28,7 / %9,5 | %21,3 / %6,6 |
+| 3 sa'te 5x yapan coin / gün | 8,6 | 7,3 |
+| havuz derinliği medyanı (Fomo işlemlerinden tahmin, çeyrekler) | $1.347 (340 – 3.831) | $929 (266 – 2.816) |
+| 5. alıcıya kadar Fomo alımı medyanı / sonraki 3 sa | $226 / $287 | $232 / $235 |
+
+Standart sınav (2x modeli walk-forward, en iyi %5, 10 Ekim'den; BNB modeli ilk test gününde sadece 7 günle eğitildi).
+BNB'de zincir olayı yok (BNB RPC'si eski logları tutmuyor) → 3 saatlik çıkış son Fomo fiyatıyla (likidite çekilmesi
+görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser çıkışla hem zincirdeki gerçek çıkışla:
+
+| Hafta | BNB (iyimser) | Robinhood (iyimser) | Robinhood (zincir) |
+|---|---|---|---|
+| 10-16 Eki | 45 seçim, −$110 | 55 seçim, +$3.121 | +$2.670 |
+| 17-23 Eki | 27 seçim, +$84 (en iyi işlem hariç −$942) | 42 seçim, +$2.500 | +$1.205 |
+
+- BNB 2 haftanın 2'sinde kaldı (5x'te yarısı kuralıyla da +$36 / +$84). Seçimlerin 3 sa'te 5x oranı %9 (Robinhood %22).
+- Pons dışı ↔ flap.sh ayrımı BNB'de de aynı yönde (flap.sh işlem başı −$33, diğerleri +$35) ama örnek küçük.
+- **Sonuç:** BNB ayrı bir fırsat değil; pazar aynı büyüklükte ama daha sığ ve daha az yükselen. Yöntem taşınmıyor.
+  Öneri: `fombnb` kapatılsın (veri dalını da doldurmasın). İleride denenebilecek tek şey Robinhood modelinin BNB'ye
+  doğrudan uygulanması (az eğitim verisi sorununu aşar), ama oranlar zaten düşük.
+
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
 anlarla eğitildi) hiç görmediği 1 Ekim 11:31 – 3 Ekim 08:14 aralığında, botun yaptığı gibi (son 48 saatin en iyi
@@ -1041,6 +1073,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Veri | `data_export.py` / `data_import.py` | `veri` dalı arşivi |
 | Veri | `fomo_supply.py` | Coin arzları (FDV için) |
 | Veri | `pons_launches.py` | Bütün Pons lansmanları (token, curve, geliştirici) |
+| Veri (BNB) | `bnb_trades.py` | `veri` dalındaki `bnb/` günlerini işlem veritabanı biçimine çevirir (winner_study / profit_study / scorecard aynen çalışır, §4.17) |
 | Veri (pump.fun) | `solana_import.py` | `veri` dalındaki `solana/` günlerini araştırma veritabanına yükler (toplayıcı: `rhscanner/solana.py`, gece gönderim: `rhscanner/solana_export.py`) |
 | Veri | `transfer_download.py` | Coinlerin ilk saat token transferleri (holder özellikleri) |
 | Araştırma (2. adımın temeli) | `winner_study.py` | Fomo 3./5./10./20. alıcı anları + özellikler + sonraki zirve |
