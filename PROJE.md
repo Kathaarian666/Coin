@@ -3,6 +3,9 @@
 Son güncelleme: 10 Kasım (B7 sunucuya kuruldu; Solana gece gönderimi 27 Ekim'den beri takılıydı → düzeltme, §0 B8; yeni sohbete devir aşağıda). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
+**Denetim (10 Kasım, kullanıcı istedi): `DENETIM.md`** — neyi yanlış yaptık, neyi atladık, önerilen yol (gerçeklik testi, dolar
+hedefi, BNB'ye bakış, bot alarmı, sadeleştirme). Kullanıcının kararı bekleniyor; yeni işler bu rapora göre seçilecek.
+
 ## Yeni sohbete devir (11 Ekim, 12 Ekim güncellemesi) — yeni oturum önce bunu okusun
 
 **Nerede kaldık:** Robinhood botu kâğıt testte (`/canli` kapalı), tek kârlı motor (görülmemiş günlerde 5x kuralıyla
