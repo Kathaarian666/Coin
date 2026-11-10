@@ -5,7 +5,12 @@ duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler 
 
 **Kullanıcı ilkesi (10 Kasım, denetimden sonra): "Amacım test yapmak — kârlı bir yöntem bulabilir miyiz. Bot, kurulum ve canlıya
 geçiş ikincil. Önce testte tatmin edici sonuç, sonra canlı."** → gerçek parayla deneme önerilmez; iş = test düzeneği + yöntem
-adaylarının sınanması; "tatmin edici" ölçütü kullanıcıyla sayıya bağlanacak.
+adaylarının sınanması.
+
+**Test ölçütü (kullanıcı, 10 Kasım) — her yöntem bununla ölçülür (`scripts/scorecard.py`):** haftalık kasa **$500**, işlem başı
+**$100**, alış gecikmesi **10 sn** (ileride otomatik işlem düşünülüyor; kullanıcının tepki süresi etken değil), masraflar dahil,
+görülmemiş haftalar; **geçme: haftada en az +$500 net** (eski "haftada kasa 2x" hedefinin yerine). Canlıya geçiş ancak testte
+tatmin edici sonuçtan sonra.
 
 **Denetim (10 Kasım, kullanıcı istedi): `DENETIM.md`** — neyi yanlış yaptık, neyi atladık, önerilen yol (gerçeklik testi, dolar
 hedefi, BNB'ye bakış, bot alarmı, sadeleştirme). Kullanıcının kararı bekleniyor; yeni işler bu rapora göre seçilecek.
