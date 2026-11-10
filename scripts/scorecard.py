@@ -31,7 +31,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from after5x import Venue  # noqa: E402
 
-BPS = 9.93
+BPS = 9.93  # Robinhood Chain blocks per s; --bps 2.22 on BNB (0.45 s blocks)
 HOLD = 3 * 3600
 LATER = 10 * 60
 FEE, FEE_MIN = 0.005, 0.95
@@ -95,7 +95,9 @@ def time_exit(p, ev):
 
 
 def main():
-    flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale", "--depth"}
+    global BPS
+    flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale", "--depth", "--bps"}
+    BPS = arg("--bps", BPS)
     args = [a for i, a in enumerate(sys.argv[1:]) if not a.startswith("--") and sys.argv[i] not in flags]
     top, delay = arg("--top", 0.05), arg("--delay", 10)
     stake, bank0, target = arg("--stake", 100.0), arg("--bank", 1000.0), arg("--target", 500.0)

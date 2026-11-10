@@ -41,7 +41,7 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    ölçüleni kullanır (ölçülemeyen an tahmine düşer). Kalan: fomo.db kurulumu + RPC ile çalıştırma (RPC izinli ortamda).
 2. **BNB testi (§4.17, sürüyor; kullanıcı: "kapatmıyoruz, testi gerçekleştireceğiz").** İlk bakış: pazar Robinhood kadar
    büyük (günde ~145 coin 5. alıcıya), 2x/5x oranı ve tahmini derinlik daha düşük. Sınav tahmini derinlikle 2 haftanın 2'si
-   kaldı, derinlik 3-5 katıysa geçiyor → karar gerçek derinliğe bağlı; ileriye dönük ölçüm (toplayıcıya havuz rezervi +
+   kaldı; blok hızı düzeltmesinden sonra 17-23 Ekim haftası sonsuz derinlikte bile zararda (en fazla 1/2); ileriye dönük ölçüm (toplayıcıya havuz rezervi +
    3 sa havuz olayları) kullanıcıya soruldu. Robinhood modeli BNB'de kötü (3/3 kaldı).
 3. **Haftalık görevi yeni ölçüte çevir** (kullanıcı onayıyla `update_trigger`): her Perşembe veri güncelle → `profit_study`
    → `scorecard.py --fetch` → karne tablosuna yeni hafta; holder modelini ve ana ↔ holder sorusunu bırak (5 haftada üstünlük
@@ -975,10 +975,13 @@ görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser
 - **Robinhood modeli BNB'de** (`scripts/cross_chain_test.py`: her gün Robinhood'un o güne kadarki anlarıyla eğitilir, BNB
   anlarını puanlar; 5 Ekim'den, 139 seçim): 3 haftanın 3'ü kaldı (−$950 civarı, kasa bitiyor), seçimlerin %88'i flap.sh.
   Robinhood'un kalıbı BNB'ye taşınmıyor; BNB'nin kendi modeli daha iyi.
-- **Sonucu belirleyen bilinmeyen: havuz derinliği** (Robinhood'daki 1. işin aynısı). BNB'nin kendi modeli, derinlik
-  tahmininin katı (`--depth-scale`) ile: x1 −$110 / +$84 · x2 +$374 / +$377 · x3 +$639 / +$496 · x5 +$953 / +$600 ·
-  sonsuz +$2.042 / +$768. Gerçek derinlik tahminin ~3-5 katıysa 2 hafta geçiyor (ikinci hafta tek işleme bağlı: en iyi
-  işlem hariç zararda). Seçimlerin tahmini derinlik medyanı BNB $1.632, Robinhood $4.018.
+- **Düzeltme (10 Kasım, Fable'ın gözden geçirmesinde bulundu):** `scorecard.py` blok hızını Robinhood'a göre sabit
+  alıyordu (9,93 blok/sn); BNB'de 2,22 → "3 saatlik çıkış" aslında ~13 saat sonraki Fomo fiyatıydı. `--bps 2.22` eklendi.
+  Düzeltilmiş BNB kendi modeli, derinlik tahmininin katı (`--depth-scale`) ile: x1 −$88 / −$569 · x3 +$659 / −$344 ·
+  x5 +$973 / −$287 · sonsuz derinlik +$2.062 / −$195. **İkinci hafta (17-23 Ekim) sonsuz derinlikte ve iyimser çıkışla
+  bile zararda** → derinlik ne çıkarsa çıksın 2 haftanın en fazla 1'i geçiyor. Robinhood modeli düzeltmeyle de 3/3 kaldı
+  (−$829 / −$921 / −$906). Seçimlerin tahmini derinlik medyanı BNB $1.632, Robinhood $4.018. Önceki "derinlik 3-5 katıysa
+  2 hafta geçiyor" sonucu bu hatadan kaynaklanıyordu.
 - Ayrıca çıkış iyimser (likidite çekilmesi görülmüyor) ve sadece 2 tam hafta var. **Sonuç: BNB henüz karar verilemez.**
   Geçmiş için gerçek derinlik ölçülemiyor (ücretsiz BNB RPC'leri ~1 saatlik log tutuyor); ileriye dönük ölçüm gerekir:
   toplayıcı her coinin 5. alıcı anında havuz rezervini ve sonraki 3 saatteki havuz olaylarını kaydetmeli (kullanıcıya
