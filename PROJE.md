@@ -906,6 +906,36 @@ kontrolü <1 gün, anlamsız. **Oturum notları:** `winner_study` tepe ~6,6 GB R
 sonra kapat); transfer indirmesi ~75 dk, DB ~16 GB; disk için `veri` dalı seyrek + kısmi klonla çekildi (`--filter=blob:none`,
 `git sparse-checkout` ile sadece `*.parquet` ve `robinhood/` — solana/bnb hiç inmez, 1,3 GB, ~1 dk).
 
+### 4.16 Standart sınav: şimdiki yöntemin karnesi (10 Kasım, kullanıcının test ölçütü)
+
+`scripts/scorecard.py`: kasa $1.000/hafta, işlem $100, alış 10 sn sonra, Fomo komisyonu + havuz etkisi (sabit çarpımlı
+havuz; derinlik = bildirim öncesi Fomo işlemlerinden tahmin), hedef +$500/hafta. Seçimler: her gün önceki günlerle
+eğitilen 2x modelinin en iyi %5'i (`profit_study.py`, 5. alıcı; son 2 günün puanlarına göre — bot ince pazarda sabit
+eşikle biraz daha çok seçer). Çıkış zincirdeki gerçek değerle. Veri 10 Kasım 15:03'e kadar (12 Ekim'den sonrası zincirden).
+
+| Hafta | Seçim | 5x'te hepsi: net kâr (en iyi işlem hariç) | 5x'te yarısı + 10 dk | Kötümser¹ |
+|---|---|---|---|---|
+| 10-16 Eyl | 248 | +$5.507 (+5.016) | +$11.725 | +$1.976 |
+| 17-23 Eyl | 176 | +$5.484 (+5.078) | +$16.793 | +$2.652 |
+| 24-30 Eyl | 130 | +$4.319 (+3.933) | +$6.767 | +$1.599 |
+| 1-7 Eki | 88 | +$3.892 (+3.492) | +$4.652 | +$2.568 |
+| 8-14 Eki | 50 | +$1.983 (+1.546) | +$3.077 | +$1.273 |
+| 15-21 Eki | 59 | +$1.804 (+1.401) | +$2.581 | +$741 |
+| 22-28 Eki | 25 | **+$33 (−314)** | −$38 | −$260 |
+| 29 Eki – 4 Kas | 21 | +$1.211 (+845) | +$1.835 | +$854 |
+| 5-10 Kas (yarım) | 5 | −$422 | −$422 | −$423 |
+
+¹ 5x'te hepsi, havuz derinliği tahminin yarısı, alış 30 sn sonra. 60 sn gecikmeyle de aynı 7 hafta geçiyor (+$845 – 2.929).
+- **8 tam haftanın 7'si hedefi geçti**; kalan hafta (22-28 Ekim) sıfır civarı. Eylül haftaları kural seçiminde
+  kullanılmıştı (model görmedi, kural gördü); temiz haftalar 1 Ekim'den sonrası: 5'in 4'ü geçti.
+- **Kâr pazarla birlikte küçülüyor:** haftalık seçim 248 → 21, kâr $5.500 → ~$1.200; son yarım haftada 5 seçim, hepsi zarar.
+  İşlem başı ortalama kazanç düşmüyor (~+$20-60), fırsat sayısı düşüyor.
+- Pons dışı seçimler kazancın kaynağı (işlem başı ort +$63, 5x %28 ↔ Pons +$7, %19); sadece Pons dışı işlem yapmak benzer
+  kârı ~%40 işlemle veriyor (7 haftanın 6'sı geçti).
+- $500 kasa + $100 işlem: ilk 5-7 işlem kaybedince kasa bitiyor (5 haftanın 3'ünde) → kullanıcı kasayı $1.000 yaptı.
+- **Zayıf nokta:** havuz derinliği tahmini kaba; $100'lık işlemde sonucu en çok o etkiler → zincirden gerçek rezerv ölçümü
+  yapılacak. Denetimdeki "işlem başı $100-250 tavan" iddiası eski doğrusal etki formülüne dayanıyordu (fazla sert).
+
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
 anlarla eğitildi) hiç görmediği 1 Ekim 11:31 – 3 Ekim 08:14 aralığında, botun yaptığı gibi (son 48 saatin en iyi
