@@ -1,0 +1,28 @@
+
+en iyi %5 · tutar $100 · kasa $1000/hafta · alış gecikmesi 10 sn · hedef +$500/hafta · 811 seçim (zincir verisi olmayan 0 dışarıda), 3 sa'te 5x 180 · havuz derinliği zincirden: 762 seçim · havuz ücreti+vergisi çıkışta düşülü (ölçülemeyen 47 seçimde %2 varsayıldı)
+
+== kural: 5x olunca hepsini sat
+  10 Sep haftası: 243 seçim, işlem 243 (para yetmeyen 0) · net kâr $+8302 · en iyi işlem hariç $+7824 · kârlı işlem %32 · sınırsız kasayla $+8302 → GEÇTİ
+  17 Sep haftası: 177 seçim, işlem 177 (para yetmeyen 0) · net kâr $+5867 · en iyi işlem hariç $+5425 · kârlı işlem %31 · sınırsız kasayla $+5867 → GEÇTİ
+  24 Sep haftası: 135 seçim, işlem 135 (para yetmeyen 0) · net kâr $+3614 · en iyi işlem hariç $+3200 · kârlı işlem %38 · sınırsız kasayla $+3614 → GEÇTİ
+  01 Oct haftası: 88 seçim, işlem 88 (para yetmeyen 0) · net kâr $+3901 · en iyi işlem hariç $+3512 · kârlı işlem %44 · sınırsız kasayla $+3901 → GEÇTİ
+  08 Oct haftası: 52 seçim, işlem 52 (para yetmeyen 0) · net kâr $+2961 · en iyi işlem hariç $+2540 · kârlı işlem %50 · sınırsız kasayla $+2961 → GEÇTİ
+  15 Oct haftası: 61 seçim, işlem 61 (para yetmeyen 0) · net kâr $+1807 · en iyi işlem hariç $+1341 · kârlı işlem %38 · sınırsız kasayla $+1807 → GEÇTİ
+  22 Oct haftası: 25 seçim, işlem 25 (para yetmeyen 0) · net kâr $+279 · en iyi işlem hariç $-96 · kârlı işlem %32 · sınırsız kasayla $+279 → KALDI
+  29 Oct haftası: 20 seçim, işlem 20 (para yetmeyen 0) · net kâr $+796 · en iyi işlem hariç $+445 · kârlı işlem %30 · sınırsız kasayla $+796 → GEÇTİ
+  05 Nov haftası (yarım, 6 gün): 10 seçim, işlem 10 (para yetmeyen 0) · net kâr $-172 · en iyi işlem hariç $-305 · kârlı işlem %30 · sınırsız kasayla $-172 → KALDI
+  tam haftalar: 7/8 hedefi geçti
+
+== kural: 5x olunca yarısı, kalanı 10 dk sonra
+  10 Sep haftası: 243 seçim, işlem 243 (para yetmeyen 0) · net kâr $+14301 · en iyi işlem hariç $+12896 · kârlı işlem %32 · sınırsız kasayla $+14301 → GEÇTİ
+  17 Sep haftası: 177 seçim, işlem 177 (para yetmeyen 0) · net kâr $+16423 · en iyi işlem hariç $+13591 · kârlı işlem %31 · sınırsız kasayla $+16423 → GEÇTİ
+  24 Sep haftası: 135 seçim, işlem 135 (para yetmeyen 0) · net kâr $+5931 · en iyi işlem hariç $+4575 · kârlı işlem %38 · sınırsız kasayla $+5931 → GEÇTİ
+  01 Oct haftası: 88 seçim, işlem 88 (para yetmeyen 0) · net kâr $+4417 · en iyi işlem hariç $+3728 · kârlı işlem %44 · sınırsız kasayla $+4417 → GEÇTİ
+  08 Oct haftası: 52 seçim, işlem 52 (para yetmeyen 0) · net kâr $+4004 · en iyi işlem hariç $+3446 · kârlı işlem %50 · sınırsız kasayla $+4004 → GEÇTİ
+  15 Oct haftası: 61 seçim, işlem 61 (para yetmeyen 0) · net kâr $+2546 · en iyi işlem hariç $+1726 · kârlı işlem %38 · sınırsız kasayla $+2546 → GEÇTİ
+  22 Oct haftası: 25 seçim, işlem 25 (para yetmeyen 0) · net kâr $+344 · en iyi işlem hariç $-121 · kârlı işlem %32 · sınırsız kasayla $+344 → KALDI
+  29 Oct haftası: 20 seçim, işlem 20 (para yetmeyen 0) · net kâr $+1211 · en iyi işlem hariç $+596 · kârlı işlem %30 · sınırsız kasayla $+1211 → GEÇTİ
+  05 Nov haftası (yarım, 6 gün): 10 seçim, işlem 10 (para yetmeyen 0) · net kâr $-86 · en iyi işlem hariç $-292 · kârlı işlem %30 · sınırsız kasayla $-86 → KALDI
+  tam haftalar: 7/8 hedefi geçti
+
+işlem başı net $ (5x kuralı): Pons dışı 330 işlem, ort $+58.6, 5x %28 · Pons 481 işlem, ort $+16.7, 5x %18
