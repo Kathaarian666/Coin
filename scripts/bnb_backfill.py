@@ -136,8 +136,10 @@ def main():
               f"{time.time() - t0:.0f} sn", flush=True)
     done = set((out / "done.txt").read_text().split()) if (out / "done.txt").exists() else set()
     print(f"bitti: {len(done)}/{len(jobs)} coin", flush=True)
-    if "--no-push" in sys.argv or len(done) < len(jobs):
+    if "--no-push" in sys.argv or not done:
         return
+    if len(done) < len(jobs):  # pushed anyway (a rerun retries the failed coins and pushes again)
+        print(f"{len(jobs) - len(done)} coin alınamadı; alınanlar gönderiliyor", flush=True)
     from dotenv import load_dotenv
     from rhscanner import solana_export
     load_dotenv(ROOT / ".env")
