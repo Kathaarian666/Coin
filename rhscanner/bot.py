@@ -21,7 +21,7 @@ from .hooks import REGISTRY
 from . import live
 from .live import LiveLog
 from .report import (format_5x, format_liquidity_warning, format_live_alert, format_paper, format_paper_5x,
-                     format_paper_alert, format_report, format_safety, format_time_up)
+                     format_paper_alert, format_report, format_rest, format_safety, format_time_up)
 from . import safety
 from .rpc import RpcClient
 from . import paper
@@ -77,12 +77,15 @@ class ScannerApp:
         # the same with the holder criteria (PROJE.md §4.6), side by side: own scores, bar and virtual trades
         self.paper_model_h = Model.load(paper.MODEL_H_PATH)
         self.paper_log_h = PaperLog(self.storage.db, "paper_log_h")
+        launches = self.analyzer.launches
+        if launches is not None and launches.count():  # picks from before 11 Nov get their Pons mark
+            for plog in (self.paper_log, self.paper_log_h):
+                plog.fill_pons(launches)
         self.paper5_hits: list[tuple[str, float]] = []  # (token, seconds after the alert) to announce
         self.book = Book(self.storage.db)
         self.live_log = LiveLog(self.storage.db)
         known, since = self.paper_log.known()
         self.follower = Follower(known, since, on_new=self.paper_log.remember, db=self.storage.db)
-        self.pick_risks = {}  # token -> risky (live.risk_check), asked once per pick
         # the 5x rule for sent alerts: token -> [alert price, last buy was at the target] (PROJE.md §0 B1)
         self.live_watch = {r["token"]: [r["p_alert"], False] for r in self.live_log.open(time.time())
                            if not r["sent_2x"] and not r["sent_end"]}
@@ -192,18 +195,21 @@ class ScannerApp:
             bar = self.paper_log.bar(self.paper_model, now)
             alert = score >= bar
             size = paper.size_for(self.paper_log.percentile(score, now)) if alert else None
-            self.paper_log.add(key, t, score, bar, alert, size, features, now, features.get("depth_usd"))
+            pons = row is not None if index else None
+            self.paper_log.add(key, t, score, bar, alert, size, features, now, features.get("depth_usd"), pons)
             if alert:
                 self.follower.keep(key, t + paper.MAX_HOLD + 3600)
-                log.info("paper alert %s (score %.3f, bar %.3f, %.0f s after the 5th buyer)", token, score, bar, now - t)
-                if self.live_on:  # the risk check runs beside the sell check there: no extra delay
-                    risky = await self.send_live(token, t, trades[idx].block, p_now, features, row is not None, coin.buyers)
-                else:
-                    risky = await self.pick_risk(key)
-                    if self.paper_notify:
-                        await self.broadcast(format_paper_alert(await self.symbol(token), token, features.get("fdv"), score,
-                                                                size, now - t, risky))
-                self.paper_log.set_risky(key, risky)
+                log.info("paper alert %s (score %.3f, bar %.3f, %.0f s after the 5th buyer, pons %s)", token, score, bar,
+                         now - t, pons)
+                # the main method (user 11 Nov, PROJE.md §4.16d): Pons coins are kept in the paper test for
+                # comparison but never announced
+                if pons:
+                    pass
+                elif self.live_on:
+                    await self.send_live(token, t, trades[idx].block, p_now, features, False, coin.buyers)
+                elif self.paper_notify:
+                    await self.broadcast(format_paper_alert(await self.symbol(token), token, features.get("fdv"), score,
+                                                            size, now - t))
             if self.paper_model_h:
                 await self.score_holder(key, coin, idx, float(supply[0]) if supply else None, row, features)
         except Exception:
@@ -230,23 +236,11 @@ class ScannerApp:
         bar = self.paper_log_h.bar(self.paper_model_h, now)
         alert = score >= bar
         size = paper.size_for(self.paper_log_h.percentile(score, now)) if alert else None
-        self.paper_log_h.add(key, t, score, bar, alert, size, both, now, features.get("depth_usd"))
+        self.paper_log_h.add(key, t, score, bar, alert, size, both, now, features.get("depth_usd"),
+                             launch is not None if self.analyzer.launches else None)
         if alert:
             self.follower.keep(key, t + paper.MAX_HOLD + 3600)
             log.info("paper (holder) alert %s (score %.3f, bar %.3f)", key, score, bar)
-            self.paper_log_h.set_risky(key, await self.pick_risk(key))
-
-    async def pick_risk(self, token: str) -> bool | None:
-        """Is the pick risky (live.risk_check: no hook on its V4 pool, or an owner other than the launchpad's)? Its 5x
-        rule then ends after 15 minutes (paper.hold5). None when it cannot be read in time: the normal limit."""
-        if token not in self.pick_risks:
-            try:
-                self.pick_risks[token] = await asyncio.wait_for(
-                    live.risk_check(self.rpc, self.settings.v4_pool_manager, token), 15)
-            except Exception as exc:
-                log.warning("risk check failed for %s: %s", token, exc)
-                return None
-        return self.pick_risks[token]
 
     async def send(self, text: str, reply_to: dict | None = None) -> dict:
         """Sends to every chat; returns chat id -> message id (for replies)."""
@@ -262,31 +256,26 @@ class ScannerApp:
         return sent
 
     async def send_live(self, token: str, t: float, block: int, price: float, features: dict, pons: bool,
-                        buyers: list[str]) -> bool | None:
-        """A real alert: elimination (unsellable), the fast message, then the safety report as a reply. Returns the
-        pick's risk flag (pick_risk, asked beside the sell check)."""
+                        buyers: list[str]):
+        """A real alert: elimination (unsellable), the fast message, then the safety report as a reply."""
         pm = self.settings.v4_pool_manager
-        gate, risky = await asyncio.gather(asyncio.wait_for(live.sell_gate(self.rpc, pm, token, pons, buyers), 20),
-                                           self.pick_risk(token.lower()), return_exceptions=True)
-        if isinstance(gate, BaseException):
-            status, detail, pool = "bilinmiyor", f"kontrol tamamlanamadı ({type(gate).__name__})", None
-        else:
-            status, detail, pool = gate
-        risky = None if isinstance(risky, BaseException) else risky
+        try:
+            status, detail, pool = await asyncio.wait_for(live.sell_gate(self.rpc, pm, token, pons, buyers), 20)
+        except Exception as exc:
+            status, detail, pool = "bilinmiyor", f"kontrol tamamlanamadı ({type(exc).__name__})", None
         if status in ("honeypot", "vergi"):
             log.info("live: %s dropped (%s)", token, detail)
-            return risky
+            return
         symbol = await self.symbol(token)
         msgs = await self.send(format_live_alert(symbol, token, features.get("fdv"), self.paper_model.top_hit_rate,
                                                  live.reasons(self.paper_model, features), (status, detail),
-                                                 time.time() - t, risky))
-        self.live_log.add(token.lower(), t, price, block, pool, msgs, status, paper.hold5(risky))
+                                                 time.time() - t))
+        self.live_log.add(token.lower(), t, price, block, pool, msgs, status, paper.HOLD5)
         self.live_watch[token.lower()] = [price, False]
         try:
             await self.send(await self.safety_text(token, pons, features.get("depth_usd")), msgs)
         except Exception:
             log.exception("live safety report failed for %s", token)
-        return risky
 
     async def safety_text(self, token: str, pons: bool | None = None, depth: float | None = None) -> str:
         """The safety report (PROJE.md §1, §0 D1/D2): the trust model's score and the 14 checks, our chain checks
@@ -304,15 +293,15 @@ class ScannerApp:
                              safety.sources(report, gp, gt))
 
     def watch_target(self, token: str, trade: Trade):
-        """Two buys in a row at >= 5x a sent alert's price within its time limit: "5x oldu, sat" (no trade history
-        needed, survives restarts)."""
+        """Two buys in a row at >= 5x a sent alert's price within its time limit: "5x oldu, yarısını sat" (no trade
+        history needed, survives restarts); the rest's message follows paper.LATER10 s later (live_step)."""
         w = self.live_watch.get(token)
         if w is None or trade.side != 1 or not trade.price:
             return
         hit = trade.price >= paper.TP5 * w[0]
         if hit and w[1]:
             del self.live_watch[token]
-            self.live_log.mark(token, sent_2x=1)
+            self.live_log.mark(token, sent_2x=1, t5=trade.ts)
             task = asyncio.create_task(self.send_target(token, trade.ts))
             self.tasks.append(task)
             task.add_done_callback(lambda done: self.tasks.remove(done) if done in self.tasks else None)
@@ -332,7 +321,10 @@ class ScannerApp:
         pm = self.settings.v4_pool_manager
         for r in rows:
             token, reply = r["token"], json.loads(r["msg"] or "{}")
-            hold = r.get("hold") or paper.HOLD5
+            hold = paper.HOLD5  # also for older rows that kept the 15-minute limit
+            if r["sent_2x"] and r.get("t5") and not r.get("sent_rest") and now - r["t5"] >= paper.LATER10:
+                self.live_log.mark(token, sent_rest=1)  # side rule: the other half
+                await self.send(format_rest(await self.symbol(token), token, paper.LATER10), reply)
             if not r["sent_2x"] and not r["sent_end"] and now - r["ts"] >= hold:  # no 5x in time: sell the rest
                 self.live_watch.pop(token, None)
                 self.live_log.mark(token, sent_end=1)
@@ -399,7 +391,8 @@ class ScannerApp:
                 value = paper.last_value(coin.trades, now, trade["p_alert"]) if trade["open"] else None
                 ret = paper.net_return(trade, depth, 20.0, value)
                 plog.update5(token, trade["kind"], ret, trade["kind"] == "5x")
-                if trade["kind"] == "5x" and plog is self.paper_log and now - trade["legs"][0][0] < 600:
+                if (trade["kind"] == "5x" and plog is self.paper_log and now - trade["legs"][0][0] < 600
+                        and not plog.is_pons(token)):
                     # announced only when fresh: after an update the last days' picks are worked out afresh
                     self.paper5_hits.append((token, trade["legs"][0][0] - ts))
             for token, ts, depth, kind10, risky, _, ret5, closed5, chain5, *_ in plog.open10():  # side rule, §4.10
@@ -654,8 +647,10 @@ class ScannerApp:
         other = None
         if self.paper_model_h:
             other = paper.summary(self.paper_log_h.alerts(since), self.paper_log_h.scored(since))
-        await update.message.reply_html(format_paper(hours, paper.summary(rows, self.paper_log.scored(since)), recent,
-                                                     self.paper_model.trained_until, other))
+        scored = self.paper_log.scored(since)
+        main = paper.summary([r for r in rows if not r.get("pons")], scored)  # main method: non-Pons (§4.16d)
+        await update.message.reply_html(format_paper(hours, paper.summary(rows, scored), recent,
+                                                     self.paper_model.trained_until, other, main))
 
     async def cmd_live(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._authorized(update):

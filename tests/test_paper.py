@@ -166,13 +166,31 @@ def test_side_rule_sells_half_at_5x_and_the_rest_10_minutes_later():
     assert paper.paper_trade_10(slow, 0, paper.HOLD5 + 1) == paper.paper_trade_5x(slow, 0, paper.HOLD5 + 1)
 
 
-def test_risky_picks_leave_after_15_minutes():
+def test_risky_flag_no_longer_shortens_the_time_limit():
     p = 1e-6
-    assert paper.hold5(True) == paper.HOLD5_RISKY == 900 and paper.hold5(False) == paper.hold5(None) == paper.HOLD5
+    assert paper.hold5(True) == paper.hold5(False) == paper.hold5(None) == paper.HOLD5
     slow = [buy(0, p), buy(100, 1.5 * p), buy(1000, 6 * p), buy(1001, 6 * p)]  # the 5x comes after 16 minutes
-    t = paper.paper_trade_5x(slow, 0, 2000, paper.hold5(True))
-    assert t["kind"] == "süre" and t["legs"][0][0] == 900
-    assert paper.paper_trade_5x(slow, 0, 2000)["kind"] == "5x"  # a normal pick waits for it
+    assert paper.paper_trade_5x(slow, 0, 2000, paper.hold5(True))["kind"] == "5x"
+
+
+def test_paper_log_marks_pons_picks_and_fills_old_ones():
+    db = sqlite3.connect(":memory:")
+    log = paper.PaperLog(db)
+    log.add("0xa", 1.0, 0.9, 0.5, True, 0.04, {}, 2.0, 5000.0, True)
+    log.add("0xb", 2.0, 0.9, 0.5, True, 0.02, {}, 3.0, 5000.0, False)
+    log.add("0xc", 3.0, 0.9, 0.5, True, 0.02, {}, 4.0, 5000.0)  # before 11 Nov: not known
+    log.add("0xd", 4.0, 0.9, 0.5, True, 0.02, {}, 5.0, 5000.0)
+    assert log.is_pons("0xa") and not log.is_pons("0xb") and not log.is_pons("0xc")
+    db.execute("CREATE TABLE pons_launches (token TEXT PRIMARY KEY)")
+    db.execute("INSERT INTO pons_launches VALUES ('0xc')")
+
+    class Index:
+        pass
+    index = Index()
+    index.db = db
+    assert log.fill_pons(index) == 2
+    assert [r["pons"] for r in log.alerts(0)] == [1, 0, 1, 0]
+    assert log.fill_pons(index) == 0
 
 
 def test_paper_log_keeps_the_5x_trade_beside_the_main_one():

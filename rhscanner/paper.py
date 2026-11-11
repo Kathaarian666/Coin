@@ -35,17 +35,17 @@ TOP = 0.05  # alert share (2 % until 9 Oct; 5 %: user, PROJE.md §0 B3 — fewer
 BANKROLL = 1000.0
 TP5 = 5.0  # second rule beside the main one (PROJE.md §4.4c, A10): everything sold at 5x the alert price ...
 HOLD5 = 3 * 3600  # ... or at this many seconds after the alert (worth 0 if the pool's liquidity was pulled by then)
-# ... but a risky pick (its V4 pool has no hook, or its owner() is not the launchpad's) is left after 15 minutes: those
-# picks are the rule's biggest winners and nearly all of them are pulled later (PROJE.md §4.8, §0 B4; user 11 Oct)
-HOLD5_RISKY = 15 * 60
+# (the 15-minute limit for a "risky" pick, user 11 Oct, was dropped on 11 Nov: the exam found it harmful and its flag
+# noisy, PROJE.md §4.16d)
 # side rule beside the 5x rule (PROJE.md §4.10, §0 B6; user 12 Oct): half sold at the 5x, the rest this many seconds
 # later (0 if the pool's liquidity was pulled by then); without a 5x it is the 5x rule's trade
 LATER10 = 10 * 60
 
 
-def hold5(risky) -> float:
-    """The 5x rule's time limit of a pick (risky None = not known: the normal limit)."""
-    return HOLD5_RISKY if risky else HOLD5
+def hold5(risky=None) -> float:
+    """The 5x rule's time limit of a pick: always HOLD5 since 11 Nov (the risky flag no longer shortens it, old rows
+    still carry it)."""
+    return HOLD5
 MODEL_PATH = Path(__file__).with_name("paper_model.json")
 MODEL_H_PATH = Path(__file__).with_name("paper_model_h.json")  # + holder criteria, run beside it (PROJE.md §4.6)
 BOOK_PATH = Path(__file__).with_name("paper_book.json")
@@ -516,9 +516,11 @@ class PaperLog:
         # the 5x rule's trade beside the main one (PROJE.md §4.4c); chain5: the pool at its time exit
         # risky: the pick's risk flag (hold5; NULL = not known)
         # the side rule (PROJE.md §4.10): ret10_pulled = its return if the rest's pool turns out pulled
+        # pons: a Pons launchpad coin (1/0, NULL = not known); the main method counts only the others (§4.16d)
         for c, kind in (("kind5", "TEXT"), ("ret5", "REAL"), ("closed5", "INTEGER NOT NULL DEFAULT 0"), ("chain5", "TEXT"),
                         ("risky", "INTEGER"), ("kind10", "TEXT"), ("ret10", "REAL"), ("ret10_pulled", "REAL"),
-                        ("closed10", "INTEGER NOT NULL DEFAULT 0"), ("chain10", "TEXT"), ("t10", "REAL")):
+                        ("closed10", "INTEGER NOT NULL DEFAULT 0"), ("chain10", "TEXT"), ("t10", "REAL"),
+                        ("pons", "INTEGER")):
             if c not in cols:
                 db.execute(f"ALTER TABLE {table} ADD COLUMN {c} {kind}")
         db.commit()
@@ -547,11 +549,12 @@ class PaperLog:
         return bisect.bisect_left(scores, score) / len(scores) if scores else 1.0
 
     def add(self, token: str, ts: float, score: float, bar: float, alert: bool, size: float | None, features: dict,
-            seen: float, depth: float | None):
+            seen: float, depth: float | None, pons: bool | None = None):
         clean = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in features.items()}
-        self.db.execute(f"""INSERT OR IGNORE INTO {self.t} (token, ts, score, bar, alert, size, features, seen, depth)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (token.lower(), ts, score, bar, int(alert), size, json.dumps(clean), seen, depth))
+        self.db.execute(f"""INSERT OR IGNORE INTO {self.t} (token, ts, score, bar, alert, size, features, seen, depth,
+                           pons) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (token.lower(), ts, score, bar, int(alert), size, json.dumps(clean), seen, depth,
+                         None if pons is None else int(pons)))
         self.db.commit()
 
     def open_alerts(self) -> list[tuple]:
@@ -592,10 +595,23 @@ class PaperLog:
 
     def alerts(self, since: float) -> list[dict]:
         cur = self.db.execute(f"""SELECT token, ts, score, size, seen, kind, ret, closed, kind5, ret5, closed5, chain5,
-                                        risky, kind10, ret10, closed10, chain10 FROM {self.t}
+                                        risky, kind10, ret10, closed10, chain10, pons FROM {self.t}
                                  WHERE alert = 1 AND ts >= ? ORDER BY ts""", (since,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+    def is_pons(self, token: str) -> bool:
+        row = self.db.execute(f"SELECT pons FROM {self.t} WHERE token = ?", (token,)).fetchone()
+        return bool(row and row[0])
+
+    def fill_pons(self, launches) -> int:
+        """Older picks without the Pons mark get it from the launch index (rows before 11 Nov). Returns how many."""
+        rows = self.db.execute(f"SELECT token FROM {self.t} WHERE alert = 1 AND pons IS NULL").fetchall()
+        for (token,) in rows:
+            hit = launches.db.execute("SELECT 1 FROM pons_launches WHERE token = ?", (token,)).fetchone()
+            self.db.execute(f"UPDATE {self.t} SET pons = ? WHERE token = ?", (int(hit is not None), token))
+        self.db.commit()
+        return len(rows)
 
     def scored(self, since: float) -> int:
         return self.db.execute(f"SELECT COUNT(*) FROM {self.t} WHERE ts >= ?", (since,)).fetchone()[0]

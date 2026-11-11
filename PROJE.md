@@ -52,7 +52,12 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
 4. ~~**Aynı sınavla denenecek adaylar**~~ **Yapıldı (11 Kasım, §4.16d):** hiçbiri 22 Ekim haftasını (5x kuralıyla) kurtarmıyor;
    en iyisi **sadece Pons dışı + yan kural** (7/8, kötümser de 7/8, son 4 haftada tabandan iyi) → **kullanıcı (11 Kasım):
    haftalık karnenin ana yöntemi bu** (eski yöntem karşılaştırma için altta); 15 dk riskli kuralı sınavda
-   zararlı (7/8 → 6/8, botta hâlâ açık); %10 pay yoğun haftada kasayı bitiriyor (6/8). Haftalık karne Pons dışı adayı da yazıyor.
+   zararlı (7/8 → 6/8); %10 pay yoğun haftada kasayı bitiriyor (6/8). Haftalık karne Pons dışı adayı da yazıyor.
+   **Bot bu yönteme çevrildi (11 Kasım, kullanıcı "evet"):** sadece Pons dışı seçimler bildirilir (`/canli` ve
+   `/kagitbildirim`; Pons seçimleri kâğıt testte kalır, `paper_log.pons`, eski satırlar açılışta lansman indeksinden
+   doldurulur); takip yan kuralla: "🎯 5x, yarısını sat" → 10 dk sonra "⏱ kalanını sat" → 5x 3 saatte gelmezse "hepsini
+   sat" (`live_log.t5`, `sent_rest`); 15 dk riskli kuralı ve rug uyarısı kaldırıldı (`paper.hold5` her zaman 3 sa, risk
+   kontrolü artık çağrılmıyor); `/karne` başlığı "Ana yöntem: Pons dışı + yan kural", tüm seçimler / 5x / eski kural altta.
 5. ~~**Bot alarmı**~~ **Yapıldı ve sunucuya kuruldu (11 Kasım, kullanıcı; logda hata yok):** `rhscanner/watchdog.py` — 30 dk hiç Fomo işlemi gelmezse
    Telegram'a "⚠️ Bot kör olabilir"; son 6 saatteki işlem sayısı önceki 7 günün aynı uzunluktaki ortalamasının %10'unun altına
    düşerse "⚠️ Fomo işlemleri birden düştü" (26 Ekim'deki gibi eski kontratta az işlem kalınca; 20 Eyl – 10 Kas tam zincir
@@ -159,6 +164,9 @@ bırakıldı.
 | **6** | **Diğer zincirler** (Solana/pump.fun, BNB, Base…): Fomo'daki diğer zincirlere aynı yöntem; her zincir için ayrı veri ve güvenlik kontrolleri. | **sürüyor, öncelik pump.fun** (3 Ekim, kullanıcı: "pump.fun'da en az Robinhood kadar iyi"): pump.fun ve BNB verisi toplanıyor (§4.5, §4.5b); araştırma ~9-10 Ekim (A8); Base ertelendi |
 
 ## 3. Şu anki durum
+
+**Güncel (11 Kasım):** bot "Pons dışı + yan kural" yöntemine çevrildi (§4.16d, devir iş 4): sadece Pons dışı seçimler
+bildirilir, 5x'te yarısı / 10 dk sonra kalanı, 15 dk riskli kuralı kaldırıldı (aşağıdaki 11 Ekim B4 maddesi geçersiz).
 
 **Güncel (12 Ekim):** kâğıt teste yan kural "5x'te yarısı, kalanı 10 dk sonra" eklendi (§0 B6, §4.10); `/karne`'de
 5x kuralının altında ayrı kasa.

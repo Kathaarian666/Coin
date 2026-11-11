@@ -6,10 +6,11 @@ template cannot block sells), any other coin is sold in a simulation into its Un
 10 % or more drops the pick; when nothing can be simulated (no pool or holder found) it is sent with a warning.
 The message gives the 2x chance (what the top paper.TOP did in the walk-forward test) and the 3 criteria that lift the
 score most; the safety report with the trust score (trust_model.json, PROJE.md §4.1) follows as a reply.
-Afterwards, the 5x rule (PROJE.md §4.4c, user 9 Oct): "5x oldu, sat" when two buys in a row reach 5x the alert price
-(paper.TP5), "süre doldu, sat" when its time limit passes without it (paper.hold5: 3 hours, 15 minutes for a risky
-pick - no hook on its V4 pool or an owner other than the launchpad's, risk_check(); the message warns about it, PROJE.md
-§0 B4, user 11 Oct); and a warning when the liquidity of the coin's
+Only coins that are not Pons launchpad coins are sent (user 11 Nov: the main method "Pons dışı + yan kural", PROJE.md
+§4.16d; Pons picks lost money in every recent week). Afterwards, the side rule (PROJE.md §4.10, user 11 Nov):
+"5x oldu, yarısını sat" when two buys in a row reach 5x the alert price (paper.TP5), "kalanını sat" paper.LATER10 s
+later, "süre doldu, sat" when paper.HOLD5 passes without the 5x (the 15-minute limit for a "risky" pick, risk_check(),
+was dropped on 11 Nov: harmful in the exam, §4.16d); and a warning when the liquidity of the coin's
 V4 pool is pulled: its net liquidity (every ModifyLiquidity since the pool's creation) at the end of a block falls to
 PULL_SHARE of its peak or less. Single removals are no signal: launchpad hooks take liquidity out and put it back all
 the time, often in the same transaction (PROJE.md §0 D12, as scripts/exit_truth.py).
@@ -232,7 +233,9 @@ class LiveLog:
         cols = {r[1] for r in db.execute("PRAGMA table_info(live_log)")}
         # liq_*: int256 sums, kept as text, NULL = the pool's history not read yet; sent_2x = the target message
         # (5x since 9 Oct), sent_end = the time-limit message, hold = that limit in s (NULL: paper.HOLD5)
-        for c, kind in (("liq_net", "TEXT"), ("liq_peak", "TEXT"), ("sent_end", "INTEGER DEFAULT 0"), ("hold", "REAL")):
+        # t5 = when the 5x came, sent_rest = the side rule's "sell the rest" message (LATER10 s after t5)
+        for c, kind in (("liq_net", "TEXT"), ("liq_peak", "TEXT"), ("sent_end", "INTEGER DEFAULT 0"), ("hold", "REAL"),
+                        ("t5", "REAL"), ("sent_rest", "INTEGER DEFAULT 0")):
             if c not in cols:
                 db.execute(f"ALTER TABLE live_log ADD COLUMN {c} {kind}")
         db.commit()
@@ -244,8 +247,10 @@ class LiveLog:
         self.db.commit()
 
     def open(self, now: float) -> list[dict]:
-        """Alerts still followed (LIVE_WINDOW): waiting for their target / time-limit message or liquidity watch."""
-        cur = self.db.execute("SELECT * FROM live_log WHERE ts >= ? AND ((sent_2x = 0 AND sent_end = 0) OR warned = 0)",
+        """Alerts still followed (LIVE_WINDOW): waiting for their target / time-limit / rest message or liquidity
+        watch."""
+        cur = self.db.execute("SELECT * FROM live_log WHERE ts >= ? AND ((sent_2x = 0 AND sent_end = 0) OR warned = 0 "
+                              "OR (sent_2x = 1 AND t5 IS NOT NULL AND COALESCE(sent_rest, 0) = 0))",
                               (now - LIVE_WINDOW,))
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]

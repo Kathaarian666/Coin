@@ -113,46 +113,51 @@ def _pct(x: float | None) -> str:
 
 
 def format_paper(hours: float | None, s: dict, recent: list[tuple[str, dict]], trained_until: float | None,
-                 other: dict | None = None) -> str:
-    """/karne: the paper test (nothing is bought). `recent`: (symbol, alert row); `other`: the summary of the second
-    model (+ holder criteria, PROJE.md §4.6) run beside it. The sell rule is the 5x rule since 9 Oct (PROJE.md §0 B1);
-    the old rule stays beside it for comparison."""
+                 other: dict | None = None, main: dict | None = None) -> str:
+    """/karne: the paper test (nothing is bought). `main`: the summary of the main method's picks (non-Pons, user
+    11 Nov, PROJE.md §4.16d), `s` of all picks; `recent`: (symbol, alert row); `other`: the summary of the second
+    model (+ holder criteria, PROJE.md §4.6) run beside it. The side rule ("5x'te yarısı, kalanı 10 dk") is the main
+    sell rule since 11 Nov; the 5x rule and the old rule stay beside it for comparison."""
     span = f"son {hours:g} saat" if hours else "başından beri"
+    m = main if main is not None else s
     lines = [f"🧪 <b>Kâğıt test</b> — {span} (para harcanmaz)",
              f"Fomo'da 5. alıcıya ulaşan her yeni coin puanlanır; en iyi %{100 * TOP:g} seçilir. Her seçim için sanal işlem: "
              "30 sn sonra alış; komisyon ve kayma dahil.",
              f"Puanlanan coin: {s['scored']} · seçilen: <b>{s['alerts']}</b>"
+             + (f" (Pons dışı: {m['alerts']})" if main is not None else "")
              + (f" · seçim gecikmesi (medyan) {s['latency']:.0f} sn" if s["latency"] is not None else ""),
              "",
-             "🎯 <b>Satış kuralı: 5x</b> (5x'te hepsi satılır, gelmezse 3 saatte — riskli seçimde 15 dk'da — kalanı; "
-             "o anda havuzun likiditesi çekilmişse değer 0):",
-             f"5x yapan: <b>{s['x5']}</b> · süresi dolup satılan: {s['time5']} (likiditesi çekilmiş: {s['pulled5']})"
-             + (f" · riskli seçim: {s['risky']}" if s.get("risky") else ""),
-             f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${s['bank5']:,.0f}</b> ({s['bank5'] / 1000:.2f}x)",
-             f"Yan kural (5x'te yarısı, kalanı 10 dk sonra): sanal kasa <b>${s['bank10']:,.0f}</b> "
-             f"({s['bank10'] / 1000:.2f}x) · kalan yarının likiditesi çekilmiş: {s['pulled10']}",
+             "🎯 <b>Ana yöntem: Pons dışı + yan kural</b> (sadece Pons dışı seçimler bildirilir; 5x'te yarısı satılır, "
+             "kalanı 10 dk sonra; 5x 3 saatte gelmezse hepsi; o anda havuzun likiditesi çekilmişse değer 0):",
+             f"5x yapan: <b>{m['x5']}</b> · süresi dolup satılan: {m['time5']} (likiditesi çekilmiş: {m['pulled5']}) · "
+             f"kalan yarının likiditesi çekilmiş: {m['pulled10']}",
+             f"Sanal kasa ($1.000, kasanın %4/%2/%1'i): <b>${m['bank10']:,.0f}</b> ({m['bank10'] / 1000:.2f}x)",
              "",
-             "Eski kural, karşılaştırma için (2x'te yarısı, kalan zirveden %50 düşünce, %50 zarar-kes; açık işlemler son "
+             "Karşılaştırma için:",
+             f"• Pons dışı, 5x'te hepsi: ${m['bank5']:,.0f} ({m['bank5'] / 1000:.2f}x)",
+             f"• Tüm seçimler (Pons dahil), yan kural: ${s['bank10']:,.0f} ({s['bank10'] / 1000:.2f}x) · 5x'te hepsi: "
+             f"${s['bank5']:,.0f} ({s['bank5'] / 1000:.2f}x)",
+             "• Eski kural, tüm seçimler (2x'te yarısı, kalan zirveden %50 düşünce, %50 zarar-kes; açık işlemler son "
              "fiyatla, iyimser):",
              f"2x yapan: {s['x2']} · zarar-kese takılan: {s['stop']} · kapanan: {s['closed']}"]
     if s["mean"] is not None:
         lines.append(f"İşlem başına net: ort {_pct(s['mean'])} · medyan {_pct(s['median'])} · kârlı %{100 * s['win']:.0f}")
     lines.append(f"Sanal kasa: ${s['bank']:,.0f} ({s['bank'] / 1000:.2f}x)")
     if recent:
-        lines += ["", "Son seçimler (5x kuralı · eski kural):"]
+        lines += ["", "Son seçimler (5x kuralı · eski kural; Pons = bildirilmez):"]
         for symbol, r in recent:
             state = {"2x": "2x ✅", "stop": "zarar-kes ❌", "yok": "bekliyor"}.get(r["kind"] or "", "giriş bekliyor")
             res = f" {_pct(r['ret'])}{'' if r['closed'] else ' (açık)'}" if r["ret"] is not None else ""
             when = time.strftime("%d.%m %H:%M", time.gmtime(r["ts"]))
             k5 = r.get("kind5")
-            rule5 = {"5x": "5x ✅", "süre": ("15 dk" if r.get("risky") else "3 sa")
+            rule5 = {"5x": "5x ✅", "süre": "süre doldu"
                      + (" (likidite çekilmiş ❌)" if r.get("chain5") == "çekildi" else "")}.get(k5 or "", "bekliyor")
-            rule5 += " ⚠️" if r.get("risky") else ""
             res5 = f" <b>{_pct(r['ret5'])}</b>" if r.get("ret5") is not None else ""
             if k5 == "5x" and r.get("ret10") is not None:
                 res5 += f" (yan kural {_pct(r['ret10'])}{'' if r.get('closed10') else ', bekliyor'}"
                 res5 += ", çekildi ❌)" if r.get("chain10") == "çekildi" else ")"
-            lines.append(f"• {escape(symbol, quote=False)} ({when} UTC) — {rule5}{res5} · eski: {state}{res}")
+            tag = " [Pons]" if r.get("pons") else ""
+            lines.append(f"• {escape(symbol, quote=False)}{tag} ({when} UTC) — {rule5}{res5} · eski: {state}{res}")
     if other is not None:
         lines += ["", f"🧪 <b>İkinci model (+ holder kriterleri)</b>, aynı coinler, kendi en iyi %{100 * TOP:g}'i:",
                   f"Puanlanan: {other['scored']} · seçilen: <b>{other['alerts']}</b> · 5x yapan: {other['x5']}",
@@ -168,30 +173,26 @@ def _mcap(fdv: float | None) -> str:
     """The alert's level as Fomo shows it: market cap (price x supply), not the price of a raw unit (PROJE.md §0 D3)."""
     if fdv is None or fdv != fdv or fdv <= 0:
         return "Piyasa değeri: bilinmiyor (arz okunamadı)"
-    return f"Piyasa değeri (bildirimde): <b>{_usd(fdv)}</b> · 5x satış hedefi: {_usd(5 * fdv)}"
+    return f"Piyasa değeri (bildirimde): <b>{_usd(fdv)}</b> · 5x hedefi (yarısını sat): {_usd(5 * fdv)}"
 
 
 def format_paper_5x(symbol: str, token: str, minutes: float) -> str:
-    """The paper test's 5x rule hit (/kagitbildirim ac): the moment to sell everything (PROJE.md §4.4c)."""
+    """The paper test's 5x hit (/kagitbildirim ac): the side rule sells half now, the rest 10 min later (§4.16d)."""
     return (f"🎯 <b>{escape(symbol, quote=False)}</b> kâğıt testte bildirim fiyatının <b>5 katına</b> ulaştı "
-            f"({minutes:.0f} dk sonra). 5x kuralına göre şimdi hepsi satılır — gecikme pahalı: 15 dk sonra seçimlerin "
-            f"bir kısmında likidite çekilmiş oluyor.\n<code>{token}</code> · {_gecko(token)}")
-
-
-RISKY_LINE = "⚠️ <b>Rug riski yüksek</b> (havuzda koruma yok ya da sahibi launchpad dışı): 5x'te hemen sat, 15 dk'da gelmezse çık."
+            f"({minutes:.0f} dk sonra). Yan kurala göre şimdi yarısı satılır, kalanı 10 dk sonra.\n"
+            f"<code>{token}</code> · {_gecko(token)}")
 
 
 def _hold_text(hold_s: float) -> str:
     return f"{hold_s / 3600:g} saat" if hold_s >= 3600 else f"{hold_s / 60:g} dk"
 
 
-def format_paper_alert(symbol: str, token: str, fdv: float | None, score: float, size: float | None, delay: float,
-                       risky: bool | None = None) -> str:
+def format_paper_alert(symbol: str, token: str, fdv: float | None, score: float, size: float | None,
+                       delay: float) -> str:
     """Optional message for each paper-test pick (/kagitbildirim ac)."""
     return (f"🧪 <b>Kâğıt test seçimi: {escape(symbol, quote=False)}</b>\n"
             f"Puan {score:.3f} (en iyi %{100 * TOP:g}) · sanal tutar kasanın %{100 * (size or 0):.0f}'i\n"
             f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra\n"
-            + (RISKY_LINE + "\n" if risky else "")
             + f"<code>{token}</code>\n"
             f"<i>Sadece test: gerçek alım önerisi değildir.</i>")
 
@@ -201,7 +202,7 @@ def _gecko(token: str) -> str:
 
 
 def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float | None, reasons: list[tuple[str, str]],
-                      gate: tuple[str, str], delay: float, risky: bool | None = None) -> str:
+                      gate: tuple[str, str], delay: float) -> str:
     """The fast message of a real alert (/canli ac); the safety report follows as a reply."""
     status, detail = gate
     gate_line = ("✅ " if status == "ok" else "⚠️ Satılabilirlik doğrulanamadı: ") + escape(detail, quote=False)
@@ -210,10 +211,10 @@ def format_live_alert(symbol: str, token: str, fdv: float | None, chance: float 
              f"2x ihtimali: en iyi %{100 * TOP:g}",
              "Neden seçildi:"]
     lines += [f"• {escape(name, quote=False)}: {escape(value, quote=False)}" for name, value in reasons] or ["• -"]
-    lines += [gate_line] + ([RISKY_LINE] if risky else [])
+    lines.append(gate_line)
     lines += [f"{_mcap(fdv)} · 5. alıcıdan {delay:.0f} sn sonra",
               f"<code>{token}</code> · {_gecko(token)}",
-              "Satış kuralı: 5x'te hepsi, " + ("15 dk'da" if risky else "3 saatte") + " gelmezse kalanı sat (bot haber verir).",
+              "Satış kuralı: 5x'te yarısını sat, kalanını 10 dk sonra; 5x 3 saatte gelmezse hepsini sat (bot haber verir).",
               "<i>Güven raporu birazdan bu mesaja yanıt olarak gelecek. Karar senin.</i>"]
     return "\n".join(lines)
 
@@ -242,15 +243,21 @@ def format_safety(symbol: str, token: str, trust: int | None, items: list[tuple[
 
 
 def format_5x(symbol: str, token: str, minutes: float) -> str:
-    """The 5x rule's target (PROJE.md §4.4c, user 9 Oct): the moment to sell everything."""
+    """The side rule's target (PROJE.md §4.10, user 11 Nov): sell half now, the rest 10 minutes later."""
     return (f"🎯 <b>{escape(symbol, quote=False)}</b> bildirimdeki piyasa değerinin <b>5 katına</b> ulaştı "
-            f"({minutes:.0f} dk sonra). 5x kuralı: <b>şimdi hepsini sat</b> — gecikme pahalı (15 dk sonra seçimlerin bir "
-            f"kısmında likidite çekilmiş oluyor). Karar senin.\n<code>{token}</code> · {_gecko(token)}")
+            f"({minutes:.0f} dk sonra). Yan kural: <b>şimdi yarısını sat</b>, kalanı için 10 dk sonra haber veririm. "
+            f"Karar senin.\n<code>{token}</code> · {_gecko(token)}")
+
+
+def format_rest(symbol: str, token: str, later_s: float) -> str:
+    """The side rule's second half: later_s after the 5x, sell what is left."""
+    return (f"⏱ <b>{escape(symbol, quote=False)}</b>: 5x'ten bu yana {_hold_text(later_s)} geçti. Yan kural: "
+            f"<b>kalanını şimdi sat</b>. Karar senin.\n<code>{token}</code> · {_gecko(token)}")
 
 
 def format_time_up(symbol: str, token: str, hold_s: float) -> str:
-    """The 5x rule's time limit (paper.hold5, in s) without the target: sell what is left."""
-    return (f"⏱ <b>{escape(symbol, quote=False)}</b>: {_hold_text(hold_s)} doldu, 5x gelmedi. 5x kuralı: <b>kalanı sat</b> "
+    """The time limit (paper.HOLD5, in s) without the 5x: sell everything."""
+    return (f"⏱ <b>{escape(symbol, quote=False)}</b>: {_hold_text(hold_s)} doldu, 5x gelmedi. Kural: <b>hepsini sat</b> "
             f"(bekleyen seçimlerin çoğu sonradan düşüyor ya da likiditesi çekiliyor). Karar senin.\n"
             f"<code>{token}</code> · {_gecko(token)}")
 

@@ -65,9 +65,15 @@ def test_5x_is_sent_once_on_two_buys_in_a_row_and_survives_a_restart(tmp_path):
     assert token in app.live_watch
     asyncio.run(feed(app, [paper.Trade(t0 + 62, 4, 1, "c", 51.0, 10 ** 7), paper.Trade(t0 + 63, 5, 1, "d", 52.0, 10 ** 7),
                            paper.Trade(t0 + 64, 6, 1, "e", 53.0, 10 ** 7)]))
-    assert len(sent) == 1 and "5 katına" in sent[0] and "hepsini sat" in sent[0] and token not in app.live_watch
-    assert app.live_log.get(token)["sent_2x"] == 1
-    asyncio.run(app.live_step(time.time() + paper.HOLD5))  # the target came: no time-limit message later
+    assert len(sent) == 1 and "5 katına" in sent[0] and "yarısını sat" in sent[0] and token not in app.live_watch
+    assert app.live_log.get(token)["sent_2x"] == 1 and app.live_log.get(token)["t5"] == t0 + 63
+    asyncio.run(app.live_step(t0 + 63 + paper.LATER10 - 5))  # side rule: the rest not yet
+    assert len(sent) == 1
+    asyncio.run(app.rpc.close())
+    app, sent = make()  # restarted: the rest's message still comes
+    asyncio.run(app.live_step(t0 + 63 + paper.LATER10 + 1))
+    assert len(sent) == 1 and "kalanını şimdi sat" in sent[0]
+    asyncio.run(app.live_step(time.time() + paper.HOLD5))  # the target came: no time-limit message later, rest once
     assert len(sent) == 1
     asyncio.run(app.rpc.close())
 
@@ -145,7 +151,8 @@ def test_risk_check_no_hook_or_a_foreign_owner():
     assert check(named, live.ZERO) is False and check(named, None) is False  # renounced / no owner()
 
 
-def test_risky_alert_gets_its_time_limit_after_15_minutes(tmp_path):
+def test_old_risky_rows_keep_the_normal_time_limit(tmp_path):
+    """The 15-minute limit for a risky pick was dropped (11 Nov, PROJE.md §4.16d), also for rows written before."""
     app = ScannerApp(Settings(db_path=str(tmp_path / "r.db")))
     sent = []
 
@@ -159,9 +166,44 @@ def test_risky_alert_gets_its_time_limit_after_15_minutes(tmp_path):
     app.symbol = sym
     token = "0x" + "8" * 40
     now = time.time()
-    app.live_log.add(token, now - 60, 1e-6, 1, None, {}, "ok", paper.hold5(True))
-    asyncio.run(app.live_step(now))
+    app.live_log.add(token, now - 60, 1e-6, 1, None, {}, "ok", 900)
+    asyncio.run(app.live_step(now - 60 + 901))
     assert sent == []
-    asyncio.run(app.live_step(now - 60 + paper.HOLD5_RISKY + 1))
-    assert len(sent) == 1 and "15 dk doldu" in sent[0]
+    asyncio.run(app.live_step(now - 60 + paper.HOLD5 + 1))
+    assert len(sent) == 1 and "3 saat doldu" in sent[0] and "hepsini sat" in sent[0]
+    asyncio.run(app.rpc.close())
+
+
+def test_only_non_pons_picks_are_announced(tmp_path, monkeypatch):
+    """The main method (user 11 Nov, PROJE.md §4.16d): a Pons pick stays in the paper test but is not sent."""
+    app = ScannerApp(Settings(db_path=str(tmp_path / "p.db")))
+    app.storage.set_state("live_alerts", "1")
+    sent_live = []
+
+    async def fake_live(token, *a, **k):
+        sent_live.append(token)
+    app.send_live = fake_live
+
+    class M:
+        bar, features, medians, top_hit_rate = 0.0, [], {}, 0.5
+
+        def score(self, f):
+            return 1.0
+    app.paper_model, app.paper_model_h = M(), None
+
+    async def supply(*a, **k):
+        return [10 ** 27]
+    app.rpc.try_call_fn = supply
+    monkeypatch.setattr(paper, "alert_features", lambda *a, **k: {"depth_usd": 5000.0, "fdv": 1.0})
+    pons, other = "0x" + "a" * 40, "0x" + "b" * 40
+    app.analyzer.launches.db.execute("INSERT INTO pons_launches (token, block, curve, launcher) VALUES (?, 1, 'c', 'l')",
+                                     (pons,))
+    for token in (pons, other):
+        app.follower.coins[token] = paper.Coin(first_ts=0.0, eligible=True,
+                                               trades=[paper.Trade(time.time(), 2, 1, "b", 20.0, 10 ** 7)],
+                                               buyers=["b"])
+        asyncio.run(app.score_moment(token, 0))
+    assert sent_live == [other]
+    assert app.paper_log.is_pons(pons) and not app.paper_log.is_pons(other)
+    assert [r["pons"] for r in app.paper_log.alerts(0)] == [1, 0]
     asyncio.run(app.rpc.close())

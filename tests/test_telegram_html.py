@@ -4,7 +4,7 @@ command then answers nothing. Only <b>, <i>, <code> and <a href> are used."""
 import re
 
 from rhscanner.report import (format_5x, format_liquidity_warning, format_live_alert, format_paper,
-                              format_paper_5x, format_paper_alert, format_report, format_safety,
+                              format_paper_5x, format_paper_alert, format_report, format_rest, format_safety,
                               format_time_up)
 
 ALLOWED = re.compile(r"</?(b|i|code)>|<a href=\"[^\"]*\">|</a>")
@@ -38,12 +38,12 @@ def test_paper_reports_are_valid_telegram_html():
                    "closed10": 1, "chain10": "çekildi"}),
             ("H", {"ts": 1.79e9, "kind": "2x", "ret": 0.5, "closed": 1, "kind5": "5x", "ret5": 3.9, "ret10": 5.0}),
             ("F", {"ts": 1.79e9, "kind": "yok", "ret": -1.0, "closed": 1, "kind5": "süre", "ret5": -1.0,
-                   "chain5": "çekildi", "risky": 1})]
+                   "chain5": "çekildi", "risky": 1, "pons": 1})]
     assert_valid([format_paper(24, s, rows, 1.79e9), format_paper(None, empty, [], None),
                   format_paper(24, s, rows, 1.79e9, s), format_paper(None, empty, [], None, empty),
+                  format_paper(24, s, rows, 1.79e9, s, s), format_paper(None, empty, [], None, empty, empty),
                   format_paper_alert("<X>", "0x" + "1" * 40, 45_000.0, 0.61, 0.04, 7.0),
                   format_paper_alert("<X>", "0x" + "1" * 40, float("nan"), 0.61, None, 7.0),
-                  format_paper_alert("<X>", "0x" + "1" * 40, 45_000.0, 0.61, 0.04, 7.0, True),
                   format_paper_5x("<X>", "0x" + "1" * 40, 9.6)])
 
 
@@ -52,18 +52,22 @@ def test_live_messages_are_valid_telegram_html():
     assert_valid([format_live_alert("<X>", token, 1_250_000.0, 0.61, [("toplam alım", "$1,200"), ("a<b", "%5 <")],
                                     ("ok", "satış simülasyonu geçti (vergi %0)"), 6.0),
                   format_live_alert("Y&Z", token, None, None, [], ("bilinmiyor", "V4 havuzu <yok>"), 9.0),
-                  format_live_alert("<X>", token, 90_000.0, 0.51, [], ("ok", "geçti"), 5.0, True),
                   format_safety("<X>", token, 87, [("Fomo'da satış", "ok", "2 <satıcı>"), ("Likidite", "warn", "a&b"),
                                                      ("LP kilidi", "unknown", "bilinmiyor")], [("GoPlus", True), ("Gecko", False)]),
                   format_safety("Y", token, None, [], []),
-                  format_5x("<X>", token, 14.0), format_time_up("<X>", token, 3 * 3600), format_time_up("<X>", token, 900),
+                  format_5x("<X>", token, 14.0), format_time_up("<X>", token, 3 * 3600), format_rest("<X>", token, 600),
                   format_liquidity_warning("<X>", token, 85.0)])
 
 
-def test_risky_alert_says_so_and_its_time_limit():
+def test_alert_and_karne_follow_the_main_method():
     token = "0x" + "1" * 40
-    risky = format_live_alert("X", token, 90_000.0, 0.51, [], ("ok", "geçti"), 5.0, True)
-    normal = format_live_alert("X", token, 90_000.0, 0.51, [], ("ok", "geçti"), 5.0)
-    assert "Rug riski yüksek" in risky and "15 dk'da gelmezse" in risky
-    assert "Rug riski" not in normal and "3 saatte gelmezse" in normal
-    assert "15 dk doldu" in format_time_up("X", token, 900) and "3 saat doldu" in format_time_up("X", token, 3 * 3600)
+    alert = format_live_alert("X", token, 90_000.0, 0.51, [], ("ok", "geçti"), 5.0)
+    assert "Rug riski" not in alert and "yarısını sat" in alert and "10 dk sonra" in alert and "3 saatte" in alert
+    assert "yarısını sat" in format_5x("X", token, 3.0) and "kalanını şimdi sat" in format_rest("X", token, 600)
+    assert "3 saat doldu" in format_time_up("X", token, 3 * 3600)
+    s = {"scored": 10, "alerts": 4, "closed": 0, "x2": 0, "stop": 0, "mean": None, "median": None, "win": None,
+         "bank": 1000.0, "latency": None, "x5": 2, "time5": 1, "pulled5": 0, "bank5": 1100.0, "bank10": 1200.0,
+         "pulled10": 0}
+    main = {**s, "alerts": 2, "bank10": 1777.0}
+    text = format_paper(None, s, [], None, None, main)
+    assert "Ana yöntem: Pons dışı + yan kural" in text and "$1,777" in text and "Pons dışı: 2" in text
