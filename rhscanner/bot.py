@@ -25,6 +25,7 @@ from .report import (format_5x, format_liquidity_warning, format_live_alert, for
 from . import safety
 from .rpc import RpcClient
 from . import paper
+from . import watchdog
 from .paper import Book, Follower, Model, PaperLog, Trade
 from .sources import Blockscout, DexScreener
 from .storage import Storage
@@ -91,6 +92,7 @@ class ScannerApp:
                                          CREATE UNIQUE INDEX IF NOT EXISTS fomo_log_key
                                          ON fomo_log (block, token, trader, side, amount);""")
         self.symbols: dict[str, str] = {}
+        self.watchdog = watchdog.Watchdog(time.time())  # alarm when no Fomo trade comes (the bot went blind)
         self.queue: asyncio.Queue[Job] = asyncio.Queue()
         self.tasks: list[asyncio.Task] = []
         self.app: Application | None = None
@@ -122,6 +124,7 @@ class ScannerApp:
 
     # --- sources ---
     async def on_fomo_trades(self, trades: list[FomoTrade], warmup: bool = False):
+        self.watchdog.seen(time.time())
         top_block = max(t.block for t in trades)
         self.storage.db.executemany(
             "INSERT OR IGNORE INTO fomo_log VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -477,6 +480,19 @@ class ScannerApp:
                 plog.update10(token, "5x+10", ret10_pulled if status == "çekildi" else ret10, True, status or "bakılamadı",
                               ret10_pulled, t10)
 
+    async def watchdog_loop(self):
+        while True:
+            try:
+                for text in self.watchdog.step(time.time(), self.storage.db,
+                                               self.storage.get_state("fomo_last_block", "-")):
+                    log.warning("watchdog: %s", text)
+                    await self.broadcast(text)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("watchdog step failed")
+            await asyncio.sleep(watchdog.CHECK_S)
+
     async def paper_loop(self):
         while True:
             try:
@@ -694,6 +710,7 @@ class ScannerApp:
             watcher = FomoWatcher(self.rpc, self.settings, self.storage, self.tracker)
             self.tasks.append(asyncio.create_task(watcher.run(self.on_fomo_trades)))
             self.tasks.append(asyncio.create_task(REGISTRY.run(self.rpc, self.settings.v4_pool_manager)))
+            self.tasks.append(asyncio.create_task(self.watchdog_loop()))
         self.tasks.append(asyncio.create_task(self.launch_loop()))
         if self.paper_model:
             self.tasks.append(asyncio.create_task(self.paper_loop()))

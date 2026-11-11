@@ -106,7 +106,7 @@ puan, en iyi %5'e (9 Ekim'e kadar %2) sanal işlem + yanında "5x'te hepsini sat
 `scripts/paper_export.py` ile; ikinci model + holder kriterleri `paper_model_h.json` / tablo `paper_log_h`,
 `paper_export.py --holder`) · `live.py` gerçek bildirim (`/canli`, kapalı; satılamama elemesi V4SellProbe ile,
 güven puanı `trust_model.json`, 5x kuralı takibi — 5x'te "sat", 3 saatte "süre doldu"; riskli seçimde (`risk_check`: havuzda hook
-yok ya da sahibi launchpad dışı) uyarı ve 15 dk, `paper.hold5` — ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `flow.py` akış özellikleri
+yok ya da sahibi launchpad dışı) uyarı ve 15 dk, `paper.hold5` — ve likidite takibi; tablo `live_log`) · `hooks.py` V4 hook kaydı · `report.py` güven raporu metni · `solana.py` Fomo Solana işlem toplayıcı (pump.fun curve + PumpSwap, websocket) · `bnb.py` Fomo BNB toplayıcı · `watchdog.py` kör bot alarmı (30 dk işlem yok / işlem sayısı birden düştü → Telegram) · `flow.py` akış özellikleri
 (araştırma; ileride canlı kural). Sunucudaki DB'de eski `signals` tablosu duruyor, artık yazılmıyor/okunmuyor.
 Araştırma betikleri `scripts/` — listesi `PROJE.md` §7'de.
 

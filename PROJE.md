@@ -52,7 +52,11 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
 4. ~~**Aynı sınavla denenecek adaylar**~~ **Yapıldı (11 Kasım, §4.16d):** hiçbiri 22 Ekim haftasını (5x kuralıyla) kurtarmıyor;
    en iyisi **sadece Pons dışı + yan kural** (7/8, kötümser de 7/8, son 4 haftada tabandan iyi); 15 dk riskli kuralı sınavda
    zararlı (7/8 → 6/8, botta hâlâ açık); %10 pay yoğun haftada kasayı bitiriyor (6/8). Haftalık karne Pons dışı adayı da yazıyor.
-5. **Bot alarmı** (tek bot işi; verinin sigortası): 30 dk Fomo işlemi gelmezse Telegram'a uyarı.
+5. ~~**Bot alarmı**~~ **Yapıldı (11 Kasım), sunucuya kurulacak:** `rhscanner/watchdog.py` — 30 dk hiç Fomo işlemi gelmezse
+   Telegram'a "⚠️ Bot kör olabilir"; son 6 saatteki işlem sayısı önceki 7 günün aynı uzunluktaki ortalamasının %10'unun altına
+   düşerse "⚠️ Fomo işlemleri birden düştü" (26 Ekim'deki gibi eski kontratta az işlem kalınca; 20 Eyl – 10 Kas tam zincir
+   verisinde bu oran hiç 0,24'ün altına inmedi, kör bot ~0,003). Durum değişince bir kez yazar, düzelince "✅".
+   Haftalık karne de son 14 günün işlem sayısını gösteriyor.
 6. Bekleyen küçük kararlar: depo herkese açık (IP, strateji içinde) → gizli yapılsın mı; B7 kontrolü yapıldı (11 Kasım: bot yeniden görüyor, §0 B7); `PROJE.md` sadeleştirme (1.100 satır).
 
 ### Araştırma ortamını kurmak (yeni oturum)
