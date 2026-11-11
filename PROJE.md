@@ -1065,6 +1065,11 @@ görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser
 
   Kendi modelde 81 seçimin 7'si 5x oldu (+$2.356), kalan 74'ü −$1.268. Robinhood modeli BNB'de 5x kuralıyla 0/3
   (−$58 / −$317 / −$911; kötümser 0/3); yan kural 1/3 (tek haftaya dayalı).
+- **Aynı haftalarda Robinhood (kullanıcı sordu, 11 Kasım):** aynı sınav (ölçülen derinlik + ücret, `pool_depth.parquet`)
+  10 Ekim haftası +$3.555, 17 Ekim haftası +$861 → 2/2 (kötümser +$2.904 / +$507, 2/2). Fark pazarın kendisinden çok
+  seçimde: pazar geneli 5x oranı 6,3 % vs 5,0 % ama seçilenlerde Robinhood 23/106 (%22, kârlı işlem %48), BNB 7/81 (%9,
+  kârlı %33). Robinhood'un kazancı Pons dışı (V4) coinlerden (71 işlem, 5x %28, ort +$74,5; Pons 5x %9, −$25); BNB'de bu
+  ayrım yok (flap dışı da 5x %9). Muhtemel neden: BNB modeli 10 Ekim'de ~1 haftalık veriyle eğitildi (Robinhood 1 Eylül'den).
 - **Yorum (Fable ile, 11 Kasım): ince veri, karar değil.** Öneri: BNB'de şimdilik işlem yok; `fombnb` toplamaya ve ileriye
   dönük izlemeye devam; Kasım ortasından itibaren 4+ yeni hafta birikince aynı sınav. Park etme kararı kullanıcının.
 
