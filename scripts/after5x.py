@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-BPS = 9.93
+BPS = 9.93  # Robinhood Chain only (Venue itself works in blocks; callers convert with their chain's rate)
 DELAY_IN = 30
 HOLD = 3 * 3600
 TRAIL_MAX = 60 * 60

@@ -31,7 +31,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scorecard import BPS, HOLD, LATER, arg, path_of  # noqa: E402
+import scorecard  # noqa: E402
+from scorecard import HOLD, LATER, arg, path_of  # noqa: E402
 
 Q96 = 2 ** 96
 MOMENTS = ("buy", "5x", "later", "exit")
@@ -206,9 +207,9 @@ def main():
         def usd_at(b):
             m = ok & (tr[:, 1] <= b)
             return float(tr[m, 3][-1] / tr[m, 4][-1]) if m.any() else np.nan
-        blocks = {"buy": p["ab"] + int(delay * BPS)}
+        blocks = {"buy": p["ab"] + int(delay * scorecard.BPS)}
         if p["t5"] is not None:
-            blocks.update({"5x": p["hb"], "later": p["hb"] + int(LATER * BPS)})
+            blocks.update({"5x": p["hb"], "later": p["hb"] + int(LATER * scorecard.BPS)})
             usd = {"buy": usd_at(blocks["buy"]), "5x": 5 * usd_at(p["ab"]), "later": usd_at(blocks["later"])}
         else:
             blocks["exit"] = p["eb"]
@@ -221,7 +222,7 @@ def main():
         for line in cache.read_text().splitlines():
             t, e = json.loads(line)
             ev[t] = e
-    need = int((HOLD + LATER + 300) * BPS)
+    need = int((HOLD + LATER + 300) * scorecard.BPS)
     todo = {}
     for coin, ts, blocks, usd, first in info.values():
         if coin not in ev:
