@@ -53,7 +53,7 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    en iyisi **sadece Pons dışı + yan kural** (7/8, kötümser de 7/8, son 4 haftada tabandan iyi) → **kullanıcı (11 Kasım):
    haftalık karnenin ana yöntemi bu** (eski yöntem karşılaştırma için altta); 15 dk riskli kuralı sınavda
    zararlı (7/8 → 6/8, botta hâlâ açık); %10 pay yoğun haftada kasayı bitiriyor (6/8). Haftalık karne Pons dışı adayı da yazıyor.
-5. ~~**Bot alarmı**~~ **Yapıldı (11 Kasım), sunucuya kurulacak:** `rhscanner/watchdog.py` — 30 dk hiç Fomo işlemi gelmezse
+5. ~~**Bot alarmı**~~ **Yapıldı ve sunucuya kuruldu (11 Kasım, kullanıcı; logda hata yok):** `rhscanner/watchdog.py` — 30 dk hiç Fomo işlemi gelmezse
    Telegram'a "⚠️ Bot kör olabilir"; son 6 saatteki işlem sayısı önceki 7 günün aynı uzunluktaki ortalamasının %10'unun altına
    düşerse "⚠️ Fomo işlemleri birden düştü" (26 Ekim'deki gibi eski kontratta az işlem kalınca; 20 Eyl – 10 Kas tam zincir
    verisinde bu oran hiç 0,24'ün altına inmedi, kör bot ~0,003). Durum değişince bir kez yazar, düzelince "✅".
