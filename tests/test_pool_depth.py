@@ -80,3 +80,13 @@ def test_fee_factors_side_aware():
     assert f["exit"] == pytest.approx(1.0 / 1.02 * 0.98) and not g
     f, g = scorecard.fee_factors(pe, {})
     assert g
+
+
+def test_split_reuse_keeps_old_rows_of_current_picks():
+    import pandas as pd
+    old = pd.DataFrame({"coin": ["0xA", "0xb", "0xc"], "ts": [1.0, 2.0, 3.0], "depth_buy": [10.0, 20.0, 30.0]})
+    kept, todo = pd_.split_reuse([("0xa", 1), ("0xb", 2.0), ("0xd", 4.0)], old)
+    assert list(kept.depth_buy) == [10.0, 20.0]  # 0xc is no longer a pick: dropped
+    assert todo == [("0xd", 4.0)]
+    kept, todo = pd_.split_reuse([("0xd", 4.0)], None)
+    assert kept is None and todo == [("0xd", 4.0)]

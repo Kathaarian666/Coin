@@ -67,7 +67,7 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - BNB toplayıcı `fombnb` (`rhscanner/bnb.py` → `~/Coin/bnb.db`) **11 Kasım'da kapatıldı** (kullanıcı: BNB araştırmadan
   çıktı, `PROJE.md` §4.17); `install.sh` onu durdurup siler. `veri` dalında `bnb/` ve `arastirma/bnb-geri/` duruyor.
 - Bot gördüğü her Robinhood Fomo işlemini `fomo_log`'a yazar; gece gönderimi `robinhood/<gün>/` (araştırmada
-  `solana_import.py --chain robinhood`). Modeller haftada bir oturumda `scripts/retrain.py` ile yeniden eğitilir.
+  `solana_import.py --chain robinhood`). Haftalık görev (Perşembe) `scripts/weekly_exam.sh` ile standart sınavı yapar (`PROJE.md` §4.16c); bot modeli artık haftalık eğitilmiyor.
 - Log: `journalctl -u rhscanner -n 50 --no-pager`; hata arama:
   `journalctl -u rhscanner --since "90 min ago" --no-pager | grep -i -E "traceback|error" | tail -25`
 - Tek seferlik iş sunucuda: `cd ~/Coin && .venv/bin/python -m rhscanner <komut>` (bot da aynı RPC'yi kullanır;

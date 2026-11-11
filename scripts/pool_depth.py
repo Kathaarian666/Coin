@@ -2,6 +2,10 @@
 (from the price steps of Fomo's own buys) with the reserves of the venue Fomo trades on.
 
   python scripts/pool_depth.py <trades.db> <picks.parquet> <out.parquet> [--top 0.05] [--delay 10] [--probe]
+                               [--reuse <old pool_depth.parquet>]
+
+--reuse: picks (coin, ts) already in an older output are copied from it, only the new ones are measured (the weekly
+exam, scripts/weekly_exam.sh: the walk-forward picks of past days do not change, the event cache is too big to keep).
 
 depth = the venue's quote side in $ (what scorecard.net calls depth: a buy of x $ moves a constant-product price by
 (1 + x / depth)^2), at the blocks scorecard.py trades at: the buy (alert + delay), the 5x (Fomo's 5x buy), 10 min
@@ -234,8 +238,18 @@ def depths(ev, blocks, usd_per_raw):
     return res, fit
 
 
+def split_reuse(keys, old: pd.DataFrame | None):
+    """(rows of old for the picks in keys, the keys still to measure)."""
+    if old is None or old.empty:
+        return old.iloc[0:0] if old is not None else None, list(keys)
+    have = set(zip(old.coin.str.lower(), old.ts.astype(float)))
+    want = {(c, float(t)) for c, t in keys}
+    kept = old[[(c, float(t)) in want for c, t in zip(old.coin.str.lower(), old.ts)]]
+    return kept, [k for k in keys if (k[0], float(k[1])) not in have]
+
+
 def main():
-    flags = {"--top", "--delay"}
+    flags = {"--top", "--delay", "--reuse"}
     args = [a for i, a in enumerate(sys.argv[1:]) if not a.startswith("--") and sys.argv[i] not in flags]
     top, delay = arg("--top", 0.05), arg("--delay", 10)
     db = sqlite3.connect(args[0])
@@ -246,6 +260,11 @@ def main():
     launches = {t: (c, b) for t, c, b in db.execute("SELECT lower(token), lower(curve), block FROM launches")}
     data_end = db.execute("SELECT MAX(ts) FROM trades").fetchone()[0]
     picks = picks[picks.ts + HOLD + LATER < data_end]
+    old = pd.read_parquet(sys.argv[sys.argv.index("--reuse") + 1]) if "--reuse" in sys.argv else None
+    kept, todo_keys = split_reuse(list(zip(picks.coin, picks.ts)), old)
+    if old is not None:
+        print(f"--reuse: {len(kept)} seçim eski dosyadan, {len(todo_keys)} yeni ölçülecek", flush=True)
+        picks = picks[pd.Series(list(zip(picks.coin, picks.ts)), index=picks.index).isin(set(todo_keys))]
     info = {}
     for r in picks.itertuples():
         tr = np.array(db.execute("SELECT ts, block, side, usd, amount FROM trades WHERE token=? ORDER BY ts",
@@ -323,6 +342,8 @@ def main():
                 row["y0"], row["fit_spread"] = fit[0], fit[2]
         rows.append(row)
     out = pd.DataFrame(rows)
+    if kept is not None and not kept.empty:
+        out = pd.concat([kept, out], ignore_index=True) if len(out) else kept.reset_index(drop=True)
     for m in MOMENTS:
         for c in (f"venue_{m}", f"depth_{m}", f"fb_{m}", f"fs_{m}"):
             if c not in out:
