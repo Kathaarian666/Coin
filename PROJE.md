@@ -40,7 +40,8 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    aralık içi ModifyLiquidity; Pons curve: lansmandan beri bütün CurveBuy/CurveSell'e sabit çarpım uydurma, `fit_spread`
    ~0 değilse curve sabit çarpım değil → önce `--probe` ile olay verisine bak). `scorecard.py ... --depth pool_depth.parquet`
    ölçüleni kullanır (ölçülemeyen an tahmine düşer). Kalan: fomo.db kurulumu + RPC ile çalıştırma (RPC izinli ortamda).
-2. **BNB testi (§4.17, sürüyor; kullanıcı: "kapatmıyoruz, testi gerçekleştireceğiz").** İlk bakış: pazar Robinhood kadar
+2. **BNB testi (§4.17) — bitti, BNB bırakıldı (kullanıcı 11 Kasım: "kâr etmiyorsa çıkaralım", toplayıcı "tamamen kapat";
+   `install.sh` `fombnb`'yi durdurup siler, gece gönderimi sadece Robinhood).** İlk bakış: pazar Robinhood kadar
    büyük (günde ~145 coin 5. alıcıya), 2x/5x oranı ve tahmini derinlik daha düşük. Sınav tahmini derinlikle 2 haftanın 2'si
    kaldı. 11 Kasım: arşiv node'uyla gerçek derinlik / çıkış / ücretle sınav: kendi model 1/2 hafta (+$1.929 / −$538, kâr
    7 isabetten), Robinhood modeli 0/3. İnce veri → öneri: işlem yok, toplamaya devam, 4+ ileri hafta sonra yeniden sınav.
@@ -1072,6 +1073,9 @@ görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser
   ayrım yok (flap dışı da 5x %9). Muhtemel neden: BNB modeli 10 Ekim'de ~1 haftalık veriyle eğitildi (Robinhood 1 Eylül'den).
 - **Yorum (Fable ile, 11 Kasım): ince veri, karar değil.** Öneri: BNB'de şimdilik işlem yok; `fombnb` toplamaya ve ileriye
   dönük izlemeye devam; Kasım ortasından itibaren 4+ yeni hafta birikince aynı sınav. Park etme kararı kullanıcının.
+- **Kullanıcı kararı (11 Kasım): BNB araştırmadan çıktı, toplayıcı tamamen kapatıldı** ("Robinhood yeterli değil mi";
+  BNB 3 Ekim'de "diğer zincirler" adımında sadece veri toplamak için eklenmişti). `install.sh` `fombnb`'yi durdurup siler,
+  gece gönderiminden BNB çıktı; `bnb.db` sunucuda, `veri` dalında `bnb/` ve `arastirma/bnb-geri/` kalır.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki

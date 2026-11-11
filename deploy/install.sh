@@ -102,31 +102,19 @@ if [ -f /etc/systemd/system/fomosol.service ]; then
     sudo systemctl daemon-reload
 fi
 
-say "BNB veri toplayıcı kuruluyor (Fomo'nun BNB işlemleri + flap.sh lansmanları -> $APP_DIR/bnb.db)..."
-sudo tee /etc/systemd/system/fombnb.service >/dev/null <<EOF
-[Unit]
-Description=Fomo BNB Chain trade + flap.sh launch collector
-After=network-online.target
-Wants=network-online.target
+# BNB collection stopped too (user, 11 Nov: BNB left the research after the real-data exam, PROJE.md §4.17); bnb.db stays
+# on the disk, the veri branch keeps bnb/ up to the shutdown and arastirma/bnb-geri/
+if [ -f /etc/systemd/system/fombnb.service ]; then
+    say "BNB veri toplayıcı durduruluyor (artık kullanılmıyor)..."
+    sudo systemctl disable -q --now fombnb || true
+    sudo rm -f /etc/systemd/system/fombnb.service
+    sudo systemctl daemon-reload
+fi
 
-[Service]
-User=$(id -un)
-WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.bnb $APP_DIR/bnb.db
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo systemctl daemon-reload
-sudo systemctl enable -q fombnb
-sudo systemctl restart fombnb
-
-# every night: the finished days of bnb.db and the bot's own log -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
+# every night: the finished days of the bot's own log -> GitHub `veri` branch (needs VERI_GITHUB_TOKEN in .env)
 sudo tee /etc/systemd/system/fomosol-export.service >/dev/null <<EOF
 [Unit]
-Description=Send the finished days of the BNB and Robinhood data to the GitHub veri branch
+Description=Send the finished days of the Robinhood data to the GitHub veri branch
 After=network-online.target
 Wants=network-online.target
 
@@ -134,12 +122,11 @@ Wants=network-online.target
 Type=oneshot
 User=$(id -un)
 WorkingDirectory=$APP_DIR
-ExecStart=-$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/bnb.db --chain bnb
 ExecStart=$APP_DIR/.venv/bin/python -m rhscanner.solana_export $APP_DIR/rhscanner.db --chain robinhood
 EOF
 sudo tee /etc/systemd/system/fomosol-export.timer >/dev/null <<EOF
 [Unit]
-Description=Nightly BNB and Robinhood data export
+Description=Nightly Robinhood data export
 
 [Timer]
 OnCalendar=*-*-* 00:20:00 UTC

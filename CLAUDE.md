@@ -63,9 +63,9 @@ gün, "en iyi %1 hariç" kontrolü · boş/dolu veri gelecekteki bir koşula ba�
 - Güncelleme: `bash ~/Coin/deploy/install.sh` (systemd servisi `rhscanner`, DB `~/Coin/rhscanner.db`)
 - Eski ikinci servis `fomosol` (pump.fun/Solana toplayıcı) **10 Kasım'da kapatıldı** (kullanıcı: pump.fun bırakıldı, veri dalı
   doluyordu); `install.sh` onu durdurup siler, `~/Coin/solana.db` diskte kalır; `veri` dalında `solana/` 27 Ekim'e kadar.
-  Gece 00:20 UTC `fomosol-export.timer` (adı eski) BNB ve Robinhood günlerini `veri` dalına gönderir (`.env`: `VERI_GITHUB_TOKEN`).
-- Üçüncü servis `fombnb` = BNB Chain toplayıcı (`rhscanner/bnb.py` → `~/Coin/bnb.db`: Fomo ayakları + flap.sh
-  lansmanları); aynı gece gönderimi `bnb/<gün>/` (`solana_export --chain bnb`); okuma `solana_import.py --chain bnb`.
+  Gece 00:20 UTC `fomosol-export.timer` (adı eski) Robinhood günlerini `veri` dalına gönderir (`.env`: `VERI_GITHUB_TOKEN`).
+- BNB toplayıcı `fombnb` (`rhscanner/bnb.py` → `~/Coin/bnb.db`) **11 Kasım'da kapatıldı** (kullanıcı: BNB araştırmadan
+  çıktı, `PROJE.md` §4.17); `install.sh` onu durdurup siler. `veri` dalında `bnb/` ve `arastirma/bnb-geri/` duruyor.
 - Bot gördüğü her Robinhood Fomo işlemini `fomo_log`'a yazar; gece gönderimi `robinhood/<gün>/` (araştırmada
   `solana_import.py --chain robinhood`). Modeller haftada bir oturumda `scripts/retrain.py` ile yeniden eğitilir.
 - Log: `journalctl -u rhscanner -n 50 --no-pager`; hata arama:
