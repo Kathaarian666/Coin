@@ -89,6 +89,10 @@ K="--depth pool_depth.parquet --fees pool_depth.parquet --v4-fee-floor 0.0148"
   "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --dump karne_dump.parquet
   echo; echo "## Kötümser: derinlik x0,5, alış 30 sn"
   "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --depth-scale 0.5 --delay 30
+  echo; echo "## Aday (PROJE.md §4.16d): sadece Pons dışı seçimler (yan kural ikinci blokta)"
+  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --only-pons 0
+  echo; echo "## Aday kötümser"
+  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --only-pons 0 --depth-scale 0.5 --delay 30
 } | tee "karne_$TODAY.txt"
 
 if [ "${PUSH:-0}" = 1 ]; then

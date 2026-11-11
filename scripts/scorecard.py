@@ -17,6 +17,10 @@ V4 lpFee) is charged on the exit too (fee_factors); without it the exit is value
 --v4-fee-floor 0.0148: a V4 pool's fee per side is max(lpFee, this) (hooks take the fee on most Fomo pools; 0.0148 =
 half of Fomo's adjacent buy / sell price ratio on V4, PROJE.md §4.16b). --dump <file.parquet>: per pick net $ of both rules (unlimited bankroll). --depth <pool_depth.parquet>: the depth measured on chain (scripts/pool_depth.py) at the
 buy, the 5x, 10 min later and the 3 h exit instead (a moment it could not measure falls back to the estimate). paper.net_return's linear impact is too harsh for a $100 trade in a $300 pool.
+--risky <flags.parquet> (scripts/risk_flags.py: coin, ts, risky): the bot's rug rule (PROJE.md §0 B4, paper.hold5) — a
+risky pick is sold at the 5x only if it comes within --risky-hold s (900 = 15 min), else at the on-chain value then; its
+early exit's depth is the buy's measured depth x sqrt(price ratio) (the 3 h depth is the wrong moment), its fee the buy
+venue's. --only-pons 0|1: keep only the non-Pons (0) / Pons (1) picks.
 Bankroll: every week starts with BANK; a pick is traded only if STAKE of free cash is there (money comes back when the
 position is sold); the week's profit = cash at its end - BANK. "sınırsız" = every pick traded (no cash limit).
 """
@@ -65,19 +69,19 @@ def net(stake, depth, legs, p_in, p_ref, depth_in=None):
     return total
 
 
-def path_of(tr, t_alert, delay):
+def path_of(tr, t_alert, delay, hold=HOLD):
     ts, blk, side = tr[:, 0], tr[:, 1], tr[:, 2]
     px = np.where(tr[:, 4] > 0, tr[:, 3] / np.where(tr[:, 4] > 0, tr[:, 4], 1), np.nan)
     ok = np.isfinite(px) & (px > 0)
     buy = (side == 1) & ok
     pa = px[buy & (ts <= t_alert)][-1]
     p_in = px[buy & (ts <= t_alert + delay)][-1]
-    b = buy & (ts > t_alert + delay) & (ts <= t_alert + HOLD)
+    b = buy & (ts > t_alert + delay) & (ts <= t_alert + hold)
     hit = np.flatnonzero((px[b][1:] >= 5 * pa) & (px[b][:-1] >= 5 * pa))
     ab = int(blk[ts <= t_alert][-1])
     if len(hit):
         return dict(pa=pa, p_in=p_in, ab=ab, t5=float(ts[b][hit[0] + 1]), hb=int(blk[b][hit[0] + 1]))
-    eb = ab + int(HOLD * BPS)
+    eb = ab + int(hold * BPS)
     before = ok & (blk <= eb)
     return dict(pa=pa, p_in=p_in, ab=ab, t5=None, last_fomo=int(blk[before][-1]),
                 p_fomo=float(np.median(px[before][-5:])), eb=eb,
@@ -125,7 +129,7 @@ def time_exit(p, ev):
 def main():
     global BPS
     flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale", "--depth", "--bps", "--chain",
-             "--fees", "--dump", "--v4-fee-floor"}
+             "--fees", "--dump", "--v4-fee-floor", "--risky", "--risky-hold", "--only-pons"}
     BPS = arg("--bps", CHAIN_BPS[arg("--chain", "robinhood")])
     args = [a for i, a in enumerate(sys.argv[1:]) if not a.startswith("--") and sys.argv[i] not in flags]
     top, delay = arg("--top", 0.05), arg("--delay", 10)
@@ -134,6 +138,13 @@ def main():
     picks = pd.read_parquet(args[1]).sort_values("ts")
     picks["coin"] = picks.coin.str.lower()
     picks = picks[picks.pct >= 1 - top]
+    anchor = picks.ts.min()  # weeks start here, also when a filter below drops the first pick (same weeks to compare)
+    if "--only-pons" in sys.argv:
+        picks = picks[picks.is_pons.astype(bool) == bool(arg("--only-pons", 0))]
+    risky, risky_hold = set(), arg("--risky-hold", 900.0)
+    if "--risky" in sys.argv:
+        rf = pd.read_parquet(sys.argv[sys.argv.index("--risky") + 1])
+        risky = {(c.lower(), float(t)) for c, t, r in zip(rf.coin, rf.ts, rf.risky) if r}
     path = Path(args[2])
     opener = gzip.open if path.suffix == ".gz" else open
     ev = {}
@@ -154,18 +165,20 @@ def main():
     if "--fees" in sys.argv:
         fp = pd.read_parquet(sys.argv[sys.argv.index("--fees") + 1])
         floor = arg("--v4-fee-floor", 0.0)  # hook tax not read on chain: per side at least this on a V4 pool
-        for m in ("5x", "later", "exit"):
+        for m in ("buy", "5x", "later", "exit"):
             v4 = fp[f"venue_{m}"].notna() & (fp[f"venue_{m}"] != "curve")
             for c in (f"fb_{m}", f"fs_{m}"):
                 fp.loc[v4, c] = np.fmax(fp.loc[v4, c].fillna(0.0), floor) if floor else fp.loc[v4, c]
-        fee_tab = {(c, t): {m: (r.get(f"fb_{m}", np.nan), r.get(f"fs_{m}", np.nan)) for m in ("5x", "later", "exit")}
+        fee_tab = {(c, t): {m: (r.get(f"fb_{m}", np.nan), r.get(f"fs_{m}", np.nan)) for m in ("buy", "5x", "later", "exit")}
                    for c, t, r in zip(fp.coin, fp.ts, fp.to_dict("records"))}
     fee_guessed = 0
     paths, firsts = {}, {}
     for r in picks.itertuples():
         tr = np.array(db.execute("SELECT ts, block, side, usd, amount FROM trades WHERE token=? ORDER BY ts",
                                  (names[r.coin],)).fetchall(), float)
-        paths[r.Index] = path_of(tr, r.ts, delay)
+        is_risky = (r.coin, float(r.ts)) in risky
+        paths[r.Index] = path_of(tr, r.ts, delay, risky_hold if is_risky else HOLD)
+        paths[r.Index]["risky"] = is_risky
         firsts[r.Index] = int(tr[0, 1])
     if "--fetch" in sys.argv:
         import exit_truth as et
@@ -197,7 +210,10 @@ def main():
         e = ev.get(r.coin)
         ff = {"5x": 1.0, "later": 1.0, "exit": 1.0}
         if "--fees" in sys.argv:
-            got, guessed = fee_factors(p, fee_tab.get((r.coin, r.ts), {}))
+            f = fee_tab.get((r.coin, r.ts), {})
+            if p["risky"] and p["t5"] is None:  # the early exit is on the buy's venue
+                f = {"exit": f.get("buy", (np.nan, np.nan))}
+            got, guessed = fee_factors(p, f)
             ff.update(got)
             fee_guessed += guessed
         if p["t5"] is None:
@@ -206,8 +222,12 @@ def main():
                 missing += 1
                 continue
             px *= ff["exit"]
-            back = net(stake, depth, [(1.0, px, rd["exit"])], p["p_in"], p["pa"], rd["buy"])
-            res = {"5x": (back, r.ts + HOLD), "yan": (back, r.ts + HOLD)}
+            d_exit, t_exit = rd["exit"], r.ts + HOLD
+            if p["risky"]:
+                d_exit = rd["buy"] * (px / p["p_in"]) ** 0.5 if px > 0 else np.nan
+                t_exit = r.ts + risky_hold
+            back = net(stake, depth, [(1.0, px, d_exit)], p["p_in"], p["pa"], rd["buy"])
+            res = {"5x": (back, t_exit), "yan": (back, t_exit)}
         else:
             p5 = 5 * p["pa"]
             ven = Venue(e, p["hb"]) if e else None
@@ -215,14 +235,15 @@ def main():
             res = {"5x": (net(stake, depth, [(1.0, p5 * ff["5x"], rd["5x"])], p["p_in"], p["pa"], rd["buy"]), p["t5"]),
                    "yan": (net(stake, depth, [(0.5, p5 * ff["5x"], rd["5x"]), (0.5, p5 * later * ff["later"], rd["later"])],
                                p["p_in"], p["pa"], rd["buy"]), p["t5"] + LATER)}
-        rows.append({"coin": r.coin, "ts": r.ts, "t_in": r.ts + delay, "hit": p["t5"] is not None,
+        rows.append({"coin": r.coin, "ts": r.ts, "t_in": r.ts + delay, "hit": p["t5"] is not None, "risky": p["risky"],
                      "pons": bool(getattr(r, "is_pons", False)), "res": res})
-    first = min(x["ts"] for x in rows)
+    first = anchor
     print(f"\nen iyi %{100 * top:g} · tutar ${stake:g} · kasa ${bank0:g}/hafta · alış gecikmesi {delay} sn · hedef "
           f"+${target:g}/hafta · {len(rows)} seçim (zincir verisi olmayan {missing} dışarıda), 3 sa'te 5x {sum(x['hit'] for x in rows)}"
           + (f" · havuz derinliği zincirden: {measured} seçim" if real else " · havuz derinliği tahmin")
           + (f" · havuz ücreti+vergisi çıkışta düşülü (ölçülemeyen {fee_guessed} seçimde %{100 * FEE_GUESS:g} varsayıldı)"
-             if "--fees" in sys.argv else ""))
+             if "--fees" in sys.argv else "")
+          + (f" · riskli {sum(x['risky'] for x in rows)} seçimde 5x süresi {risky_hold / 60:g} dk" if risky else ""))
     for rule in ("5x", "yan"):
         print(f"\n== kural: {'5x olunca hepsini sat' if rule == '5x' else '5x olunca yarısı, kalanı 10 dk sonra'}")
         passed = total = 0
@@ -230,7 +251,8 @@ def main():
             al = [x for x in rows if first + wk * 7 * 86400 <= x["ts"] < first + (wk + 1) * 7 * 86400]
             if not al:
                 continue
-            days = (max(x["ts"] for x in al) - (first + wk * 7 * 86400)) / 86400
+            # a week is full when the data covers it (not when its last pick is late: a thin filter would look half)
+            days = (min(data_end - HOLD - LATER, first + (wk + 1) * 7 * 86400) - (first + wk * 7 * 86400)) / 86400
             cash, open_, done, skipped = bank0, [], [], 0
             for x in al:  # in time order
                 for o in [o for o in open_ if o[0] <= x["t_in"]]:

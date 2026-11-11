@@ -49,8 +49,9 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    komutla yapar (veri → `winner_study` → `profit_study` → `scorecard --fetch` → `pool_depth --reuse` → karne, ~1 saat);
    görevin istemi buna çevrildi. Holder modeli ve ana ↔ holder sorusu bırakıldı; bot modeli haftalık güncellenmiyor.
    Yolda: `robinhood/` arşivi 26 Ekim – 10 Kasım kördü → 3 Ekim – 10 Kasım zincirden indirilip `veri` köküne parquet olarak eklendi.
-4. **Aynı sınavla denenecek adaylar:** sadece Pons dışı seçim; yan kural; seçim payı %10 (§4.11, yarım); 15 dk riskli
-   kuralının kaldırılması (4 sınavın 2'sinde zararlı).
+4. ~~**Aynı sınavla denenecek adaylar**~~ **Yapıldı (11 Kasım, §4.16d):** hiçbiri 22 Ekim haftasını (5x kuralıyla) kurtarmıyor;
+   en iyisi **sadece Pons dışı + yan kural** (7/8, kötümser de 7/8, son 4 haftada tabandan iyi); 15 dk riskli kuralı sınavda
+   zararlı (7/8 → 6/8, botta hâlâ açık); %10 pay yoğun haftada kasayı bitiriyor (6/8). Haftalık karne Pons dışı adayı da yazıyor.
 5. **Bot alarmı** (tek bot işi; verinin sigortası): 30 dk Fomo işlemi gelmezse Telegram'a uyarı.
 6. Bekleyen küçük kararlar: depo herkese açık (IP, strateji içinde) → gizli yapılsın mı; B7 kontrolü yapıldı (11 Kasım: bot yeniden görüyor, §0 B7); `PROJE.md` sadeleştirme (1.100 satır).
 
@@ -1021,6 +1022,39 @@ kötümser +549, en iyi işlem hariç +445). İşlem başı: Pons dışı +$58,6
 | 29 Eki | 20 | +796 (+445) | +1.211 | +549 | geçti |
 | 5 Kas (yarım) | 10 | −172 (−305) | −86 | −278 | — |
 
+### 4.16d Aday yöntemler aynı sınavda (11 Kasım, devir iş 4)
+
+Aynı 811 seçim (en iyi %5) ve aynı haftalar (`scorecard.py` yeni seçenekleri: `--only-pons 0|1`, `--risky` +
+`--risky-hold 900`; haftalar filtreden önceki ilk seçimden; hafta "tam" = veri haftayı kapsıyor). %10 pay için 1.556
+seçim (`profit_study` "2x" en iyi %10, 690 coinin olayı + derinliği ayrıca indirildi). Başlık varyantı (ölçülen derinlik +
+havuz ücreti). Tam haftalar 8 (10 Eyl – 4 Kas); toplam = 8 tam haftanın net kâr toplamı.
+
+| Aday | 5x: geçen / toplam | Yan kural: geçen / toplam | Kötümser 5x / yan | 15 Eki · 22 Eki · 29 Eki · 5 Kas (yarım), 5x |
+|---|---|---|---|---|
+| Taban (hepsi, %5) | 7/8, +27.527 | 7/8, +49.177 | 7/8 · 7/8 | +1.807 · +279 · +796 · −172 |
+| **Sadece Pons dışı** (330 seçim) | 7/8, +19.514 | **7/8, +42.726** | **7/8 · 7/8** | +2.042 · +320 · +1.052 · −147 |
+| Sadece Pons (481) | 3/8, +7.489 | 3/8, +6.916 | 1/8 · 1/8 | −225 · −39 · −255 · −25 |
+| 15 dk riskli kuralı (botta açık) | 6/8, +20.770 | 6/8, +31.270 | 5/8 · 6/8 | +1.321 · −102 · +1.002 · −338 |
+| Pons dışı + 15 dk | 7/8, +19.819 | 7/8, +41.953 | 7/8 · 7/8 | +1.041 · +302 · +1.064 · −325 |
+| Pay %10 | 6/8, +24.452 | 7/8, +38.338 | 4/8 · 6/8 | +2.298 · +461 · +842 · −524 |
+| Pay %10, Pons dışı | 7/8, +21.393 | 7/8, +46.478 | 5/8 · 7/8 | +2.485 · −134 · +795 · −386 |
+| Pay %10 + 15 dk | 6/8, +25.033 | 6/8, +37.503 | 5/8 · 5/8 | +1.412 · +121 · +860 · −593 |
+
+- **Pons dışı:** geçme sayısı aynı, toplam kâr erken haftalarda Pons'un katkısı kadar düşük; ama **son dört haftada
+  tabandan iyi** (yan kuralla +4.798 ↔ +4.015) ve kötümser koşulda da 7/8. Pons tek başına son dört haftanın hepsinde zararda
+  (kötümser 1/8) → Pons seçimleri artık sadece risk ekliyor. Yan kuralla 22 Ekim yine kalıyor (+398).
+- **Yan kural ("5x'te yarısı, kalanı 10 dk"):** her adayda toplam belirgin yüksek, geçme sayısı aynı ya da daha iyi; son
+  haftalarda da önde. Kazancın bir kısmı birkaç coinden (en iyi işlem hariç fark küçülüyor ama işaret aynı).
+- **15 dk riskli kuralı:** sınavda zararlı (taban 7/8 → 6/8, toplam −$6.800; kötümser 5/8) → kaldırılmalı (bot hâlâ uyguluyor,
+  `paper.hold5`). Not: bayrak çok gürültülü — seçimlerin %55'i "riskli" (§4.8'de %16), neredeyse hepsi "son havuzun hook'u
+  yok": Fomo coinleri için başkalarının açtığı hook'suz çöp havuzlar son havuz oluyor. `owner()` bugünkü değer (düğüm geçmiş
+  durumu tutmuyor; `scripts/risk_flags.py`).
+- **%10 pay:** yoğun haftada kasa bitiyor (17 Eylül: 342 seçimin 303'üne para yetmedi, sınırsız kasayla +5.855) → 6/8; ince
+  haftalarda daha çok işlem: yan kuralla 22 Ekim'i geçen tek aday (+1.133, en iyi hariç +597), ama 5 Kasım yarım haftada en
+  kötü (−524) ve kötümser 5x 4/8. Kararlı değil.
+- **Ortak sonuç:** hiçbir aday pazarın küçülmesini telafi etmiyor; son yarım hafta (5-10 Kasım) her adayda zararda.
+  Dosyalar `veri` dalında `arastirma/2026-11-11/aday/`.
+
 ### 4.17 BNB'ye ilk bakış (10 Kasım, devir notu iş 2)
 
 Veri: `veri` dalı `bnb/` → `scripts/bnb_trades.py` (Fomo ayaklarını Robinhood işlem veritabanı biçimine çevirir; $ =
@@ -1226,6 +1260,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Araştırma (A10) | `exit_truth_rules.py` | Çıkış kuralı taraması, gerçek çıkış değeriyle; Pons / güven puanı filtreleri |
 | **Standart sınav** | `scorecard.py` | Kullanıcının test ölçütü: haftalık kasa, sabit tutar, alış gecikmesi, dolar hedefi; her yöntem bununla ölçülür (§4.16) |
 | **Standart sınav** | `pool_depth.py` | Seçimlerin havuz derinliği + ücreti zincirden (§4.16b); `--reuse` eski ölçümü kullanır, sadece yeni seçimler ölçülür |
+| **Standart sınav** | `risk_flags.py` | Botun rug bayrağı (son havuzun hook'u + bugünkü `owner()`) seçimler için → `scorecard.py --risky` (§4.16d) |
 | **Haftalık görev** | `weekly_exam.sh` | Sınavın tamamı tek komutla (veri → seçimler → zincir olayları → derinlik → karne; `PUSH=1` `veri` dalına `arastirma/haftalik/`), §4.16c |
 | Araştırma (B6) | `after5x.py` | 5x'ten sonra satış kuralları (hemen / yarısı + T dk / T dk / iz), zincirdeki gerçek fiyatla; `--fetch` 5x yapanların zincir olaylarını indirir |
 | Araştırma (B6) | `share5x.py` | Seçim payı (en iyi %2 / %2-5 / %5-10 dilimleri) 5x kuralıyla, zincirdeki 3 saat değeriyle; `--fetch` |

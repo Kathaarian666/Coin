@@ -90,3 +90,16 @@ def test_split_reuse_keeps_old_rows_of_current_picks():
     assert todo == [("0xd", 4.0)]
     kept, todo = pd_.split_reuse([("0xd", 4.0)], None)
     assert kept is None and todo == [("0xd", 4.0)]
+
+
+def test_risk_flag_like_the_bot():
+    import risk_flags as rf
+    from rhscanner.live import LAUNCHPAD_OWNERS, ZERO
+    pools = {"a": {"born": 100, "hooks": "0x" + "1" * 40}, "b": {"born": 150, "hooks": ZERO},
+             "c": {"born": 300, "hooks": "0x" + "2" * 40}}
+    assert rf.latest_hook(pools, 200) == ZERO  # newest pool up to the alert; the later one is not known yet
+    assert rf.latest_hook(pools, 99) is None
+    assert rf.is_risky(ZERO, None)
+    assert not rf.is_risky("0x" + "1" * 40, None) and not rf.is_risky("0x" + "1" * 40, ZERO)
+    assert not rf.is_risky(None, next(iter(LAUNCHPAD_OWNERS)))
+    assert rf.is_risky(None, "0x" + "3" * 40)
