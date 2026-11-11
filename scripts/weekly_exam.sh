@@ -84,15 +84,13 @@ fi
 log "karne"
 K="--depth pool_depth.parquet --fees pool_depth.parquet --v4-fee-floor 0.0148"
 {
-  echo "# Haftalık karne $TODAY (scripts/weekly_exam.sh; PROJE.md §4.16b başlık varyantı)"
-  echo "## Başlık: ölçülen derinlik + havuz ücreti"
-  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --dump karne_dump.parquet
-  echo; echo "## Kötümser: derinlik x0,5, alış 30 sn"
-  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --depth-scale 0.5 --delay 30
-  echo; echo "## Aday (PROJE.md §4.16d): sadece Pons dışı seçimler (yan kural ikinci blokta)"
-  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --only-pons 0
-  echo; echo "## Aday kötümser"
+  echo "# Haftalık karne $TODAY (scripts/weekly_exam.sh; ölçülen derinlik + havuz ücreti, PROJE.md §4.16b)"
+  echo "## ANA YÖNTEM (kullanıcı, 11 Kasım): sadece Pons dışı seçimler + yan kural = aşağıda İKİNCİ blok"
+  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --only-pons 0 --dump karne_dump.parquet
+  echo; echo "## Ana yöntem kötümser: derinlik x0,5, alış 30 sn (ikinci blok)"
   "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K --only-pons 0 --depth-scale 0.5 --delay 30
+  echo; echo "## Karşılaştırma: eski yöntem (bütün seçimler, 5x'te hepsini sat = ilk blok)"
+  "$PY" "$REPO/scripts/scorecard.py" fomo.db picks_top5.parquet events_top5.jsonl.gz $K
 } | tee "karne_$TODAY.txt"
 
 if [ "${PUSH:-0}" = 1 ]; then

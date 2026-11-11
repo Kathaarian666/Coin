@@ -50,7 +50,8 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    görevin istemi buna çevrildi. Holder modeli ve ana ↔ holder sorusu bırakıldı; bot modeli haftalık güncellenmiyor.
    Yolda: `robinhood/` arşivi 26 Ekim – 10 Kasım kördü → 3 Ekim – 10 Kasım zincirden indirilip `veri` köküne parquet olarak eklendi.
 4. ~~**Aynı sınavla denenecek adaylar**~~ **Yapıldı (11 Kasım, §4.16d):** hiçbiri 22 Ekim haftasını (5x kuralıyla) kurtarmıyor;
-   en iyisi **sadece Pons dışı + yan kural** (7/8, kötümser de 7/8, son 4 haftada tabandan iyi); 15 dk riskli kuralı sınavda
+   en iyisi **sadece Pons dışı + yan kural** (7/8, kötümser de 7/8, son 4 haftada tabandan iyi) → **kullanıcı (11 Kasım):
+   haftalık karnenin ana yöntemi bu** (eski yöntem karşılaştırma için altta); 15 dk riskli kuralı sınavda
    zararlı (7/8 → 6/8, botta hâlâ açık); %10 pay yoğun haftada kasayı bitiriyor (6/8). Haftalık karne Pons dışı adayı da yazıyor.
 5. ~~**Bot alarmı**~~ **Yapıldı (11 Kasım), sunucuya kurulacak:** `rhscanner/watchdog.py` — 30 dk hiç Fomo işlemi gelmezse
    Telegram'a "⚠️ Bot kör olabilir"; son 6 saatteki işlem sayısı önceki 7 günün aynı uzunluktaki ortalamasının %10'unun altına
@@ -1019,6 +1020,17 @@ fomo.db'si farklı kurulmuştu), derinlik 762 seçimde zincirden. Başlık varya
 +2.961, +1.807, **+279 (22 Eki, kaldı)**, +796, 5 Kas yarım hafta (5 gün, 10 seçim) **−172** → tam haftalar **7/8**
 (yan kural ve kötümser de 7/8). §4.16b ile aynı tablo: kâr pazarla düşüyor, 29 Ekim haftası hedefi zor geçiyor (+796;
 kötümser +549, en iyi işlem hariç +445). İşlem başı: Pons dışı +$58,6 (5x %28), Pons +$16,7 (%18).
+
+11 Kasım'dan itibaren (kullanıcı kararı) tabloya **ana yöntem** yazılır: sadece Pons dışı + yan kural (§4.16d); eski yöntem
+(hepsi, 5x'te sat) yanında. Aşağıdaki ilk tablo eski yöntemle; yeni haftalar ikinci tabloya.
+
+| Hafta | Pons dışı seçim | **Ana: Pons dışı + yan** (en iyi hariç) | Ana kötümser | Eski yöntem (hepsi, 5x) | Sonuç (ana) |
+|---|---|---|---|---|---|
+| 22 Eki | 15 | +398 (−66) | +327 | +279 | kaldı |
+| 29 Eki | 16 | +1.466 (+852) | +1.218 | +796 | geçti |
+| 5 Kas (yarım) | 6 | −61 (−267) | −171 | −172 | — |
+
+Eski yöntemle ilk tablo:
 
 | Hafta | Seçim | Başlık net (en iyi hariç) | Yan kural | Kötümser | Sonuç |
 |---|---|---|---|---|---|
