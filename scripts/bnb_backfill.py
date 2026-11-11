@@ -97,6 +97,28 @@ def chosen_txs(xfer, job):
     return sorted(out)
 
 
+PART_LINES = 200_000  # ~10-20 MB gzipped
+
+
+def write_parts(src: Path, dest: Path, name: str) -> int:
+    """src (jsonl) as dest/<name>_00.jsonl.gz, _01, ... of PART_LINES lines each; returns the number of parts."""
+    import gzip
+    part, n, f = 0, 0, None
+    with open(src) as lines:
+        for line in lines:
+            if f is None or n == PART_LINES:
+                if f:
+                    f.close()
+                    part += 1
+                f, n = gzip.open(dest / f"{name}_{part:02d}.jsonl.gz", "wt"), 0
+            f.write(line)
+            n += 1
+    if f:
+        f.close()
+        part += 1
+    return part
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     jobs_path = Path(args[0] if args else ROOT / "research" / "bnb_backfill_jobs.csv")
@@ -146,8 +168,8 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         dest = Path(tmp) / "arastirma" / "bnb-geri"
         dest.mkdir(parents=True)
-        for name in ("coin_xfer.jsonl", "venue_logs.jsonl"):
-            os.system(f"gzip -c {out / name} > {dest / name}.gz")
+        for name in ("coin_xfer", "venue_logs"):  # parts well under GitHub's 100 MB file limit
+            write_parts(out / f"{name}.jsonl", dest, name)
         (dest / "jobs.csv").write_text(jobs_path.read_text())
         solana_export.push(Path(tmp), f"arastirma/bnb-geri: {len(done)} BNB seçiminin havuz verisi",
                            os.environ["VERI_GITHUB_TOKEN"].strip())
