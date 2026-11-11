@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 10 Kasım akşamı (BNB'ye ilk bakış §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 11 Kasım (BNB gerçek verilerle sınav §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
 ## Yeni sohbete devir (10 Kasım) — yeni oturum ÖNCE BUNU okusun
@@ -42,8 +42,8 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
    ölçüleni kullanır (ölçülemeyen an tahmine düşer). Kalan: fomo.db kurulumu + RPC ile çalıştırma (RPC izinli ortamda).
 2. **BNB testi (§4.17, sürüyor; kullanıcı: "kapatmıyoruz, testi gerçekleştireceğiz").** İlk bakış: pazar Robinhood kadar
    büyük (günde ~145 coin 5. alıcıya), 2x/5x oranı ve tahmini derinlik daha düşük. Sınav tahmini derinlikle 2 haftanın 2'si
-   kaldı; blok hızı düzeltmesinden sonra 17-23 Ekim haftası sonsuz derinlikte bile zararda (en fazla 1/2); ileriye dönük ölçüm (toplayıcıya havuz rezervi +
-   3 sa havuz olayları) kullanıcıya soruldu. Robinhood modeli BNB'de kötü (3/3 kaldı).
+   kaldı. 11 Kasım: arşiv node'uyla gerçek derinlik / çıkış / ücretle sınav: kendi model 1/2 hafta (+$1.929 / −$538, kâr
+   7 isabetten), Robinhood modeli 0/3. İnce veri → öneri: işlem yok, toplamaya devam, 4+ ileri hafta sonra yeniden sınav.
 3. **Haftalık görevi yeni ölçüte çevir** (kullanıcı onayıyla `update_trigger`): her Perşembe veri güncelle → `profit_study`
    → `scorecard.py --fetch` → karne tablosuna yeni hafta; holder modelini ve ana ↔ holder sorusunu bırak (5 haftada üstünlük
    yok, eğitimin en pahalı kısmı); bot modeli seyrek güncellensin. Rapor kısa, kullanıcıya bildirimle.
@@ -1047,6 +1047,26 @@ görülmüyor: **iyimser**). Kıyas için Robinhood aynı günler hem bu iyimser
   NodeReal MegaNode (ücretsiz katman, anahtar ister). BscScan'in ücretsiz katmanı BNB için kapandı. Sunucudan deneme
   komutu kullanıcıya verildi; geçmişi veren node bulunursa 3-25 Ekim seçimleri geriye dönük gerçek derinlik ve çıkışla
   ölçülecek.
+- **Gerçek verilerle sınav (11 Kasım).** NodeReal'in ücretsiz arşiv node'u çalıştı (sunucu `.env` `BSC_RPC_URL`);
+  `scripts/bnb_backfill.py` 279 seçimin (kendi model en iyi %10 + Robinhood modeli en iyi %5) Transfer'lerini ve örnek
+  işlemlerin havuz loglarını indirdi (veri dalı `arastirma/bnb-geri/`). `scripts/bnb_depth.py` çözdü → `events.jsonl`
+  (gerçek çıkış fiyatı) + `depth.parquet` (ölçülen derinlik, mekan ücreti + vergi). Kapsam: alışta 268/279 (%96), çıkış
+  %96, 5x anları %96; sınavda kendi model 75/81, Robinhood modeli 137/139 ölçülü. Ölçülen / tahmini derinlik medyanı 4,4
+  (çeyrekler 2,4-89; Robinhood'da ~3,75). Vergi medyanı 0.
+- Hata (bulundu, düzeltildi): flap.sh portalının kendi sold/reserve olaylarından hesaplanan curve fiyatı Fomo'nun 1/14'ü
+  çıkıyordu. Portal her coin için V2 biçimli bir çift üzerinden işlem yapıyor; onun Sync rezervleri Fomo fiyatıyla %1 içinde
+  (curve 0,99 · V2 0,99 · V3 1,00). Hatalı sürüm tek işlemde sahte +$6.7k "yan" kâr üretmişti.
+- Sonuç (`scorecard.py --chain bnb --depth/--fees depth.parquet`, olaylar `events.jsonl`):
+
+  | | 10 Ekim haftası | 17 Ekim haftası | tam hafta |
+  |---|---|---|---|
+  | Kendi model, 5x kuralı | +$1.929 (en iyi hariç +$1.537) GEÇTİ | −$538 KALDI | 1/2 |
+  | Aynısı kötümser (derinlik x0,5, 30 sn) | +$1.581 | −$639 | 1/2 |
+
+  Kendi modelde 81 seçimin 7'si 5x oldu (+$2.356), kalan 74'ü −$1.268. Robinhood modeli BNB'de 5x kuralıyla 0/3
+  (−$58 / −$317 / −$911; kötümser 0/3); yan kural 1/3 (tek haftaya dayalı).
+- **Yorum (Fable ile, 11 Kasım): ince veri, karar değil.** Öneri: BNB'de şimdilik işlem yok; `fombnb` toplamaya ve ileriye
+  dönük izlemeye devam; Kasım ortasından itibaren 4+ yeni hafta birikince aynı sınav. Park etme kararı kullanıcının.
 
 ### 4.6 Taze gün testi ve holder kriterleri (3 Ekim, §0 A1/A2)
 **Taze gün testi** (`scripts/fresh_test.py`): sunucudaki kâğıt test modeli (`paper_model.json`, 1 Ekim 11:18'e kadarki
@@ -1152,6 +1172,7 @@ kaybolmaz ama karne model değiştiği andan sonrası için ayrı okunmalı (`/k
 | Veri | `fomo_supply.py` | Coin arzları (FDV için) |
 | Veri | `pons_launches.py` | Bütün Pons lansmanları (token, curve, geliştirici) |
 | Araştırma (BNB) | `cross_chain_test.py` | Bir zincirde eğitilen modelle diğer zincirde walk-forward seçim (§4.17) |
+| Veri (BNB) | `bnb_backfill.py` / `bnb_depth.py` | Sunucuda arşiv node'undan seçimlerin havuz verisi / onu derinlik, ücret ve çıkış fiyatına çözer (§4.17) |
 | Veri (BNB) | `bnb_trades.py` | `veri` dalındaki `bnb/` günlerini işlem veritabanı biçimine çevirir (winner_study / profit_study / scorecard aynen çalışır, §4.17) |
 | Veri (pump.fun) | `solana_import.py` | `veri` dalındaki `solana/` günlerini araştırma veritabanına yükler (toplayıcı: `rhscanner/solana.py`, gece gönderim: `rhscanner/solana_export.py`) |
 | Veri | `transfer_download.py` | Coinlerin ilk saat token transferleri (holder özellikleri) |
