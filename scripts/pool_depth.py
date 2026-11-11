@@ -13,8 +13,11 @@ at or before the block happened (Pons curve or a V4 pool of the coin).
 - Pons curve: the curve's events carry no reserves. A constant-product curve with virtual reserves (x * y = k, like
   pump.fun) is fitted to every CurveBuy / CurveSell since the launch: y before each trade = y0 + the net eth in so far,
   each trade gives k (buy: dt * y * (y + de) / de, sell: dt * y^2 / de - dt * y); y0 is the value where the k's agree
-  best. fit_spread = the k's spread (median |log k - log k_med|): ~0 means the curve really is constant product.
+  best. de is net of the curve's fee and tax (curve_trades). fit_spread = the k's spread (median |log k - log k_med|): ~0 means the curve really is constant product.
   --probe prints the raw data of a few curve events first (word count: a curve that logs its reserves would show it).
+Fee: fb_m / fs_m = the venue's fee (+ tax) per $ on a buy / sell at the moment (curve: median of the coin's last
+FEE_N buys / sells, the tax is a per-coin setting; V4: lpFee from Initialize, NaN for a dynamic fee; a hook's own tax
+is not read). A curve with fit_spread > BAD_FIT gets no depth (the scorecard falls back to the estimate).
 $ per raw token: the last Fomo trade's usd / amount at or before the block (at the 5x: 5 x the alert price).
 Columns: coin, ts, then per moment m in (buy, 5x, later, exit): venue_m ('curve' / pool id / None), depth_m ($),
 plus fit_spread / y0 for curve coins. Cache <out>.cache.jsonl keeps the downloaded events (restartable).
@@ -35,6 +38,9 @@ import scorecard  # noqa: E402
 from scorecard import HOLD, LATER, arg, path_of  # noqa: E402
 
 Q96 = 2 ** 96
+FEE_N = 20  # trades per side behind a moment's fee + tax rate
+BAD_FIT = 0.005  # fit_spread above this: the curve depth is not trusted (falls back to the estimate)
+DYNAMIC_FEE = 0x800000
 MOMENTS = ("buy", "5x", "later", "exit")
 
 
@@ -139,18 +145,51 @@ def fetch(job):
                     "swap" if x["topics"][0] == et.SWAP else "modify", x["data"]]
                    for x in et.logs(born, hi, [[et.SWAP, TOPIC_MODIFY_LIQUIDITY], pid], et.PM)]
             out["pools"][pid] = {"token_is_0": e["topics"][2][-40:] == token[2:].lower(), "born": born,
-                                 "sqrt_p": int(w[3], 16), "tick": signed(w[4]), "events": sorted(evs)}
+                                 "sqrt_p": int(w[3], 16), "tick": signed(w[4]), "fee": int(w[0], 16),
+                                 "hooks": "0x" + w[2][-40:], "events": sorted(evs)}
         return token, out, None
     except Exception as exc:  # noqa: BLE001
         return token, None, str(exc)[:120]
 
 
+def pool_fee(pid, born):
+    """(lpFee, hooks) of a V4 pool from its Initialize (for cache lines written before the fee was kept)."""
+    import exit_truth as et
+    from rhscanner.hooks import TOPIC_V4_INITIALIZE
+    for e in et.logs(born, born, [TOPIC_V4_INITIALIZE, pid], et.PM):
+        w = words(e["data"])
+        return int(w[0], 16), "0x" + w[2][-40:]
+    return None, None
+
+
+def fee_rates(raw, blk, n=FEE_N):
+    """(b, s): the curve's fee + tax per eth of the last n buys / sells at or before blk (the coin's own setting;
+    sells fall back to buys and back). Fee and tax are a share of the eth the trader pays (buy) or gets (sell)."""
+    got = {True: [], False: []}
+    for b, li, buy, data in sorted(raw, reverse=True):
+        if b > blk:
+            continue
+        if len(got[buy]) < n:
+            w = [int(x, 16) for x in words(data)]
+            eth = w[0] if buy else w[1]
+            if eth > 0:
+                got[buy].append(sum(w[2:4]) / eth)
+        if len(got[True]) >= n and len(got[False]) >= n:
+            break
+    b = float(np.median(got[True])) if got[True] else np.nan
+    s = float(np.median(got[False])) if got[False] else np.nan
+    return (b if b == b else s), (s if s == s else b)
+
+
 def curve_trades(raw):
-    """[(block, log, is_buy, eth, tokens)] from the raw curve events (CurveBuy: eth, tokens; CurveSell: tokens, eth)."""
+    """[(block, log, is_buy, eth, tokens)] from the raw curve events (CurveBuy: eth, tokens, fee, tax; CurveSell:
+    tokens, eth, fee, tax). eth = what moved the curve's reserve: a buy's eth less fee and tax, a sell's eth plus them
+    (checked on the chain 10 Nov: with that the k's of 6 coins agree to 0.0000-0.0011, with the raw eth 0.007-0.08)."""
     rows = []
     for b, li, buy, data in raw:
-        w = words(data)
-        eth, tok = (int(w[0], 16), int(w[1], 16)) if buy else (int(w[1], 16), int(w[0], 16))
+        w = [int(x, 16) for x in words(data)]
+        cut = sum(w[2:4])
+        eth, tok = (w[0] - cut, w[1]) if buy else (w[1] + cut, w[0])
         rows.append((b, li, buy, float(eth), float(tok)))
     return sorted(rows)
 
@@ -182,7 +221,16 @@ def depths(ev, blocks, usd_per_raw):
                     break
                 st.apply(kind, words(data))
             x = st.token_reserve()
-        res[m] = (venue, x * usd_per_raw[m] if x is not None and usd_per_raw.get(m) else np.nan)
+        d = x * usd_per_raw[m] if x is not None and usd_per_raw.get(m) else np.nan
+        if venue == "curve" and fit and fit[2] > BAD_FIT:
+            d = np.nan
+        if venue == "curve":
+            rates = fee_rates(ev["curve"], blk)
+        elif venue in pools and pools[venue].get("fee") is not None and not pools[venue]["fee"] & DYNAMIC_FEE:
+            rates = (pools[venue]["fee"] / 1e6,) * 2
+        else:
+            rates = (np.nan, np.nan)
+        res[m] = (venue, d) + rates
     return res, fit
 
 
@@ -250,19 +298,33 @@ def main():
             f.flush()
             if n % 20 == 0:
                 print(f"  {n}/{len(todo)} · {time.time() - t0:.0f} sn · hata {failed}", flush=True)
+    fees_path = out_path.with_suffix(".fees.json")
+    fees = json.loads(fees_path.read_text()) if fees_path.exists() else {}
+    miss = [(c, pid, p["born"]) for c, e in ev.items() if c in {i[0] for i in info.values()}
+            for pid, p in e["pools"].items() if "fee" not in p and pid not in fees]
+    if miss:
+        print(f"havuz ücreti: {len(miss)} havuz", flush=True)
+        with ThreadPoolExecutor(3) as pool:
+            for (c, pid, _), fh in zip(miss, pool.map(lambda j: pool_fee(j[1], j[2]), miss)):
+                fees[pid] = fh
+        fees_path.write_text(json.dumps(fees))
+    for e in ev.values():
+        for pid, p in e["pools"].items():
+            if "fee" not in p and pid in fees:
+                p["fee"], p["hooks"] = fees[pid]
     rows = []
     for coin, ts, blocks, usd, _ in info.values():
         row = {"coin": coin, "ts": ts}
         if coin in ev:
             res, fit = depths(ev[coin], blocks, usd)
-            for m, (venue, d) in res.items():
-                row[f"venue_{m}"], row[f"depth_{m}"] = venue, d
+            for m, (venue, d, b, s) in res.items():
+                row[f"venue_{m}"], row[f"depth_{m}"], row[f"fb_{m}"], row[f"fs_{m}"] = venue, d, b, s
             if fit:
                 row["y0"], row["fit_spread"] = fit[0], fit[2]
         rows.append(row)
     out = pd.DataFrame(rows)
     for m in MOMENTS:
-        for c in (f"venue_{m}", f"depth_{m}"):
+        for c in (f"venue_{m}", f"depth_{m}", f"fb_{m}", f"fs_{m}"):
             if c not in out:
                 out[c] = None if c.startswith("venue") else np.nan
     out.to_parquet(out_path, index=False)

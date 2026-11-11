@@ -54,6 +54,12 @@ def test_curve_fit_recovers_reserves():
     assert pd_.curve_token_reserve(trades, fy0, fk, len(trades)) == pytest.approx(k / y, rel=0.02)
 
 
+def test_curve_trades_nets_fee_and_tax():
+    w = lambda *v: "0x" + "".join(f"{x:064x}" for x in v)
+    rows = pd_.curve_trades([[5, 1, False, w(300, 1000, 10, 2)], [4, 0, True, w(1000, 7, 10, 2)]])
+    assert rows == [(4, 0, True, 988.0, 7.0), (5, 1, False, 1012.0, 300.0)]
+
+
 def test_net_measured_depth_equals_guess_when_same():
     d, pa = 3000.0, 1e-6
     guess = scorecard.net(100, d, [(1.0, 5 * pa)], pa, pa)
@@ -62,3 +68,15 @@ def test_net_measured_depth_equals_guess_when_same():
     # a thinner pool at the sale gives less back; NaN falls back to the guess
     assert scorecard.net(100, d, [(1.0, 5 * pa, 500.0)], pa, pa, d) < guess
     assert scorecard.net(100, d, [(1.0, 5 * pa, np.nan)], pa, pa, np.nan) == pytest.approx(guess)
+
+
+def test_fee_factors_side_aware():
+    p5 = {"t5": 1.0}
+    f, g = scorecard.fee_factors(p5, {"5x": (0.02, 0.03), "later": (0.02, 0.01)})
+    assert f["5x"] == pytest.approx(0.97 / 1.02) and f["later"] == pytest.approx(0.99 / 1.02) and not g
+    pe = {"t5": None, "last_px": np.array([1.02, 0.98, 1.02]), "last_buy": np.array([True, False, True]),
+          "p_fomo": 1.02}
+    f, g = scorecard.fee_factors(pe, {"exit": (0.02, 0.02)})
+    assert f["exit"] == pytest.approx(1.0 / 1.02 * 0.98) and not g
+    f, g = scorecard.fee_factors(pe, {})
+    assert g

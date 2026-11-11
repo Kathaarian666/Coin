@@ -12,7 +12,10 @@ alert to 3 h 15 min after it, which covers both rules). Rules:
 - yan: half at the 5x, the rest 10 min later at the on-chain value then (0 if pulled / moved)
 Costs: Fomo's fee each way (0.5 %, at least $0.95) and price impact: a constant-product pool with depth_usd of the
 pick (estimated from Fomo trades before the alert; unknown = the picks' median) on its quote side at the alert, x
---depth-scale (sensitivity). --depth <pool_depth.parquet>: the depth measured on chain (scripts/pool_depth.py) at the
+--depth-scale (sensitivity). --fees <pool_depth.parquet>: the venue's own fee + tax (Pons curve 1 % + the coin's tax;
+V4 lpFee) is charged on the exit too (fee_factors); without it the exit is valued at Fomo's all-in buy prices.
+--v4-fee-floor 0.0148: a V4 pool's fee per side is max(lpFee, this) (hooks take the fee on most Fomo pools; 0.0148 =
+half of Fomo's adjacent buy / sell price ratio on V4, PROJE.md §4.16b). --dump <file.parquet>: per pick net $ of both rules (unlimited bankroll). --depth <pool_depth.parquet>: the depth measured on chain (scripts/pool_depth.py) at the
 buy, the 5x, 10 min later and the 3 h exit instead (a moment it could not measure falls back to the estimate). paper.net_return's linear impact is too harsh for a $100 trade in a $300 pool.
 Bankroll: every week starts with BANK; a pick is traded only if STAKE of free cash is there (money comes back when the
 position is sold); the week's profit = cash at its end - BANK. "sınırsız" = every pick traded (no cash limit).
@@ -36,6 +39,7 @@ BPS = CHAIN_BPS["robinhood"]  # set by --chain / --bps; every block window below
 HOLD = 3 * 3600
 LATER = 10 * 60
 FEE, FEE_MIN = 0.005, 0.95
+FEE_GUESS = 0.02  # venue fee + tax per side when unmeasured (the Pons curve's typical 1 % fee + 1 % tax)
 
 
 def arg(name, default):
@@ -76,7 +80,30 @@ def path_of(tr, t_alert, delay):
     eb = ab + int(HOLD * BPS)
     before = ok & (blk <= eb)
     return dict(pa=pa, p_in=p_in, ab=ab, t5=None, last_fomo=int(blk[before][-1]),
-                p_fomo=float(np.median(px[before][-5:])), eb=eb)
+                p_fomo=float(np.median(px[before][-5:])), eb=eb,
+                last_px=px[before][-5:], last_buy=side[before][-5:] == 1)
+
+
+def fee_factors(p, f):
+    """Exit price multipliers for the venue's own fee + tax (--fees): Fomo's prices are all-in (a buy's includes the
+    buy fee, a sell's is net of the sell fee), so each price is turned into the pool's marginal price by its side and
+    the sell fee is charged once. f: {moment: (b, s)}, NaN = unknown → FEE_GUESS (counted). Returns ({leg: factor},
+    guessed)."""
+    guessed = False
+    def bs(m):
+        nonlocal guessed
+        b, s = f.get(m, (np.nan, np.nan))
+        if not (np.isfinite(b) and np.isfinite(s)):
+            guessed = True
+            return FEE_GUESS, FEE_GUESS
+        return b, s
+    if p["t5"] is not None:  # the 5x is two Fomo buys at >= 5x: a buy price
+        b5, s5 = bs("5x")
+        _, sl = bs("later")
+        return {"5x": (1 - s5) / (1 + b5), "later": (1 - sl) / (1 + b5)}, guessed
+    b, s = bs("exit")
+    mid = np.median(np.where(p["last_buy"], p["last_px"] / (1 + b), p["last_px"] / (1 - s)))
+    return {"exit": mid / p["p_fomo"] * (1 - s)}, guessed
 
 
 def time_exit(p, ev):
@@ -97,7 +124,8 @@ def time_exit(p, ev):
 
 def main():
     global BPS
-    flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale", "--depth", "--bps", "--chain"}
+    flags = {"--top", "--delay", "--stake", "--bank", "--target", "--depth-scale", "--depth", "--bps", "--chain",
+             "--fees", "--dump", "--v4-fee-floor"}
     BPS = arg("--bps", CHAIN_BPS[arg("--chain", "robinhood")])
     args = [a for i, a in enumerate(sys.argv[1:]) if not a.startswith("--") and sys.argv[i] not in flags]
     top, delay = arg("--top", 0.05), arg("--delay", 10)
@@ -122,6 +150,17 @@ def main():
     if "--depth" in sys.argv:
         dp = pd.read_parquet(sys.argv[sys.argv.index("--depth") + 1])
         real = {(c, t): r for c, t, r in zip(dp.coin, dp.ts, dp.to_dict("records"))}
+    fee_tab = {}
+    if "--fees" in sys.argv:
+        fp = pd.read_parquet(sys.argv[sys.argv.index("--fees") + 1])
+        floor = arg("--v4-fee-floor", 0.0)  # hook tax not read on chain: per side at least this on a V4 pool
+        for m in ("5x", "later", "exit"):
+            v4 = fp[f"venue_{m}"].notna() & (fp[f"venue_{m}"] != "curve")
+            for c in (f"fb_{m}", f"fs_{m}"):
+                fp.loc[v4, c] = np.fmax(fp.loc[v4, c].fillna(0.0), floor) if floor else fp.loc[v4, c]
+        fee_tab = {(c, t): {m: (r.get(f"fb_{m}", np.nan), r.get(f"fs_{m}", np.nan)) for m in ("5x", "later", "exit")}
+                   for c, t, r in zip(fp.coin, fp.ts, fp.to_dict("records"))}
+    fee_guessed = 0
     paths, firsts = {}, {}
     for r in picks.itertuples():
         tr = np.array(db.execute("SELECT ts, block, side, usd, amount FROM trades WHERE token=? ORDER BY ts",
@@ -156,26 +195,34 @@ def main():
         if m:
             measured += any(np.isfinite(v) for v in rd.values())
         e = ev.get(r.coin)
+        ff = {"5x": 1.0, "later": 1.0, "exit": 1.0}
+        if "--fees" in sys.argv:
+            got, guessed = fee_factors(p, fee_tab.get((r.coin, r.ts), {}))
+            ff.update(got)
+            fee_guessed += guessed
         if p["t5"] is None:
             px = time_exit(p, e)
             if px is None:
                 missing += 1
                 continue
+            px *= ff["exit"]
             back = net(stake, depth, [(1.0, px, rd["exit"])], p["p_in"], p["pa"], rd["buy"])
             res = {"5x": (back, r.ts + HOLD), "yan": (back, r.ts + HOLD)}
         else:
             p5 = 5 * p["pa"]
             ven = Venue(e, p["hb"]) if e else None
             later = ven.value(p["hb"] + int(LATER * BPS))[0] if ven is not None and ven.ok else 1.0
-            res = {"5x": (net(stake, depth, [(1.0, p5, rd["5x"])], p["p_in"], p["pa"], rd["buy"]), p["t5"]),
-                   "yan": (net(stake, depth, [(0.5, p5, rd["5x"]), (0.5, p5 * later, rd["later"])], p["p_in"], p["pa"],
-                               rd["buy"]), p["t5"] + LATER)}
-        rows.append({"ts": r.ts, "t_in": r.ts + delay, "hit": p["t5"] is not None,
+            res = {"5x": (net(stake, depth, [(1.0, p5 * ff["5x"], rd["5x"])], p["p_in"], p["pa"], rd["buy"]), p["t5"]),
+                   "yan": (net(stake, depth, [(0.5, p5 * ff["5x"], rd["5x"]), (0.5, p5 * later * ff["later"], rd["later"])],
+                               p["p_in"], p["pa"], rd["buy"]), p["t5"] + LATER)}
+        rows.append({"coin": r.coin, "ts": r.ts, "t_in": r.ts + delay, "hit": p["t5"] is not None,
                      "pons": bool(getattr(r, "is_pons", False)), "res": res})
     first = min(x["ts"] for x in rows)
     print(f"\nen iyi %{100 * top:g} · tutar ${stake:g} · kasa ${bank0:g}/hafta · alış gecikmesi {delay} sn · hedef "
           f"+${target:g}/hafta · {len(rows)} seçim (zincir verisi olmayan {missing} dışarıda), 3 sa'te 5x {sum(x['hit'] for x in rows)}"
-          + (f" · havuz derinliği zincirden: {measured} seçim" if real else " · havuz derinliği tahmin"))
+          + (f" · havuz derinliği zincirden: {measured} seçim" if real else " · havuz derinliği tahmin")
+          + (f" · havuz ücreti+vergisi çıkışta düşülü (ölçülemeyen {fee_guessed} seçimde %{100 * FEE_GUESS:g} varsayıldı)"
+             if "--fees" in sys.argv else ""))
     for rule in ("5x", "yan"):
         print(f"\n== kural: {'5x olunca hepsini sat' if rule == '5x' else '5x olunca yarısı, kalanı 10 dk sonra'}")
         passed = total = 0
@@ -209,7 +256,10 @@ def main():
                   f"kârlı işlem %{100 * np.mean([d > 0 for d in done]) if done else 0:.0f} · sınırsız kasayla ${sum(allp):+.0f} "
                   f"→ {'GEÇTİ' if profit >= target else 'KALDI'}")
         print(f"  tam haftalar: {passed}/{total} hedefi geçti")
-    d = pd.DataFrame([{"pons": x["pons"], "hit": x["hit"], "pl": x["res"]["5x"][0] - stake} for x in rows])
+    d = pd.DataFrame([{"coin": x["coin"], "ts": x["ts"], "pons": x["pons"], "hit": x["hit"],
+                       "pl": x["res"]["5x"][0] - stake, "pl_yan": x["res"]["yan"][0] - stake} for x in rows])
+    if "--dump" in sys.argv:  # one row per traded pick (unlimited bankroll), for weekly tables
+        d.to_parquet(sys.argv[sys.argv.index("--dump") + 1], index=False)
     print("\nişlem başı net $ (5x kuralı): " + " · ".join(
         f"{'Pons' if k else 'Pons dışı'} {len(g)} işlem, ort ${g.pl.mean():+.1f}, 5x %{100 * g.hit.mean():.0f}"
         for k, g in d.groupby("pons")))

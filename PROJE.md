@@ -29,7 +29,8 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
   (11 Kasım 08:30, eski sohbete düşer).
 
 ### Sıradaki işler (bu sırayla; kullanıcı 10 Kasım akşamı 1 ve 2'yi onayladı)
-1. **Havuz derinliğini zincirden ölç, karneyi kesinleştir.** Karnenin zayıf noktası: `depth_usd` Fomo işlemlerinin fiyat
+1. ~~**Havuz derinliğini zincirden ölç, karneyi kesinleştir.**~~ **Yapıldı (11 Kasım, §4.16b):** ölçülen derinlik + havuz
+   ücretiyle yine 8 haftanın 7'si geçiyor; asıl bulgu haftalık kârın pazarla düşmesi (son üç dönem ~0). Eski not: Karnenin zayıf noktası: `depth_usd` Fomo işlemlerinin fiyat
    etkisinden kaba tahmin ve $100'lık işlemde sonucu en çok o etkiliyor. Yapılacak: seçimlerin bildirim anındaki gerçek
    rezervi (Pons curve: CurveBuy/CurveSell olaylarından ya da curve kontratının rezervi; V4 havuzu: likidite + sqrtPrice,
    `exit_truth.py` olayları ve `live.py` havuz okuma kodları başlangıç) → `scorecard.py`'de tahmin yerine bu kullanılır.
@@ -940,8 +941,61 @@ eşikle biraz daha çok seçer). Çıkış zincirdeki gerçek değerle. Veri 10 
 - Pons dışı seçimler kazancın kaynağı (işlem başı ort +$63, 5x %28 ↔ Pons +$7, %19); sadece Pons dışı işlem yapmak benzer
   kârı ~%40 işlemle veriyor (7 haftanın 6'sı geçti).
 - $500 kasa + $100 işlem: ilk 5-7 işlem kaybedince kasa bitiyor (5 haftanın 3'ünde) → kullanıcı kasayı $1.000 yaptı.
-- **Zayıf nokta:** havuz derinliği tahmini kaba; $100'lık işlemde sonucu en çok o etkiler → zincirden gerçek rezerv ölçümü
-  yapılacak. Denetimdeki "işlem başı $100-250 tavan" iddiası eski doğrusal etki formülüne dayanıyordu (fazla sert).
+- ~~**Zayıf nokta:** havuz derinliği tahmini kaba~~ → **ölçüldü (§4.16b):** gerçek derinlik tahminin ~3,75 katı, çıkışta
+  havuz ücreti de düşülüyor; sonuç yine 7/8. Denetimdeki "işlem başı $100-250 tavan" iddiası eski doğrusal etki formülüne dayanıyordu (fazla sert).
+
+### 4.16b Karne zincirden ölçülen havuz derinliği ve havuz ücretiyle (11 Kasım, devir iş 1)
+
+**Ana bulgu eğilim:** ölçümle de 8 tam haftanın 7'si geçiyor, ama haftalık kâr düzenli düşüyor ve son üç dönem sıfır
+civarı ya da zararda. Başlık varyantı (ölçülen derinlik + havuz ücreti/vergisi, 5x'te hepsini sat), haftalık net:
+**+8.001, +5.980, +3.990, +4.250, +2.507, +2.209, +87 (22 Eki, kaldı), +1.120, −424 (5-7 Kas, yarım hafta, 5 seçim)**.
+Her hafta modelin görmediği günler (her gün önceki günlerle eğitilen model, `profit_study.py`, walk-forward); Eylül
+haftaları kural seçiminde kullanılmıştı (§4.16).
+
+| Hafta | 5. alıcıya ulaşan coin | Seçim | 5x % | İşlem başı net (Pons dışı / Pons) | Eski | **Başlık** (en iyi hariç) | Yarısı+10 dk | Kötümser eski | **Kötümser başlık** |
+|---|---|---|---|---|---|---|---|---|---|
+| 10 Eyl | 6.074 | 248 | 23 | +32 (+45 / +27) | +5.507 | **+8.001** (+7.522) | +13.706 | +1.976 | **+5.023** |
+| 17 Eyl | 3.594 | 176 | 23 | +34 (+93 / +3) | +5.484 | **+5.980** (+5.538) | +16.600 | +2.652 | **+4.129** |
+| 24 Eyl | 2.574 | 130 | 22 | +31 (+37 / +27) | +4.319 | **+3.990** (+3.577) | +6.597 | +1.599 | **+1.799** |
+| 1 Eki | 1.646 | 88 | 24 | +48 (+64 / +36) | +3.951 | **+4.250** (+3.862) | +4.888 | +2.650 | **+3.489** |
+| 8 Eki | 1.020 | 50 | 20 | +50 (+106 / −28) | +2.078 | **+2.507** (+2.085) | +3.557 | +1.367 | **+2.015** |
+| 15 Eki | 1.012 | 59 | 22 | +37 (+61 / −9) | +1.802 | **+2.209** (+1.744) | +2.939 | +741 | **+1.515** |
+| 22 Eki | 459 | 25 | 12 | +4 (0 / +12) | +33 | **+87** (−269) | +9 | −259 | **−83** |
+| 29 Eki | 402 | 21 | 29 | +53 (+81 / −64) | +1.185 | **+1.120** (+769) | +1.718 | +833 | **+793** |
+| 5 Kas (yarım) | 250² | 5 | 0 | −85 | −422 | **−424** | −424 | −423 | **−426** |
+
+Kötümser: derinlik ×0,5, alış 30 sn sonra. Tam haftalar: her varyantta 7/8 (normal, kötümser, yan kural). İşlem başı
+net sınırsız kasayla, başlık varyantı. ² Seçim dosyası 7 Kasım'da bitiyor, coin sayısı 10 Kasım'a kadar.
+- **Neden düşüyor:** 5. alıcıya ulaşan coin sayısı 15 kat azaldı (6.074 → 402), seçim de aynı oranda (pay hep ~%5);
+  işlem başı net ve 5x oranı 29 Ekim'e kadar belirgin düşmüyor (+31…+53, %20-29), tek istisna 22 Ekim (%12). Yani
+  görünen etki pazarın küçülmesi; **kenarın aşınıp aşınmadığı belirlenemedi** (son haftalarda 21-25 seçim, 5 Kasım'da 5:
+  işlem başı ölçüm çok gürültülü).
+- **Derinlik (`pool_depth.py`):** ölçülen derinlik tahminin medyan **3,75 katı** (çeyrek 1,4-10,1): V4 $14.600 ↔ tahmin
+  $4.200, Pons curve $10.000 ↔ $2.500. Curve sabit çarpım: olaydaki eth'ten ücret+vergi düşülünce (satışta eklenince)
+  `fit_spread` medyan 0,00003, %95'i < 0,002; her coinde sanal rezerv y0 = 1,68 ETH (ölçüm artefaktı değil). Curve
+  derinliği k/y (sanal + gerçek rezerv). 0,005'ten kötü uyan 5 coin tahmine düşüyor. Kapsam (802 seçim): alış 745,
+  5x 178/178, +10 dk 179, 3 sa çıkışı 577/579; hiç ölçülemeyen 46 seçim tahminle. Mekan alış → 5x arasında 64/175
+  seçimde değişiyor (58'i curve → V4 mezuniyet), alış → çıkış 107/572 (76 curve ↔ V4); her an kendi bloğundaki son
+  işlemin mekanıyla ölçülüyor.
+- **Havuz ücreti/vergisi (`scorecard.py --fees`):** Fomo fiyatı (USDG ÷ token) mekanın ücret+vergisini içeriyor, Fomo'nun
+  %0,5'ini içermiyor (o ayrı düşülüyordu, çift sayım yok). Eski karne çıkışı Fomo'nun **alış** fiyatından değerliyordu →
+  satış ücreti hiç düşülmüyordu. Şimdi her Fomo fiyatı kendi yönüne göre havuzun marjinal fiyatına çevrilip (alış ÷ (1+b),
+  satış ÷ (1−s)) satış ücreti bir kez düşülüyor. Curve: %1 ücret + coinin vergisi (coin başına sabit ayar: sadece %1,8'i
+  zamanla değişiyor; o anki son 20 alış/satışın medyanı). Doğrulama: aynı coinlerde ardışık Fomo alış/satış fiyat oranı
+  vergi dilimine göre beklenenle örtüşüyor (%1: 1,020 ↔ 1,020; %2: 1,041 ↔ 1,041; %3: 1,063 ↔ 1,063; fark medyanı
+  0,0007). V4: Initialize'daki lpFee çoğu havuzda 0 (ücreti hook alıyor; hook vergisi okunmuyor) → ardışık Fomo
+  alış/satış oranı V4'te 1,0296 → taraf başı **%1,48 taban, lpFee ile büyüğü alınıyor (toplanmıyor)**. Bu oran ardışık
+  işlemler arasındaki fiyat hareketini de içerdiği için üst yanlı bir tahmin, ölçüm değil. Ölçülemeyen 45 seçimde %2.
+- **Ayrıştırma (işlem başı, eski → başlık; Pons dışı / Pons):** derinlik +$3 / +$12,6; ücret (V4 tabanıyla) −$5 / −$3.
+  Ücret tek başına (sadece lpFee): Pons dışı +62,7 → +58,4, Pons +7,5 → +6,2.
+- **Pons kötümser koşulda işaret değiştiriyor** (eski −$8,2 → başlık +$6,2; sadece derinlik +$8,9). Sağlamlık: bayraklı 5
+  coin ve yedek seçimler hariç +$7,1; kazancın %87 işlemde (medyan +$3), ama en çok kazandıran 10 işlem farkın %33'ü ve
+  onlar hariç başlık **+$0,6** → Pons kötümser koşulda kabaca başa baş, net pozitif sayılmamalı. Mekana göre (kötümser):
+  alış curve → çıkış V4 (mezun olan, 134 işlem) +$91; alış ve çıkış curve (144) −$49; V4 → V4 (197) −$9.
+- Komutlar: `pool_depth.py fomo.db picks_top5.parquet pool_depth.parquet` (~15 dk + önbellek) →
+  `scorecard.py fomo.db picks_top5.parquet events_top5.jsonl.gz --depth pool_depth.parquet --fees pool_depth.parquet
+  --v4-fee-floor 0.0148` (kötümser: `--depth-scale 0.5 --delay 30`; `--dump` seçim başı sonuç yazar). `pool_depth.parquet`
+  `veri` dalında `arastirma/2026-11-11/`.
 
 ### 4.17 BNB'ye ilk bakış (10 Kasım, devir notu iş 2)
 
