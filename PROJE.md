@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 11 Kasım (BNB gerçek verilerle sınav §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 12 Kasım (haftalık sınav §4.16c; BNB gerçek verilerle sınav §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
 ## Yeni sohbete devir (10 Kasım) — yeni oturum ÖNCE BUNU okusun
@@ -22,6 +22,10 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
   haftada 248 seçim / +$5.500 → 21 seçim / +$1.200; 5-10 Kasım'da 5 seçim, hepsi zarar. İşlem başı kazanç düşmüyor, fırsat
   azalıyor. Kazanç Pons dışı coinlerden (işlem başı +$63 ↔ Pons +$7). "5x'te yarısı, kalanı 10 dk" kuralı daha kârlı
   görünüyor (birkaç coine bağlı).
+- **Haftalık sınav 12 Kasım (§4.16c, ana yöntem = Pons dışı + yan kural):** 5-11 Kasım haftası **−$181, KALDI** (8 seçim;
+  en iyi hariç −388, kötümser −291; eski yöntem −259). Son 4 hafta 2/4 geçti (+3.833, −155, +1.414, −181); tam haftalar 7/9.
+  Veri sağlığı iyi (11 Kasım 18.630 işlem, düşük gün yok). Geçmiş haftaların seçimleri çalıştırmadan çalıştırmaya biraz
+  değişiyor (22 Eki +398 → −155) — açık soru.
 - **Sunucu (10 Kasım, kullanıcı kurdu, `435a7a3`):** bot Fomo'nun yeni kontratını görüyor olmalı (B7), yan kural ve 4 Kasım
   modelleri kurulu; Solana toplayıcı kapatıldı, gece gönderimi sadece BNB + Robinhood. `/canli` kapalı.
 - **Routine'ler:** haftalık görev `trig_01FWthyECauW2xYUgpiRz1u5` (Perşembe 08:53 İstanbul) **11 Kasım'da yeni sınava çevrildi**:
@@ -1034,9 +1038,18 @@ kötümser +549, en iyi işlem hariç +445). İşlem başı: Pons dışı +$58,6
 
 | Hafta | Pons dışı seçim | **Ana: Pons dışı + yan** (en iyi hariç) | Ana kötümser | Eski yöntem (hepsi, 5x) | Sonuç (ana) |
 |---|---|---|---|---|---|
-| 22 Eki | 15 | +398 (−66) | +327 | +279 | kaldı |
-| 29 Eki | 16 | +1.466 (+852) | +1.218 | +796 | geçti |
-| 5 Kas (yarım) | 6 | −61 (−267) | −171 | −172 | — |
+| 15 Eki | 40 | +3.833 (+3.013) | +3.166 | +2.110 | geçti |
+| 22 Eki | 15 | −155 (−452) | −216 | −584 | kaldı |
+| 29 Eki | 14 | +1.414 (+799) | +1.166 | +785 | geçti |
+| 5 Kas | 8 | **−181 (−388)** | −291 | −259 | **kaldı** |
+| 12 Kas (yarım) | — | veri 11 Kasım sonuna kadar → bu haftanın günü yok | | | — |
+
+Tablo 12 Kasım çalıştırmasıyla (806 seçim, Pons dışı 327; veri 11 Kasım sonuna kadar, 5 Kas haftası tam). 11 Kasım
+çalıştırmasında aynı haftalar: 22 Eki +398 (15 seçim), 29 Eki +1.466 (16), 5 Kas yarım −61 (6). **Geçmiş haftaların
+seçimleri aynı kalmadı** (yukarıdaki "değişmez" varsayımı tutmadı): 22 Eki'de 15 Pons dışı seçimin 3'ü değişti, 7,7x yapan
+bir coin düştü → +398 → −155. Neden incelenmedi (fomo.db kurulumu / özellikler yeni günlerle değişiyor olabilir).
+Ana yöntem tam haftalarda 7/9; **son 4 hafta 2/4** (+3.833, −155, +1.414, −181): pazar ince, haftada 8-15 seçim, işler kötüleşiyor.
+Not (12 Kasım): oturum ortamında 8 GB RAM'le `winner_study` bellek yetmeyip öldü → 10 GB swap dosyasıyla geçti.
 
 Eski yöntemle ilk tablo:
 
