@@ -1,6 +1,6 @@
 # Fomo Coin Tarayıcı — Proje Belgesi
 
-Son güncelleme: 19 Kasım (haftalık sınav §4.16c; BNB gerçek verilerle sınav §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
+Son güncelleme: 26 Kasım (haftalık sınav §4.16c; BNB gerçek verilerle sınav §4.17; denetim, yeni test ölçütü, standart sınav; **yeni sohbete devir aşağıda**). Bu belge projenin tek özetidir: ne yapmak istiyoruz, plan, nerede
 duruyoruz, ne biliyoruz, neyi bıraktık. Eski ayrıntılar ve silinen betikler git geçmişinde.
 
 ## Yeni sohbete devir (10 Kasım) — yeni oturum ÖNCE BUNU okusun
@@ -22,10 +22,10 @@ kasa 2x" hedefi kalktı.) Yanında gösterilenler: en iyi işlem hariç kâr; k�
   haftada 248 seçim / +$5.500 → 21 seçim / +$1.200; 5-10 Kasım'da 5 seçim, hepsi zarar. İşlem başı kazanç düşmüyor, fırsat
   azalıyor. Kazanç Pons dışı coinlerden (işlem başı +$63 ↔ Pons +$7). "5x'te yarısı, kalanı 10 dk" kuralı daha kârlı
   görünüyor (birkaç coine bağlı).
-- **Haftalık sınav 19 Kasım (§4.16c, ana yöntem = Pons dışı + yan kural):** 12-18 Kasım haftası **+$221, KALDI** (5 seçim;
-  en iyi hariç +94, kötümser +187; eski yöntem +377; Pons dışı + "5x'te hepsini sat" +644). Son 4 hafta 1/4 geçti (+246,
-  +1.566, −418, +221); tam haftalar 7/10. Veri sağlığı iyi (düşük gün yok; 13-17 Kasım işlem yarıya indi, 18'inde düzeldi,
-  yeni kontrat yok). Geçmiş haftaların sonuçları çalıştırmadan çalıştırmaya hâlâ değişiyor (5 Kas −181 → −418) — açık soru.
+- **Haftalık sınav 26 Kasım (§4.16c, ana yöntem = Pons dışı + yan kural):** 19-25 Kasım haftası **−$44, KALDI** (9 seçim;
+  en iyi hariç −171, kötümser −99; eski yöntem +846 geçerdi). Son 4 hafta 1/4 (+1.566, −418, +249, −44); tam haftalar
+  ana 7/11 ↔ eski yöntem 9/11 (son iki hafta eski önde). Veri sağlığı iyi (düşük gün yok). Geçmiş haftalar çalıştırmadan
+  çalıştırmaya hâlâ değişiyor (22 Eki +246 → −135) — açık soru.
 - **Sunucu (10 Kasım, kullanıcı kurdu, `435a7a3`):** bot Fomo'nun yeni kontratını görüyor olmalı (B7), yan kural ve 4 Kasım
   modelleri kurulu; Solana toplayıcı kapatıldı, gece gönderimi sadece BNB + Robinhood. `/canli` kapalı.
 - **Routine'ler:** haftalık görev `trig_01FWthyECauW2xYUgpiRz1u5` (Perşembe 08:53 İstanbul) **11 Kasım'da yeni sınava çevrildi**:
@@ -1038,14 +1038,22 @@ kötümser +549, en iyi işlem hariç +445). İşlem başı: Pons dışı +$58,6
 
 | Hafta | Pons dışı seçim | **Ana: Pons dışı + yan** (en iyi hariç) | Ana kötümser | Eski yöntem (hepsi, 5x) | Sonuç (ana) |
 |---|---|---|---|---|---|
-| 15 Eki | 40 | +3.492 (+2.672) | +2.821 | +2.385 | geçti |
-| 22 Eki | 15 | +246 (−52) | +173 | −172 | kaldı |
-| 29 Eki | 15 | +1.566 (+952) | +1.318 | +896 | geçti |
-| 5 Kas | 8 | −418 (−550) | −439 | −318 | kaldı |
-| 12 Kas | 5 | **+221 (+94)** | +187 | +377 | **kaldı** |
-| 19 Kas (yarım) | — | veri 18 Kasım sonuna kadar → bu haftanın günü yok | | | — |
+| 15 Eki | 38 | +3.590 (+2.770) | +2.945 | +2.135 | geçti |
+| 22 Eki | 15 | −135 (−432) | −194 | −164 | kaldı |
+| 29 Eki | 15 | +1.566 (+952) | +1.318 | +937 | geçti |
+| 5 Kas | 8 | −418 (−550) | −439 | −327 | kaldı |
+| 12 Kas | 6 | +249 (+122) | +198 | +569 | kaldı |
+| 19 Kas | 9 | **−44 (−171)** | −99 | +846 | **kaldı** |
+| 26 Kas (yarım) | — | veri 25 Kasım sonuna kadar → bu haftanın günü yok | | | — |
 
-Tablo 19 Kasım çalıştırmasıyla (833 seçim, Pons dışı 332; veri 18 Kasım sonuna kadar, 12 Kas haftası tam). 12 Kasım
+**26 Kasım çalıştırması (tablo bununla; 846 seçim, Pons dışı 344; veri 25 Kasım sonuna kadar, 19 Kas haftası tam):**
+19 Kas haftası 9 Pons dışı seçim, **−$44 → kaldı** (kötümser −99; Pons dışı + "5x'te hepsini sat" +171). Eski yöntem bu hafta
++846 (geçerdi) ve tam haftalarda artık **9/11 ↔ ana yöntem 7/11** — son iki haftada eski yöntem önde. Ana yöntem **son 4 hafta
+1/4** (+1.566, −418, +249, −44); haftada 6-15 seçim. Geçmiş haftalar yine kaydı: 19 Kasım çalıştırmasında 15 Eki +3.492 (40),
+22 Eki +246 (−52) → şimdi −135, 12 Kas +221 (5 seçim) → +249 (6). Veri sağlığı: düşük gün yok (19 Kasım 39 bin işlem, sonra
+günde ~9-24 bin). Not: oturumda 8 GB RAM'le `winner_study` yine öldü → 10 GB swap ile geçti.
+
+19 Kasım notu: tablo o gün 19 Kasım çalıştırmasıyla (833 seçim, Pons dışı 332; veri 18 Kasım sonuna kadar, 12 Kas haftası tam). 12 Kasım
 çalıştırmasında aynı haftalar: 15 Eki +3.833, 22 Eki −155, 29 Eki +1.414, 5 Kas −181 — geçmiş haftalar yine kaydı (seçim
 sayıları aynı, sonuçlar değişti; açık soru sürüyor). **12 Kas haftası (19 Kasım):** 5 Pons dışı seçim, +$221 → kaldı; bu
 haftada "5x'te hepsini sat" Pons dışıyla +644 (geçerdi), yan kural 10 dk'da geri vermiş. Ana yöntem tam haftalarda 7/10;
